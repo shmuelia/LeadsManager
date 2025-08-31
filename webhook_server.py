@@ -23,9 +23,17 @@ def home():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/webhook', methods=['POST'])
+@app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     """Receive Facebook leads from Zapier"""
+    if request.method == 'GET':
+        return jsonify({
+            'message': 'Webhook endpoint ready',
+            'method': 'POST requests only',
+            'content_type': 'application/json',
+            'test_url': 'Use POST with JSON data'
+        })
+    
     try:
         # Get JSON data from Zapier
         lead_data = request.get_json()
