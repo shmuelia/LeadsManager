@@ -31,7 +31,7 @@ CREATE TABLE lead_activities (
     call_duration INTEGER, -- seconds, for call activities
     call_outcome VARCHAR(100), -- 'answered', 'voicemail', 'no_answer', 'busy'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    metadata JSONB -- additional data like call recording ID, email template used, etc.
+    activity_metadata JSONB -- additional data like call recording ID, email template used, etc.
 );
 
 -- Users table - for tracking who is working on leads

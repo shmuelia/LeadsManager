@@ -81,7 +81,7 @@ class LeadActivity(db.Model):
     call_duration = db.Column(db.Integer)  # seconds
     call_outcome = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.now)
-    metadata = db.Column(db.JSON)
+    activity_metadata = db.Column(db.JSON)
     
     def to_dict(self):
         return {
@@ -93,7 +93,7 @@ class LeadActivity(db.Model):
             'call_duration': self.call_duration,
             'call_outcome': self.call_outcome,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'metadata': self.metadata
+            'metadata': self.activity_metadata
         }
 
 @app.route('/')
@@ -222,7 +222,7 @@ def add_lead_activity(lead_id):
         description=data.get('description'),
         call_duration=data.get('call_duration'),
         call_outcome=data.get('call_outcome'),
-        metadata=data.get('metadata')
+        activity_metadata=data.get('metadata')
     )
     
     db.session.add(activity)

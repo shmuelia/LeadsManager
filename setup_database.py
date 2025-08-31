@@ -53,7 +53,7 @@ def create_tables():
         call_duration INTEGER,
         call_outcome VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB
+        activity_metadata JSONB
     );
 
     -- Users table - for tracking who is working on leads
