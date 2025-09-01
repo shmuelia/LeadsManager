@@ -603,63 +603,10 @@
             </div>
         </div>
 
-        <!-- Leads Management Table -->
-        <div class="leads-table">
-            <div class="table-header">
-                <div class="table-title">🎯 ניהול לידים</div>
-                <div class="filters">
-                    <select id="statusFilter" class="filter-select" onchange="applyFilters()" title="סנן לידים לפי סטטוס נוכחי">
-                        <option value="">כל הסטטוסים</option>
-                        <option value="new">חדש</option>
-                        <option value="contacted">נוצר קשר</option>
-                        <option value="qualified">מוכשר</option>
-                        <option value="interested">מתעניין</option>
-                        <option value="not_interested">לא מתעניין</option>
-                        <option value="callback">חזרה</option>
-                        <option value="interview_scheduled">מתואם ראיון</option>
-                        <option value="hired">התקבל</option>
-                        <option value="rejected">נדחה</option>
-                        <option value="closed">סגור</option>
-                    </select>
-                    <select id="campaignFilter" class="filter-select" onchange="applyFilters()" title="סנן לידים לפי קמפיין מקור">
-                        <option value="">כל הקמפיינים</option>
-                    </select>
-                    <select id="assignmentFilter" class="filter-select" onchange="applyFilters()" title="סנן לידים לפי סטטוס הקצאה לעובד">
-                        <option value="">כל ההקצאות</option>
-                        <option value="unassigned">לא מוקצה</option>
-                        <option value="assigned">מוקצה</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div id="bulkActions" class="bulk-actions" style="display: none;">
-                <span>פעולות על לידים נבחרים:</span>
-                <button class="bulk-close" onclick="bulkCloseLeads()" title="סגור את כל הלידים הנבחרים - פעולה בלתי הפיכה">סגור לידים</button>
-                <button class="bulk-assign" onclick="showBulkAssign()" title="הקצה את כל הלידים הנבחרים לעובד אחד">הקצה לעובד</button>
-                <select id="bulkUserSelect" style="display: none;" class="filter-select" title="בחר עובד להקצאה המונית">
-                    <option value="">בחר עובד</option>
-                </select>
-                <span id="selectedCount" title="מספר לידים שנבחרו לפעולה המונית">0 נבחרו</span>
-            </div>
-            
-            <div class="leads-grid" id="leadsContainer">
-                <div class="loading">טוען לידים...</div>
-            </div>
-        </div>
+        <!-- Include Unified Lead Management Component -->
+        {% include 'lead_management_component.html' %}
     </div>
 
-    <!-- Lead Details Modal -->
-    <div id="leadModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="close" onclick="closeLeadModal()">&times;</span>
-                <h2>פרטי ליד</h2>
-            </div>
-            <div class="modal-body" id="leadModalBody">
-                <!-- Lead details will be populated here -->
-            </div>
-        </div>
-    </div>
 
     <!-- Add/Edit User Modal -->
     <div id="userModal" class="modal">
@@ -1464,11 +1411,17 @@
         // Load data when page loads
         document.addEventListener('DOMContentLoaded', () => {
             loadUserInfo();
-            loadAllLeads();
+            
+            // Initialize unified lead management component
+            window.leadManager = new LeadManager('campaign_manager', true, true);
         });
 
         // Auto refresh every 2 minutes
-        setInterval(loadAllLeads, 2 * 60 * 1000);
+        setInterval(() => {
+            if (window.leadManager) {
+                window.leadManager.loadLeads();
+            }
+        }, 2 * 60 * 1000);
 
         // Close modal when clicking outside
         window.onclick = function(event) {
