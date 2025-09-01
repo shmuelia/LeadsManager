@@ -289,15 +289,40 @@ def pull_history():
         # For now, return setup instructions
         return jsonify({
             'status': 'setup_required',
-            'message': 'Please set up Zapier bulk import',
-            'instructions': {
-                'step_1': 'Create new Zap: Facebook Lead Ads → Find Many Leads',
-                'step_2': 'Action: Webhooks by Zapier → POST',
-                'step_3': f'URL: {request.url_root}webhook-bulk',
-                'step_4': 'Test and run once to import all historical leads',
-                'step_5': 'Turn off Zap after import (let webhook handle new leads)'
+            'message': 'Choose one of these methods to import historical leads',
+            'methods': {
+                'zapier_scheduled': {
+                    'title': 'Zapier Scheduled Import (Recommended)',
+                    'steps': [
+                        'Create new Zap: Schedule by Zapier → Every Month',
+                        'Action: Facebook Lead Ads → Find Lead or Search Leads', 
+                        'Filter: Set date range for historical leads',
+                        'Action 2: Webhooks by Zapier → POST',
+                        f'URL: {request.url_root}webhook-bulk',
+                        'Test and run once, then turn off'
+                    ]
+                },
+                'csv_upload': {
+                    'title': 'Manual CSV Upload',
+                    'steps': [
+                        'Export leads from Facebook Ads Manager as CSV',
+                        f'Visit: {request.url_root}upload-csv',
+                        'Upload the CSV file',
+                        'System will automatically import all leads'
+                    ]
+                },
+                'facebook_direct': {
+                    'title': 'Facebook API Direct',
+                    'steps': [
+                        'Go to Facebook Ads Manager',
+                        'Navigate to Lead Ads section',
+                        'Download all historical leads',
+                        'Use CSV upload method above'
+                    ]
+                }
             },
-            'webhook_url': f'{request.url_root}webhook-bulk'
+            'webhook_url': f'{request.url_root}webhook-bulk',
+            'csv_upload_url': f'{request.url_root}upload-csv'
         })
     except Exception as e:
         logger.error(f"Error in pull history: {str(e)}")
@@ -393,6 +418,120 @@ def webhook_bulk():
         return jsonify({
             'status': 'error',
             'message': 'Failed to import historical leads',
+            'error': str(e)
+        }), 500
+
+@app.route('/upload-csv', methods=['GET', 'POST'])
+def upload_csv():
+    """Upload CSV file with historical leads"""
+    if request.method == 'GET':
+        return '''
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head>
+            <title>העלאת קובץ לידים</title>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial; padding: 20px; text-align: center; }
+                .upload-form { max-width: 500px; margin: 0 auto; }
+                input[type=file] { margin: 20px 0; padding: 10px; }
+                button { background: #007cba; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; }
+                button:hover { background: #005a87; }
+            </style>
+        </head>
+        <body>
+            <div class="upload-form">
+                <h1>העלאת קובץ לידים היסטוריים</h1>
+                <p>בחר קובץ CSV מ-Facebook Ads Manager:</p>
+                <form enctype="multipart/form-data" method="post">
+                    <input type="file" name="csv_file" accept=".csv" required>
+                    <br>
+                    <button type="submit">העלה לידים</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        '''
+    
+    try:
+        if 'csv_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+            
+        file = request.files['csv_file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+            
+        # Read and process CSV
+        import csv
+        import io
+        
+        # Read file content
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_input = csv.DictReader(stream)
+        
+        imported_count = 0
+        conn = get_db_connection()
+        
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+            
+        cur = conn.cursor()
+        
+        for row in csv_input:
+            try:
+                # Map CSV columns to our fields (adjust based on Facebook CSV format)
+                name = row.get('full_name') or row.get('name') or row.get('Full Name')
+                email = row.get('email') or row.get('Email')
+                phone = row.get('phone_number') or row.get('phone') or row.get('Phone')
+                
+                if not email and not phone:
+                    continue  # Skip rows without contact info
+                
+                # Check if lead already exists
+                if email:
+                    cur.execute("SELECT id FROM leads WHERE email = %s", (email,))
+                    if cur.fetchone():
+                        continue  # Skip duplicates
+                
+                # Insert lead
+                cur.execute("""
+                    INSERT INTO leads (name, email, phone, platform, lead_source, raw_data, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id;
+                """, (
+                    name,
+                    email, 
+                    phone,
+                    'facebook_csv',
+                    'CSV Import',
+                    json.dumps(dict(row)),
+                    'new'
+                ))
+                
+                lead_id = cur.fetchone()[0]
+                imported_count += 1
+                
+                logger.info(f"CSV lead imported: {name} ({email}) - ID: {lead_id}")
+                
+            except Exception as e:
+                logger.error(f"Error importing CSV row: {str(e)}")
+                continue
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Successfully imported {imported_count} leads from CSV',
+            'leads_imported': imported_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing CSV: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to process CSV file',
             'error': str(e)
         }), 500
 
