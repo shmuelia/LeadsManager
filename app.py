@@ -525,21 +525,28 @@ def upload_csv():
                 if imported_count == 0:
                     logger.info(f"CSV columns found: {list(row.keys())}")
                 
-                # More flexible column mapping - try multiple variations
-                name = (row.get('full_name') or row.get('name') or row.get('Full Name') or 
+                # Map based on the actual Hebrew CSV columns you provided
+                name = (row.get('שם') or row.get('name') or row.get('Full Name') or 
                        row.get('Name') or row.get('FULL_NAME') or row.get('Full name') or
-                       row.get('שם מלא') or row.get('שם'))
+                       row.get('שם מלא') or row.get('full_name'))
                 
-                email = (row.get('email') or row.get('Email') or row.get('EMAIL') or 
-                        row.get('E-mail') or row.get('e-mail') or row.get('אימייל'))
+                email = (row.get('דוא"ל') or row.get('email') or row.get('Email') or 
+                        row.get('EMAIL') or row.get('E-mail') or row.get('e-mail') or 
+                        row.get('אימייל'))
                 
-                phone = (row.get('phone_number') or row.get('phone') or row.get('Phone') or 
-                        row.get('PHONE') or row.get('Phone Number') or row.get('טלפון') or
+                phone = (row.get('טלפון') or row.get('מספר טלפון משני') or 
+                        row.get('phone_number') or row.get('phone') or row.get('Phone') or 
+                        row.get('PHONE') or row.get('Phone Number') or 
                         row.get('מספר טלפון'))
                 
-                # Also try to get created date
-                created_date = (row.get('created_time') or row.get('Created Time') or 
-                              row.get('date') or row.get('Date') or row.get('תאריך'))
+                # Also try to get created date and other info
+                created_date = (row.get('נוצר') or row.get('created_time') or 
+                              row.get('Created Time') or row.get('date') or 
+                              row.get('Date') or row.get('תאריך'))
+                
+                form_name = row.get('טופס') or row.get('form_name')
+                channel = row.get('ערוץ') or row.get('platform')
+                source = row.get('מקור') or row.get('source')
                 
                 logger.info(f"Processing row: name='{name}', email='{email}', phone='{phone}'")
                 
@@ -553,17 +560,37 @@ def upload_csv():
                     if cur.fetchone():
                         continue  # Skip duplicates
                 
+                # Parse created time if available
+                created_time = None
+                if created_date:
+                    try:
+                        # Try to parse the Hebrew date format from your CSV
+                        # e.g., "09/01/2025 1:39am" 
+                        from datetime import datetime
+                        import re
+                        
+                        # Remove "am/pm" and convert to 24h format if needed
+                        date_str = created_date.replace('am', '').replace('pm', '').strip()
+                        created_time = datetime.strptime(date_str, '%m/%d/%Y %I:%M')
+                    except:
+                        logger.warning(f"Could not parse date: {created_date}")
+                        pass
+                
                 # Insert lead
                 cur.execute("""
-                    INSERT INTO leads (name, email, phone, platform, lead_source, raw_data, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO leads (name, email, phone, platform, campaign_name, form_name, 
+                                     lead_source, created_time, raw_data, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                 """, (
                     name,
                     email, 
                     phone,
-                    'facebook_csv',
-                    'CSV Import',
+                    channel or 'facebook_csv',
+                    form_name,  # This will show which specific campaign/form
+                    form_name,
+                    source or 'CSV Import',
+                    created_time,
                     json.dumps(dict(row)),
                     'new'
                 ))
