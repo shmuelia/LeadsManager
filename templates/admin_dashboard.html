@@ -302,6 +302,14 @@
                         <option value="rejected">נדחה</option>
                         <option value="closed">סגור</option>
                     </select>
+                    <select id="assignmentFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
+                        <option value="">כל ההקצאות</option>
+                        <option value="unassigned">לא מוקצה</option>
+                        <option value="assigned">מוקצה</option>
+                    </select>
+                    <select id="assignedUserFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
+                        <option value="">כל המשתמשים</option>
+                    </select>
                     <button class="admin-btn success" onclick="loadAllLeads()">🔄 רענן רשימה</button>
                     <button class="admin-btn" onclick="selectAll()">☑️ בחר הכל</button>
                     <button class="admin-btn secondary" onclick="clearSelection()">☐ נקה בחירה</button>
@@ -398,11 +406,25 @@
         function filterAdminLeads() {
             const campaignFilter = document.getElementById('adminCampaignFilter').value;
             const statusFilter = document.getElementById('adminStatusFilter').value;
+            const assignmentFilter = document.getElementById('assignmentFilter').value;
+            const assignedUserFilter = document.getElementById('assignedUserFilter').value;
             
             let filteredLeads = allLeads.filter(lead => {
                 const campaignMatch = !campaignFilter || lead.campaign_name === campaignFilter;
                 const statusMatch = !statusFilter || lead.status === statusFilter;
-                return campaignMatch && statusMatch;
+                
+                // Assignment filter logic
+                let assignmentMatch = true;
+                if (assignmentFilter === 'unassigned') {
+                    assignmentMatch = !lead.assigned_to;
+                } else if (assignmentFilter === 'assigned') {
+                    assignmentMatch = !!lead.assigned_to;
+                }
+                
+                // Assigned user filter logic
+                const assignedUserMatch = !assignedUserFilter || lead.assigned_to === assignedUserFilter;
+                
+                return campaignMatch && statusMatch && assignmentMatch && assignedUserMatch;
             });
             
             // Sort by original Facebook date (newest first), fallback to received_at
@@ -767,10 +789,29 @@
                 const data = await response.json();
                 if (data.users) {
                     availableUsers = data.users.filter(user => user.active);
+                    populateAssignedUserFilter();
                 }
             } catch (error) {
                 console.error('Error loading users:', error);
             }
+        }
+
+        // Populate the assigned user filter dropdown
+        function populateAssignedUserFilter() {
+            const filter = document.getElementById('assignedUserFilter');
+            
+            // Clear existing options except the first one
+            while (filter.children.length > 1) {
+                filter.removeChild(filter.lastChild);
+            }
+            
+            // Add users to filter
+            availableUsers.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                option.textContent = user.full_name;
+                filter.appendChild(option);
+            });
         }
 
         // Assign lead to user
