@@ -602,8 +602,115 @@
             {% include 'user_management_component.html' %}
         </div>
 
+        <!-- Leads Table -->
+        <div class="leads-table" id="leadsMainTable">
+            <div class="table-header">
+                <div class="table-title">📈 לידים פעילים</div>
+                <div class="filters">
+                    <select id="statusFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="new">חדש</option>
+                        <option value="contacted">נוצר קשר</option>
+                        <option value="qualified">מוכשר</option>
+                        <option value="interested">מתעניין</option>
+                        <option value="not_interested">לא מתעניין</option>
+                        <option value="callback">חזרה</option>
+                        <option value="interview_scheduled">מתואם ראיון</option>
+                        <option value="hired">התקבל</option>
+                        <option value="rejected">נדחה</option>
+                        <option value="closed">סגור</option>
+                    </select>
+                    <select id="campaignFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">כל הקמפיינים</option>
+                    </select>
+                    <select id="assignmentFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">כל ההקצאות</option>
+                        <option value="unassigned">לא מוקצה</option>
+                        <option value="assigned">מוקצה</option>
+                    </select>
+                    <button class="campaign-btn" onclick="loadAllLeads()" title="רענן את רשימת הלידים">🔄 רענן</button>
+                </div>
+            </div>
+            
+            <!-- Bulk Actions -->
+            <div class="bulk-actions" id="bulkActions" style="display: none;">
+                <span id="selectedCount">0 נבחרו</span>
+                <button class="bulk-close" onclick="bulkCloseLeads()" title="סגור את כל הלידים הנבחרים">🚫 סגור נבחרים</button>
+                <select id="bulkUserSelect" style="display: none; margin-left: 10px;" class="filter-select">
+                    <option value="">בחר משתמש</option>
+                </select>
+                <button class="bulk-assign" onclick="showBulkAssign()" title="הקצה את כל הלידים הנבחרים למשתמש">👤 הקצה נבחרים</button>
+            </div>
+            
+            <!-- Leads Container -->
+            <div class="leads-grid" id="leadsContainer">
+                <div class="loading">טוען לידים...</div>
+            </div>
+        </div>
+
         <!-- Include Unified Lead Management Component -->
         {% include 'lead_management_component.html' %}
+    </div>
+
+    <!-- Lead Details Modal -->
+    <div id="leadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeLeadModal()">&times;</span>
+                <h2 id="leadModalTitle">פרטי ליד</h2>
+            </div>
+            <div class="modal-body" id="leadModalBody">
+                <!-- Lead details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeUserModal()">&times;</span>
+                <h2 id="userModalTitle">נהל משתמש</h2>
+            </div>
+            <div class="modal-body">
+                <form onsubmit="event.preventDefault(); saveUser();">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">שם משתמש:</label>
+                        <input type="text" id="userUsername" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; direction: ltr;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">שם מלא:</label>
+                        <input type="text" id="userFullName" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">סיסמה:</label>
+                        <input type="password" id="userPassword" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; direction: ltr;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">תפקיד:</label>
+                        <select id="userRole" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; direction: rtl;">
+                            <option value="user">משתמש</option>
+                            <option value="campaign_manager">מנהל קמפיין</option>
+                            <option value="admin">מנהל מערכת</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; font-weight: bold;">
+                            <input type="checkbox" id="userActive" checked style="margin-left: 8px; transform: scale(1.2);">
+                            משתמש פעיל
+                        </label>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="submit" style="background: #059669; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 1.1em; margin-left: 10px;">
+                            💾 שמור
+                        </button>
+                        <button type="button" onclick="closeUserModal()" style="background: #6b7280; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 1.1em;">
+                            ❌ ביטול
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
 
@@ -768,25 +875,8 @@
         }
 
         function loadStats() {
-            // Use unified lead manager to refresh leads and update statistics
-            if (window.leadManager) {
-                window.leadManager.loadLeads();
-            }
-            // Also update user stats
-            updateStats();
-        }
-        
-        function updateStats() {
-            // This function will be called by the unified component or when stats need refresh
-            if (window.leadManager && window.leadManager.allLeads) {
-                const leads = window.leadManager.allLeads;
-                
-                // Update campaign statistics
-                document.getElementById('totalLeads').textContent = leads.length;
-                document.getElementById('activeLeads').textContent = leads.filter(l => ['new', 'contacted', 'qualified', 'interested'].includes(l.status)).length;
-                document.getElementById('qualifiedLeads').textContent = leads.filter(l => l.status === 'qualified').length;  
-                document.getElementById('hiredLeads').textContent = leads.filter(l => l.status === 'hired').length;
-            }
+            // Refresh leads and update statistics
+            loadAllLeads();
         }
 
         function toggleAllLeads(checked) {
@@ -1407,36 +1497,54 @@
             console.log('=== CAMPAIGN MANAGER: DOM Content Loaded ===');
             loadUserInfo();
             
-            // Check if LeadManager class is available
-            if (typeof LeadManager === 'undefined') {
-                console.error('ERROR: LeadManager class not found!');
-                // Fallback: try to load leads manually
-                setTimeout(() => {
-                    console.log('Attempting manual lead loading...');
-                    loadAllLeads();
-                }, 1000);
-                return;
-            }
+            // Load users for assignment dropdowns
+            loadUsersData();
             
-            // Initialize unified lead management component
-            console.log('Initializing LeadManager for campaign_manager...');
-            try {
-                window.leadManager = new LeadManager('campaign_manager', true, true);
-                console.log('LeadManager initialized successfully');
-            } catch (error) {
-                console.error('Error initializing LeadManager:', error);
-                // Fallback: try manual loading
-                setTimeout(() => {
-                    loadAllLeads();
-                }, 1000);
-            }
+            // Load leads directly
+            console.log('Loading leads...');
+            loadAllLeads();
         });
+
+        // Load users data for assignment dropdowns
+        async function loadUsersData() {
+            try {
+                const response = await fetch('/admin/users/api');
+                const data = await response.json();
+                
+                if (data.users) {
+                    availableUsers = data.users;
+                    
+                    // Populate assignment filter
+                    const assignmentFilter = document.getElementById('assignmentFilter');
+                    const baseOptions = assignmentFilter.innerHTML;
+                    
+                    // Add user options for filtering
+                    data.users.filter(user => user.active).forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.username;
+                        option.textContent = user.full_name || user.username;
+                        assignmentFilter.appendChild(option);
+                    });
+                    
+                    // Populate bulk assignment dropdown
+                    const bulkUserSelect = document.getElementById('bulkUserSelect');
+                    bulkUserSelect.innerHTML = '<option value="">בחר משתמש</option>';
+                    data.users.filter(user => user.active).forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.username;
+                        option.textContent = user.full_name || user.username;
+                        bulkUserSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
 
         // Auto refresh every 2 minutes
         setInterval(() => {
-            if (window.leadManager) {
-                window.leadManager.loadLeads();
-            }
+            loadAllLeads();
+            updateStats();
         }, 2 * 60 * 1000);
 
         // Close modal when clicking outside
