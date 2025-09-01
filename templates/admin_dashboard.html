@@ -355,8 +355,12 @@
                 return campaignMatch && statusMatch;
             });
             
-            // Sort by received_at (newest first)
-            filteredLeads.sort((a, b) => new Date(b.received_at) - new Date(a.received_at));
+            // Sort by original Facebook date (newest first), fallback to received_at
+            filteredLeads.sort((a, b) => {
+                const dateA = new Date(a.created_time || a.received_at);
+                const dateB = new Date(b.created_time || b.received_at);
+                return dateB - dateA;
+            });
             
             displayLeadsTable(filteredLeads);
         }
@@ -379,7 +383,7 @@
                             <th>טלפון</th>
                             <th>סטטוס</th>
                             <th>קמפיין</th>
-                            <th>תאריך יצירה</th>
+                            <th>תאריך ליד מקורי</th>
                             <th>פעולות</th>
                         </tr>
                     </thead>
@@ -392,7 +396,7 @@
                                 <td>${lead.phone || '-'}</td>
                                 <td><span class="status-badge status-${lead.status}">${getStatusInHebrew(lead.status)}</span></td>
                                 <td>${lead.campaign_name || '-'}</td>
-                                <td>${formatDate(lead.received_at)}</td>
+                                <td>${lead.created_time ? formatDate(lead.created_time) : formatDate(lead.received_at)}</td>
                                 <td>
                                     <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="viewLeadDetails(${lead.id})">👁️ פרטים</button>
                                     <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="editLead(${lead.id})">✏️ ערוך</button>

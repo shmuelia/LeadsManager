@@ -337,7 +337,7 @@ def get_leads():
                    lead_source, created_time, received_at, status, assigned_to, priority, 
                    raw_data, notes, updated_at
             FROM leads 
-            ORDER BY received_at DESC
+            ORDER BY COALESCE(created_time, received_at) DESC
         """)
         
         leads = cur.fetchall()

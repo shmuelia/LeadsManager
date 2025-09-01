@@ -626,7 +626,10 @@
                         return (a.status || '').localeCompare(b.status || '');
                     case 'received_at':
                     default:
-                        return new Date(b.received_at) - new Date(a.received_at);
+                        // Use original Facebook date if available, fallback to received_at
+                        const dateA = new Date(a.created_time || a.received_at);
+                        const dateB = new Date(b.created_time || b.received_at);
+                        return dateB - dateA;
                 }
             });
             
