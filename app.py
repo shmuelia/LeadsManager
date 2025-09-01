@@ -915,11 +915,10 @@ def add_activity():
         }), 500
 
 @app.route('/leads/<int:lead_id>/status', methods=['PUT'])
-def update_lead_status():
+def update_lead_status(lead_id):
     """Update lead status"""
     try:
         data = request.get_json()
-        lead_id = request.view_args['lead_id']
         
         conn = get_db_connection()
         if not conn:

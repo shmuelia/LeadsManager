@@ -1001,6 +1001,11 @@
         async function updateStatus() {
             const newStatus = document.getElementById('newStatus').value;
             
+            if (!currentLeadId) {
+                alert('שגיאה: לא נבחר ליד');
+                return;
+            }
+            
             try {
                 const response = await fetch(`/leads/${currentLeadId}/status`, {
                     method: 'PUT',
@@ -1013,17 +1018,23 @@
                     })
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
+                console.log('Status update result:', result);
+                
                 if (result.status === 'success') {
                     closeModal('statusModal');
                     loadLeads(); // Refresh the leads list
                     alert('סטטוס עודכן בהצלחה!');
                 } else {
-                    alert('שגיאה בעדכון הסטטוס');
+                    alert(`שגיאה בעדכון הסטטוס: ${result.error || 'שגיאה לא ידועה'}`);
                 }
             } catch (error) {
-                alert('שגיאה בעדכון הסטטוס');
-                console.error(error);
+                console.error('Status update error:', error);
+                alert(`שגיאה בעדכון הסטטוס: ${error.message}`);
             }
         }
         
