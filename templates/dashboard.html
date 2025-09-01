@@ -471,7 +471,7 @@
                         <option value="">כל הקמפיינים</option>
                     </select>
                     <select id="statusFilter" onchange="filterLeads()" class="filter-select">
-                        <option value="">כל הסטטוסים</option>
+                        <option value="">כל הסטטוסים (לא כולל סגורים)</option>
                         <option value="new">חדש</option>
                         <option value="contacted">נוצר קשר</option>
                         <option value="qualified">מוכשר</option>
@@ -623,7 +623,9 @@
             let filteredLeads = allLeads.filter(lead => {
                 const campaignMatch = !campaignFilter || lead.campaign_name === campaignFilter;
                 const statusMatch = !statusFilter || lead.status === statusFilter;
-                return campaignMatch && statusMatch;
+                // Always exclude closed leads unless specifically filtered for them
+                const notClosed = statusFilter === 'closed' || lead.status !== 'closed';
+                return campaignMatch && statusMatch && notClosed;
             });
             
             // Sort leads
