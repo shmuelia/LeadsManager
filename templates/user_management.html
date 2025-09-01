@@ -166,9 +166,12 @@
         
         // Filter users by customer (triggers unified component reload)
         function loadUsers() {
-            // This will be handled by the unified component
-            if (window.loadUsers && typeof window.loadUsers === 'function') {
-                window.loadUsers();
+            // Call the unified component's loadUsers function
+            if (window.loadUsersFromComponent && typeof window.loadUsersFromComponent === 'function') {
+                window.loadUsersFromComponent();
+            } else {
+                // Fallback: reload page to refresh data
+                window.location.reload();
             }
         }
 
