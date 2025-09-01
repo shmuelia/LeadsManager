@@ -447,7 +447,49 @@ def upload_csv():
                     <input type="file" name="csv_file" accept=".csv" required>
                     <br>
                     <button type="submit">העלה לידים</button>
+                    <button type="button" onclick="debugCSV()" style="background:#f39c12; margin-right:10px;">🔍 בדוק CSV קודם</button>
                 </form>
+                <div id="debug-result" style="margin-top:20px; text-align:right; background:#f8f9fa; padding:15px; border-radius:5px; display:none;">
+                </div>
+                <script>
+                async function debugCSV() {
+                    const fileInput = document.querySelector('input[type="file"]');
+                    if (!fileInput.files[0]) {
+                        alert('אנא בחר קובץ תחילה');
+                        return;
+                    }
+                    
+                    const formData = new FormData();
+                    formData.append('csv_file', fileInput.files[0]);
+                    
+                    try {
+                        const response = await fetch('/debug-csv', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        
+                        const debugDiv = document.getElementById('debug-result');
+                        debugDiv.style.display = 'block';
+                        debugDiv.innerHTML = `
+                            <h3>🔍 בדיקת מבנה הקובץ:</h3>
+                            <p><strong>קובץ:</strong> ${result.filename}</p>
+                            <p><strong>מספר עמודות:</strong> ${result.total_columns}</p>
+                            <p><strong>עמודות שנמצאו:</strong></p>
+                            <ul>${result.columns_found.map(col => '<li>' + col + '</li>').join('')}</ul>
+                            <p><strong>הצעות למיפוי:</strong></p>
+                            <ul>
+                                <li>שמות אפשריים: ${result.suggestions.name_columns.join(', ') || 'לא נמצא'}</li>
+                                <li>אימיילים אפשריים: ${result.suggestions.email_columns.join(', ') || 'לא נמצא'}</li>
+                                <li>טלפונים אפשריים: ${result.suggestions.phone_columns.join(', ') || 'לא נמצא'}</li>
+                            </ul>
+                            <p style="color:#27ae60;"><strong>עכשיו אתה יכול להעלות את הקובץ בביטחון!</strong></p>
+                        `;
+                    } catch (error) {
+                        alert('שגיאה בבדיקת הקובץ: ' + error.message);
+                    }
+                }
+                </script>
             </div>
         </body>
         </html>
@@ -479,13 +521,31 @@ def upload_csv():
         
         for row in csv_input:
             try:
-                # Map CSV columns to our fields (adjust based on Facebook CSV format)
-                name = row.get('full_name') or row.get('name') or row.get('Full Name')
-                email = row.get('email') or row.get('Email')
-                phone = row.get('phone_number') or row.get('phone') or row.get('Phone')
+                # Debug: Log the first row to see column names
+                if imported_count == 0:
+                    logger.info(f"CSV columns found: {list(row.keys())}")
                 
-                if not email and not phone:
-                    continue  # Skip rows without contact info
+                # More flexible column mapping - try multiple variations
+                name = (row.get('full_name') or row.get('name') or row.get('Full Name') or 
+                       row.get('Name') or row.get('FULL_NAME') or row.get('Full name') or
+                       row.get('שם מלא') or row.get('שם'))
+                
+                email = (row.get('email') or row.get('Email') or row.get('EMAIL') or 
+                        row.get('E-mail') or row.get('e-mail') or row.get('אימייל'))
+                
+                phone = (row.get('phone_number') or row.get('phone') or row.get('Phone') or 
+                        row.get('PHONE') or row.get('Phone Number') or row.get('טלפון') or
+                        row.get('מספר טלפון'))
+                
+                # Also try to get created date
+                created_date = (row.get('created_time') or row.get('Created Time') or 
+                              row.get('date') or row.get('Date') or row.get('תאריך'))
+                
+                logger.info(f"Processing row: name='{name}', email='{email}', phone='{phone}'")
+                
+                if not name and not email and not phone:
+                    logger.info("Skipping row - no name, email, or phone found")
+                    continue  # Skip rows without any contact info
                 
                 # Check if lead already exists
                 if email:
@@ -524,7 +584,8 @@ def upload_csv():
         return jsonify({
             'status': 'success',
             'message': f'Successfully imported {imported_count} leads from CSV',
-            'leads_imported': imported_count
+            'leads_imported': imported_count,
+            'debug_info': 'Check server logs for column names and processing details'
         })
         
     except Exception as e:
@@ -533,6 +594,55 @@ def upload_csv():
             'status': 'error',
             'message': 'Failed to process CSV file',
             'error': str(e)
+        }), 500
+
+@app.route('/debug-csv', methods=['POST'])
+def debug_csv():
+    """Debug endpoint to see CSV structure without importing"""
+    try:
+        if 'csv_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+            
+        file = request.files['csv_file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+            
+        import csv
+        import io
+        
+        # Read file content
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_input = csv.DictReader(stream)
+        
+        # Get first few rows for debugging
+        sample_rows = []
+        columns = []
+        
+        for i, row in enumerate(csv_input):
+            if i == 0:
+                columns = list(row.keys())
+            if i < 3:  # Get first 3 rows as samples
+                sample_rows.append(dict(row))
+            else:
+                break
+                
+        return jsonify({
+            'status': 'debug',
+            'filename': file.filename,
+            'columns_found': columns,
+            'total_columns': len(columns),
+            'sample_rows': sample_rows,
+            'suggestions': {
+                'name_columns': [col for col in columns if any(x in col.lower() for x in ['name', 'שם'])],
+                'email_columns': [col for col in columns if any(x in col.lower() for x in ['email', 'mail', 'אימייל'])],
+                'phone_columns': [col for col in columns if any(x in col.lower() for x in ['phone', 'טלפון', 'tel'])]
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Debug failed: {str(e)}'
         }), 500
 
 @app.route('/test')
