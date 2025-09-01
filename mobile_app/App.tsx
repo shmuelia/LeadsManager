@@ -5,7 +5,7 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 
 import LeadsListScreen from './src/screens/LeadsListScreen';
-import LeadDetailScreen from './src/screens/LeadDetailScreen';
+import SimpleLeadDetailScreen from './src/screens/SimpleLeadDetailScreen';
 import AddActivityScreen from './src/screens/AddActivityScreen';
 
 export type RootStackParamList = {
@@ -24,12 +24,12 @@ export default function App() {
           <Stack.Screen 
             name="LeadsList" 
             component={LeadsListScreen}
-            options={{ title: 'Leads Manager' }}
+            options={{ title: 'ניהול לידים - אלחנן מאפיה' }}
           />
           <Stack.Screen 
             name="LeadDetail" 
-            component={LeadDetailScreen}
-            options={{ title: 'Lead Details' }}
+            component={SimpleLeadDetailScreen}
+            options={{ title: 'פרטי ליד' }}
           />
           <Stack.Screen 
             name="AddActivity" 

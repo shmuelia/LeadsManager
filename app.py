@@ -230,6 +230,50 @@ def get_leads():
         logger.error(f"Error fetching leads: {str(e)}")
         return jsonify({'error': str(e), 'leads': []}), 200
 
+@app.route('/leads/<int:lead_id>')
+def get_lead(lead_id):
+    """Get specific lead with details"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Get lead details
+        cur.execute("""
+            SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
+                   lead_source, created_time, received_at, status, assigned_to, priority, 
+                   raw_data, notes, updated_at
+            FROM leads 
+            WHERE id = %s
+        """, (lead_id,))
+        
+        lead = cur.fetchone()
+        
+        if not lead:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Lead not found'}), 404
+        
+        # Convert to JSON-serializable format
+        lead_dict = dict(lead)
+        for key in ['created_time', 'received_at', 'updated_at']:
+            if lead_dict[key]:
+                lead_dict[key] = lead_dict[key].isoformat()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'lead': lead_dict,
+            'activities': []  # Activities can be added later
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching lead {lead_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/test')
 def test():
     return jsonify({

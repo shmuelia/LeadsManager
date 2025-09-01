@@ -1,6 +1,6 @@
 import { Lead, LeadActivity, LeadWithActivities } from '../types/Lead';
 
-const API_BASE_URL = 'https://leadmanagement-dev-4c46df30a3b3.herokuapp.com';
+const API_BASE_URL = 'https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com';
 
 class LeadsService {
   async getLeads(): Promise<{ total_leads: number; leads: Lead[] }> {
