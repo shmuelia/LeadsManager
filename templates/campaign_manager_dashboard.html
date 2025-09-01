@@ -998,8 +998,9 @@
 
         // Load user info
         function loadUserInfo() {
-            // This would typically come from the server/session
-            document.getElementById('userInfo').textContent = 'מנהל קמפיין';
+            // Load user information from template variables
+            const userInfo = document.getElementById('userInfo');
+            userInfo.textContent = '{{ user_name }} - לקוח: {{ customer_name }}';
         }
 
         // Load data when page loads

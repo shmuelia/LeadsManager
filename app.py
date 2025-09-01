@@ -381,8 +381,8 @@ def get_leads():
         selected_customer_id = session.get('selected_customer_id', 1)
         
         # Filter leads based on user role and selected customer
-        if session.get('role') == 'admin':
-            # Admin sees all leads for the selected customer
+        if session.get('role') in ['admin', 'campaign_manager']:
+            # Admin and Campaign Manager see all leads for the selected customer
             cur.execute("""
                 SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
                        lead_source, created_time, received_at, status, assigned_to, priority, 
@@ -499,7 +499,9 @@ def dashboard():
 @campaign_manager_required
 def campaign_manager_dashboard():
     """Campaign manager dashboard - lead management only"""
-    return render_template('campaign_manager_dashboard.html')
+    return render_template('campaign_manager_dashboard.html', 
+                         user_name=session.get('full_name', 'מנהל קמפיין'),
+                         customer_name=session.get('selected_customer_name', 'לא נבחר'))
 
 @app.route('/pull-history', methods=['POST'])
 def pull_history():
