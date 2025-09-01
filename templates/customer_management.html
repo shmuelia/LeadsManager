@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול לקוחות - ניהול לידים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            direction: rtl;
+            color: #0f172a;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 12px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 2.25rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .nav-link {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: #22c55e;
+        }
+        
+        .btn-success:hover {
+            background: #16a34a;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .customers-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th {
+            background: #f8fafc;
+            color: #374151;
+            font-weight: 600;
+            padding: 12px;
+            text-align: right;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+        }
+        
+        .table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            direction: rtl;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .close {
+            color: white;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            opacity: 0.7;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast-success {
+            background: #22c55e;
+        }
+        
+        .toast-error {
+            background: #ef4444;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="nav-links">
+                    <a href="/admin" class="nav-link">חזור לדשבורד</a>
+                    <a href="/admin/users" class="nav-link">ניהול משתמשים</a>
+                    <a href="/logout" class="nav-link">התנתקות</a>
+                </div>
+                <h1>ניהול לקוחות</h1>
+                <div></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-success" onclick="openCustomerModal()">
+                ➕ הוסף לקוח חדש
+            </button>
+        </div>
+
+        <div class="customers-table">
+            <table class="table" id="customersTable">
+                <thead>
+                    <tr>
+                        <th>פעולות</th>
+                        <th>משתמשים</th>
+                        <th>לידים</th>
+                        <th>סטטוס</th>
+                        <th>תאריך יצירה</th>
+                        <th>שם הלקוח</th>
+                        <th>מזהה</th>
+                    </tr>
+                </thead>
+                <tbody id="customersTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center">טוען נתונים...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Customer Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeCustomerModal()">&times;</span>
+                <h2 id="modalTitle">הוסף לקוח חדש</h2>
+            </div>
+            <div class="modal-body">
+                <form id="customerForm">
+                    <input type="hidden" id="customerId" value="">
+                    
+                    <div class="form-group">
+                        <label for="customerName">שם הלקוח *</label>
+                        <input type="text" id="customerName" name="name" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="webhookUrl">URL וובהוק</label>
+                        <input type="text" id="webhookUrl" name="webhook_url" class="form-control" placeholder="/webhook">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="zapierKey">מפתח וובהוק זאפייר</label>
+                        <input type="text" id="zapierKey" name="zapier_webhook_key" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="zapierEmail">אימייל חשבון זאפייר</label>
+                        <input type="email" id="zapierEmail" name="zapier_account_email" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="facebookAppId">מזהה אפליקציית פייסבוק</label>
+                        <input type="text" id="facebookAppId" name="facebook_app_id" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="instagramAppId">מזהה אפליקציית אינסטגרם</label>
+                        <input type="text" id="instagramAppId" name="instagram_app_id" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customerActive">
+                            <input type="checkbox" id="customerActive" name="active" checked>
+                            לקוח פעיל
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button type="button" class="btn" onclick="closeCustomerModal()">ביטול</button>
+                        <button type="submit" class="btn btn-success" id="saveCustomerBtn">שמור</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let customers = [];
+        let isEditing = false;
+
+        // Load customers on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomers();
+        });
+
+        async function loadCustomers() {
+            try {
+                const response = await fetch('/admin/customers/api');
+                customers = await response.json();
+                renderCustomersTable();
+            } catch (error) {
+                console.error('Error loading customers:', error);
+                showToast('שגיאה בטעינת הלקוחות', 'error');
+            }
+        }
+
+        function renderCustomersTable() {
+            const tbody = document.getElementById('customersTableBody');
+            
+            if (customers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">אין לקוחות במערכת</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = customers.map(customer => `
+                <tr>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm" onclick="editCustomer(${customer.id})">עריכה</button>
+                            <button class="btn btn-success btn-sm" onclick="selectCustomer(${customer.id})">בחר</button>
+                            ${customer.id !== 1 ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer(${customer.id})">מחק</button>` : ''}
+                        </div>
+                    </td>
+                    <td>${customer.user_count || 0}</td>
+                    <td>${customer.lead_count || 0}</td>
+                    <td>
+                        <span class="status-badge ${customer.active ? 'status-active' : 'status-inactive'}">
+                            ${customer.active ? 'פעיל' : 'לא פעיל'}
+                        </span>
+                    </td>
+                    <td>${new Date(customer.created_at).toLocaleDateString('he-IL')}</td>
+                    <td><strong>${customer.name}</strong></td>
+                    <td>${customer.id}</td>
+                </tr>
+            `).join('');
+        }
+
+        function openCustomerModal(customer = null) {
+            isEditing = !!customer;
+            const modal = document.getElementById('customerModal');
+            const title = document.getElementById('modalTitle');
+            const form = document.getElementById('customerForm');
+            
+            title.textContent = isEditing ? 'ערוך לקוח' : 'הוסף לקוח חדש';
+            
+            if (isEditing && customer) {
+                document.getElementById('customerId').value = customer.id;
+                document.getElementById('customerName').value = customer.name || '';
+                document.getElementById('webhookUrl').value = customer.webhook_url || '';
+                document.getElementById('zapierKey').value = customer.zapier_webhook_key || '';
+                document.getElementById('zapierEmail').value = customer.zapier_account_email || '';
+                document.getElementById('facebookAppId').value = customer.facebook_app_id || '';
+                document.getElementById('instagramAppId').value = customer.instagram_app_id || '';
+                document.getElementById('customerActive').checked = customer.active;
+            } else {
+                form.reset();
+                document.getElementById('customerId').value = '';
+                document.getElementById('customerActive').checked = true;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function closeCustomerModal() {
+            document.getElementById('customerModal').style.display = 'none';
+        }
+
+        function editCustomer(customerId) {
+            const customer = customers.find(c => c.id === customerId);
+            if (customer) {
+                openCustomerModal(customer);
+            }
+        }
+
+        async function selectCustomer(customerId) {
+            try {
+                const response = await fetch('/admin/select-customer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ customer_id: customerId })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                } else {
+                    showToast(result.error || 'שגיאה בבחירת הלקוח', 'error');
+                }
+            } catch (error) {
+                console.error('Error selecting customer:', error);
+                showToast('שגיאה בבחירת הלקוח', 'error');
+            }
+        }
+
+        async function deleteCustomer(customerId) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק לקוח זה?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/customers/delete/${customerId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                    loadCustomers();
+                } else {
+                    showToast(result.error || 'שגיאה במחיקת הלקוח', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting customer:', error);
+                showToast('שגיאה במחיקת הלקוח', 'error');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('customerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const saveBtn = document.getElementById('saveCustomerBtn');
+            saveBtn.textContent = 'שומר...';
+            saveBtn.disabled = true;
+
+            try {
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+                data.active = document.getElementById('customerActive').checked;
+
+                const customerId = document.getElementById('customerId').value;
+                const url = isEditing ? `/admin/customers/update/${customerId}` : '/admin/customers/create';
+                const method = isEditing ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                    closeCustomerModal();
+                    loadCustomers();
+                } else {
+                    showToast(result.error || 'שגיאה בשמירת הלקוח', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving customer:', error);
+                showToast('שגיאה בשמירת הלקוח', 'error');
+            } finally {
+                saveBtn.textContent = 'שמור';
+                saveBtn.disabled = false;
+            }
+        });
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('customerModal');
+            if (event.target === modal) {
+                closeCustomerModal();
+            }
+        }
+    </script>
+</body>
+</html>

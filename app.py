@@ -297,8 +297,8 @@ def webhook():
                             pass
                 
                 cur.execute("""
-                    INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data, customer_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                 """, (
                     lead_data.get('id'),
@@ -310,7 +310,8 @@ def webhook():
                     lead_data.get('form_name'),
                     lead_data.get('lead_source'),
                     created_time,
-                    json.dumps(lead_data)
+                    json.dumps(lead_data),
+                    1  # Default to customer #1 for main webhook
                 ))
                 
                 lead_id = cur.fetchone()[0]
@@ -355,27 +356,31 @@ def get_leads():
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        # Filter leads based on user role
+        # Get selected customer ID (default to 1 if none selected)
+        selected_customer_id = session.get('selected_customer_id', 1)
+        
+        # Filter leads based on user role and selected customer
         if session.get('role') == 'admin':
-            # Admin sees all leads
+            # Admin sees all leads for the selected customer
             cur.execute("""
                 SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
                        lead_source, created_time, received_at, status, assigned_to, priority, 
                        raw_data, notes, updated_at
                 FROM leads 
+                WHERE customer_id = %s OR customer_id IS NULL
                 ORDER BY COALESCE(created_time, received_at) DESC
-            """)
+            """, (selected_customer_id,))
         else:
-            # Regular users see only leads assigned to them
+            # Regular users see only leads assigned to them for the selected customer
             username = session.get('username')
             cur.execute("""
                 SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
                        lead_source, created_time, received_at, status, assigned_to, priority, 
                        raw_data, notes, updated_at
                 FROM leads 
-                WHERE assigned_to = %s
+                WHERE assigned_to = %s AND (customer_id = %s OR customer_id IS NULL)
                 ORDER BY COALESCE(created_time, received_at) DESC
-            """, (username,))
+            """, (username, selected_customer_id))
         
         leads = cur.fetchall()
         
@@ -566,8 +571,8 @@ def webhook_bulk():
                 
                 # Insert lead
                 cur.execute("""
-                    INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data, customer_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                 """, (
                     lead_data.get('id'),
@@ -579,7 +584,8 @@ def webhook_bulk():
                     lead_data.get('form_name'),
                     lead_data.get('lead_source'),
                     created_time,
-                    json.dumps(lead_data)
+                    json.dumps(lead_data),
+                    1  # Default to customer #1 for bulk webhook
                 ))
                 
                 lead_id = cur.fetchone()[0]
@@ -1420,6 +1426,227 @@ def assign_lead(lead_id):
         
     except Exception as e:
         logger.error(f"Error assigning lead: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/customers')
+@admin_required
+def customer_management():
+    """Admin-only customer management page"""
+    return render_template('customer_management.html')
+
+@app.route('/admin/customers/api')
+@admin_required
+def get_customers():
+    """API: Get all customers"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT c.*, 
+                   COUNT(l.id) as lead_count,
+                   COUNT(u.id) as user_count
+            FROM customers c
+            LEFT JOIN leads l ON c.id = l.customer_id
+            LEFT JOIN users u ON c.id = u.customer_id
+            GROUP BY c.id
+            ORDER BY c.id
+        """)
+        customers = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(customers)
+        
+    except Exception as e:
+        logger.error(f"Error fetching customers: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/customers/create', methods=['POST'])
+@admin_required
+def create_customer():
+    """API: Create new customer"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['name']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'חסר שדה חובה: {field}'}), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO customers (name, webhook_url, zapier_webhook_key, zapier_account_email, 
+                                 facebook_app_id, instagram_app_id, api_settings, active)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            data['name'],
+            data.get('webhook_url', ''),
+            data.get('zapier_webhook_key', ''),
+            data.get('zapier_account_email', ''),
+            data.get('facebook_app_id', ''),
+            data.get('instagram_app_id', ''),
+            json.dumps(data.get('api_settings', {})),
+            data.get('active', True)
+        ))
+        
+        customer_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'לקוח {data["name"]} נוצר בהצלחה',
+            'customer_id': customer_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating customer: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/customers/update/<int:customer_id>', methods=['PUT'])
+@admin_required
+def update_customer(customer_id):
+    """API: Update existing customer"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Build update query dynamically based on provided fields
+        update_fields = []
+        update_values = []
+        
+        allowed_fields = ['name', 'webhook_url', 'zapier_webhook_key', 'zapier_account_email', 
+                         'facebook_app_id', 'instagram_app_id', 'active']
+        
+        for field in allowed_fields:
+            if field in data:
+                update_fields.append(f"{field} = %s")
+                update_values.append(data[field])
+        
+        if 'api_settings' in data:
+            update_fields.append("api_settings = %s")
+            update_values.append(json.dumps(data['api_settings']))
+        
+        if not update_fields:
+            return jsonify({'error': 'No valid fields to update'}), 400
+            
+        update_values.append(customer_id)
+        query = f"UPDATE customers SET {', '.join(update_fields)} WHERE id = %s"
+        
+        cur.execute(query, update_values)
+        
+        if cur.rowcount == 0:
+            return jsonify({'error': 'לקוח לא נמצא'}), 404
+            
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'פרטי הלקוח עודכנו בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating customer: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/customers/delete/<int:customer_id>', methods=['DELETE'])
+@admin_required
+def delete_customer(customer_id):
+    """API: Delete customer (only if no associated data)"""
+    try:
+        if customer_id == 1:
+            return jsonify({'error': 'לא ניתן למחוק את לקוח ברירת המחדל'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check if customer has associated data
+        cur.execute("""
+            SELECT 
+                (SELECT COUNT(*) FROM leads WHERE customer_id = %s) as lead_count,
+                (SELECT COUNT(*) FROM users WHERE customer_id = %s) as user_count
+        """, (customer_id, customer_id))
+        
+        counts = cur.fetchone()
+        if counts[0] > 0 or counts[1] > 0:
+            return jsonify({'error': f'לא ניתן למחוק לקוח עם {counts[0]} לידים ו-{counts[1]} משתמשים'}), 400
+        
+        cur.execute("DELETE FROM customers WHERE id = %s", (customer_id,))
+        
+        if cur.rowcount == 0:
+            return jsonify({'error': 'לקוח לא נמצא'}), 404
+            
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'לקוח נמחק בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting customer: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/select-customer', methods=['POST'])
+@admin_required
+def select_customer():
+    """API: Set selected customer for current session"""
+    try:
+        data = request.get_json()
+        customer_id = data.get('customer_id')
+        
+        if not customer_id:
+            return jsonify({'error': 'Customer ID required'}), 400
+            
+        # Verify customer exists
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM customers WHERE id = %s AND active = true", (customer_id,))
+        customer = cur.fetchone()
+        
+        if not customer:
+            return jsonify({'error': 'לקוח לא נמצא או לא פעיל'}), 404
+            
+        cur.close()
+        conn.close()
+        
+        # Store in session
+        session['selected_customer_id'] = customer_id
+        session['selected_customer_name'] = customer[0]
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'לקוח {customer[0]} נבחר בהצלחה',
+            'customer_name': customer[0]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error selecting customer: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
