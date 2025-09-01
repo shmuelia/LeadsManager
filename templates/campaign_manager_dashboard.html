@@ -1294,6 +1294,16 @@
             document.getElementById('userManagementTable').style.display = 'none';
             document.querySelector('.leads-table:not(#userManagementTable)').style.display = 'block';
         }
+        
+        // Helper function to get role labels in Hebrew
+        function getRoleLabel(role) {
+            const labels = {
+                'admin': 'מנהל מערכת',
+                'campaign_manager': 'מנהל קמפיין',
+                'user': 'משתמש'
+            };
+            return labels[role] || role;
+        }
 
 
         // User management functions removed - now using unified component
