@@ -1123,6 +1123,7 @@ def get_users_api():
                 """)
         # Campaign Manager query - only their customer's users
         elif user_role == 'campaign_manager':
+            logger.info(f"Campaign manager {session.get('username')} requesting users for customer {user_customer_id}")
             cur.execute("""
                 SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
                        u.customer_id, c.name as customer_name, u.plain_password
@@ -1135,6 +1136,7 @@ def get_users_api():
             return jsonify({'error': 'Access denied'}), 403
         
         users = cur.fetchall()
+        logger.info(f"Found {len(users)} users for role {user_role}, customer {user_customer_id}")
         
         # Convert to JSON-serializable format
         users_list = []
@@ -1142,6 +1144,8 @@ def get_users_api():
             user_dict = dict(user)
             user_dict['created_at'] = user_dict['created_at'].isoformat() if user_dict['created_at'] else None
             users_list.append(user_dict)
+            
+        logger.info(f"Returning {len(users_list)} users in JSON response")
         
         cur.close()
         conn.close()

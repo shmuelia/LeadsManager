@@ -1083,10 +1083,15 @@
                 const response = await fetch('/admin/users/api');
                 const data = await response.json();
                 
+                console.log('Users API response:', data); // Debug log
+                
                 if (data.users) {
                     availableUsers = data.users;
+                    console.log('Available users count:', availableUsers.length); // Debug log
+                    console.log('Users for this customer:', availableUsers); // Debug log
                     renderUsersTable(availableUsers);
                 } else {
+                    console.error('No users in response:', data); // Debug log
                     document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת העובדים</div>';
                 }
             } catch (error) {
