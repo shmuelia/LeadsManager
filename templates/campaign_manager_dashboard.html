@@ -570,19 +570,19 @@
                         <div class="stat-label">התקבלו</div>
                     </div>
                 </div>
-                <button class="campaign-btn" onclick="loadStats()">🔄 רענן סטטיסטיקות</button>
+                <button class="campaign-btn" onclick="loadStats()" title="רענן נתוני הסטטיסטיקות האחרונים">🔄 רענן סטטיסטיקות</button>
             </div>
             
             <div class="control-card">
                 <h3>📋 פעולות על לידים</h3>
-                <button class="campaign-btn secondary" onclick="downloadReport()">📊 הורד דוח Excel</button>
-                <button class="campaign-btn secondary" onclick="showBulkActions()">📋 פעולות המוניות</button>
+                <button class="campaign-btn secondary" onclick="downloadReport()" title="הורד דוח אקסל עם כל הלידים והפעילויות">📊 הורד דוח Excel</button>
+                <button class="campaign-btn secondary" onclick="showBulkActions()" title="בצע פעולות על מספר לידים בבת אחת">📋 פעולות המוניות</button>
             </div>
             
             <div class="control-card" id="userManagementCard">
                 <h3>👥 ניהול עובדים</h3>
-                <button class="campaign-btn" onclick="showUserManagement()">👤 נהל עובדים</button>
-                <button class="campaign-btn secondary" onclick="showAddUserModal()">➕ הוסף עובד חדש</button>
+                <button class="campaign-btn" onclick="showUserManagement()" title="הצג ונהל את רשימת העובדים של הלקוח">👤 נהל עובדים</button>
+                <button class="campaign-btn secondary" onclick="showAddUserModal()" title="הוסף עובד חדש לצוות הלקוח">➕ הוסף עובד חדש</button>
                 <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
                     DEBUG: אזור ניהול עובדים נטען
                 </div>
@@ -608,7 +608,7 @@
             <div class="table-header">
                 <div class="table-title">🎯 ניהול לידים</div>
                 <div class="filters">
-                    <select id="statusFilter" class="filter-select" onchange="applyFilters()">
+                    <select id="statusFilter" class="filter-select" onchange="applyFilters()" title="סנן לידים לפי סטטוס נוכחי">
                         <option value="">כל הסטטוסים</option>
                         <option value="new">חדש</option>
                         <option value="contacted">נוצר קשר</option>
@@ -621,10 +621,10 @@
                         <option value="rejected">נדחה</option>
                         <option value="closed">סגור</option>
                     </select>
-                    <select id="campaignFilter" class="filter-select" onchange="applyFilters()">
+                    <select id="campaignFilter" class="filter-select" onchange="applyFilters()" title="סנן לידים לפי קמפיין מקור">
                         <option value="">כל הקמפיינים</option>
                     </select>
-                    <select id="assignmentFilter" class="filter-select" onchange="applyFilters()">
+                    <select id="assignmentFilter" class="filter-select" onchange="applyFilters()" title="סנן לידים לפי סטטוס הקצאה לעובד">
                         <option value="">כל ההקצאות</option>
                         <option value="unassigned">לא מוקצה</option>
                         <option value="assigned">מוקצה</option>
@@ -634,12 +634,12 @@
             
             <div id="bulkActions" class="bulk-actions" style="display: none;">
                 <span>פעולות על לידים נבחרים:</span>
-                <button class="bulk-close" onclick="bulkCloseLeads()">סגור לידים</button>
-                <button class="bulk-assign" onclick="showBulkAssign()">הקצה לעובד</button>
-                <select id="bulkUserSelect" style="display: none;" class="filter-select">
+                <button class="bulk-close" onclick="bulkCloseLeads()" title="סגור את כל הלידים הנבחרים - פעולה בלתי הפיכה">סגור לידים</button>
+                <button class="bulk-assign" onclick="showBulkAssign()" title="הקצה את כל הלידים הנבחרים לעובד אחד">הקצה לעובד</button>
+                <select id="bulkUserSelect" style="display: none;" class="filter-select" title="בחר עובד להקצאה המונית">
                     <option value="">בחר עובד</option>
                 </select>
-                <span id="selectedCount">0 נבחרו</span>
+                <span id="selectedCount" title="מספר לידים שנבחרו לפעולה המונית">0 נבחרו</span>
             </div>
             
             <div class="leads-grid" id="leadsContainer">
@@ -799,31 +799,25 @@
                             <th>סטטוס</th>
                             <th>מוקצה ל</th>
                             <th>קמפיין</th>
-                            <th>פלטפורמה</th>
-                            <th>טלפון</th>
-                            <th>אימייל</th>
                             <th>שם</th>
-                            <th>תאריך קבלה</th>
-                            <th>מזהה חיצוני</th>
+                            <th>תאריך מקורי</th>
+                            <th>עדכון</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${leads.map(lead => `
                             <tr>
-                                <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="toggleLead(${lead.id}, this.checked)"></td>
+                                <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="toggleLead(${lead.id}, this.checked)" title="בחר ליד לפעולה המונית"></td>
                                 <td>
-                                    <button class="action-btn primary" onclick="viewLead(${lead.id})">👁️</button>
-                                    <button class="action-btn" onclick="assignLead(${lead.id})">👤</button>
+                                    <button class="action-btn primary" onclick="viewLead(${lead.id})" title="הצג פרטים מלאים והיסטוריית פעילות">👁️ פרטים</button>
+                                    <button class="action-btn" onclick="showQuickAssignModal(${lead.id})" title="הקצה ליד לעובד מתאים">👤 הקצה</button>
                                 </td>
-                                <td><span class="status-badge status-${lead.status}">${getStatusLabel(lead.status)}</span></td>
-                                <td>${lead.assigned_to || 'לא מוקצה'}</td>
-                                <td title="${lead.campaign_name || ''}">${(lead.campaign_name || 'לא צוין').substring(0, 20)}${(lead.campaign_name || '').length > 20 ? '...' : ''}</td>
-                                <td>${lead.platform === 'ig' ? 'Instagram' : 'Facebook'}</td>
-                                <td dir="ltr">${lead.phone || '-'}</td>
-                                <td dir="ltr">${lead.email || '-'}</td>
-                                <td><strong>${lead.name || 'לא צוין'}</strong></td>
-                                <td>${formatDate(lead.received_at || lead.created_time)}</td>
-                                <td>${lead.external_lead_id || '-'}</td>
+                                <td><span class="status-badge status-${lead.status}" title="סטטוס נוכחי: ${getStatusLabel(lead.status)}">${getStatusLabel(lead.status)}</span></td>
+                                <td title="${lead.assigned_to ? 'מוקצה ל: ' + lead.assigned_to : 'ליד זה טרם הוקצה לעובד'}">${lead.assigned_to || 'לא מוקצה'}</td>
+                                <td title="${lead.campaign_name || 'לא צוין שם קמפיין'}">${(lead.campaign_name || 'לא צוין').substring(0, 25)}${(lead.campaign_name || '').length > 25 ? '...' : ''}</td>
+                                <td title="שם מלא: ${lead.name || 'לא צוין'}"><strong>${lead.name || 'לא צוין'}</strong></td>
+                                <td title="תאריך יצירה בפייסבוק: ${lead.created_time ? formatDate(lead.created_time) : 'לא ידוע'}">${lead.created_time ? formatDate(lead.created_time) : formatDate(lead.received_at)}</td>
+                                <td title="עדכון אחרון במערכת: ${formatDate(lead.updated_at)}">${formatDate(lead.updated_at)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -917,24 +911,90 @@
         function showLeadModal(lead, activities) {
             const modalBody = document.getElementById('leadModalBody');
             
+            // Parse raw lead data for additional insights
+            let rawData = {};
+            let jobQuestions = {};
+            try {
+                if (lead.raw_data) {
+                    rawData = typeof lead.raw_data === 'string' ? JSON.parse(lead.raw_data) : lead.raw_data;
+                    jobQuestions = rawData.raw || {};
+                }
+            } catch (e) {
+                console.log('Could not parse lead raw data:', e);
+            }
+            
+            // Calculate lead priority score for assignment recommendations
+            const leadAge = Math.floor((new Date() - new Date(lead.received_at || lead.created_time)) / (1000 * 60 * 60 * 24));
+            const hasPhone = !!lead.phone;
+            const hasEmail = !!lead.email;
+            const activityCount = activities.length;
+            
+            let priorityScore = 0;
+            let priorityReason = [];
+            
+            if (leadAge <= 1) { priorityScore += 30; priorityReason.push('ליד חדש (עד יום)'); }
+            else if (leadAge <= 3) { priorityScore += 20; priorityReason.push('ליד טרי (עד 3 ימים)'); }
+            else if (leadAge > 7) { priorityScore -= 10; priorityReason.push('ליד ישן (מעל שבוע)'); }
+            
+            if (hasPhone && hasEmail) { priorityScore += 20; priorityReason.push('פרטי התקשרות מלאים'); }
+            else if (hasPhone) { priorityScore += 10; priorityReason.push('יש טלפון'); }
+            else if (hasEmail) { priorityScore += 5; priorityReason.push('יש אימייל'); }
+            else { priorityScore -= 15; priorityReason.push('חסרים פרטי התקשרות'); }
+            
+            if (activityCount === 0) { priorityScore += 15; priorityReason.push('טרם טופל'); }
+            else if (activityCount > 3) { priorityScore -= 5; priorityReason.push('הרבה פעילות'); }
+            
+            if (lead.platform === 'ig') { priorityScore += 5; priorityReason.push('מאינסטגרם'); }
+            
+            let priorityLevel = 'נמוכה';
+            let priorityColor = '#6b7280';
+            if (priorityScore >= 40) { priorityLevel = 'גבוהה מאוד'; priorityColor = '#dc2626'; }
+            else if (priorityScore >= 25) { priorityLevel = 'גבוהה'; priorityColor = '#ea580c'; }
+            else if (priorityScore >= 10) { priorityLevel = 'בינונית'; priorityColor = '#ca8a04'; }
+            
             modalBody.innerHTML = `
-                <div class="lead-details">
+                <!-- Assignment Recommendation Panel -->
+                <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-right: 5px solid ${priorityColor};">
+                    <h3 style="color: #1e293b; margin-bottom: 15px; font-size: 1.2em;">🎯 המלצה להקצאה</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: ${priorityColor};">עדיפות: ${priorityLevel}</strong>
+                            <div style="font-size: 0.9em; color: #64748b; margin-top: 5px;">ציון: ${priorityScore}</div>
+                        </div>
+                        <div>
+                            <strong>גיל ליד:</strong> ${leadAge} ימים
+                            <div style="font-size: 0.9em; color: #64748b;">קמפיין: ${lead.campaign_name || 'לא צוין'}</div>
+                        </div>
+                    </div>
+                    <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <strong>סיבות העדיפות:</strong>
+                        <div style="margin-top: 8px; font-size: 0.9em; color: #374151;">
+                            ${priorityReason.map(reason => `• ${reason}`).join('<br>')}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lead-details" style="margin-bottom: 25px;">
                     <div class="detail-item">
                         <div class="detail-label">שם</div>
-                        <div class="detail-value">${lead.name || 'לא צוין'}</div>
+                        <div class="detail-value"><strong style="font-size: 1.1em; color: #1e293b;">${lead.name || 'לא צוין'}</strong></div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">אימייל</div>
-                        <div class="detail-value" dir="ltr">${lead.email || 'לא צוין'}</div>
+                        <div class="detail-value" dir="ltr">
+                            ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669; text-decoration: none;">${lead.email}</a>` : 'לא צוין'}
+                        </div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">טלפון</div>
-                        <div class="detail-value" dir="ltr">${lead.phone || 'לא צוין'}</div>
+                        <div class="detail-value" dir="ltr">
+                            ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669; text-decoration: none;">${lead.phone}</a>` : 'לא צוין'}
+                        </div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-label">סטטוס</div>
+                        <div class="detail-label">סטטוס נוכחי</div>
                         <div class="detail-value">
-                            <select id="modalLeadStatus" onchange="updateLeadStatus(${lead.id}, this.value)">
+                            <select id="modalLeadStatus" onchange="updateLeadStatus(${lead.id}, this.value)" style="padding: 8px; border-radius: 6px; border: 1px solid #d1d5db; background: white;">
                                 <option value="new" ${lead.status === 'new' ? 'selected' : ''}>חדש</option>
                                 <option value="contacted" ${lead.status === 'contacted' ? 'selected' : ''}>נוצר קשר</option>
                                 <option value="qualified" ${lead.status === 'qualified' ? 'selected' : ''}>מוכשר</option>
@@ -949,35 +1009,62 @@
                         </div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-label">קמפיין</div>
-                        <div class="detail-value">${lead.campaign_name || 'לא צוין'}</div>
+                        <div class="detail-label">הקצאה נוכחית</div>
+                        <div class="detail-value">
+                            ${lead.assigned_to ? 
+                                `<span style="color: #059669; font-weight: bold;">מוקצה ל: ${lead.assigned_to}</span>` : 
+                                '<span style="color: #dc2626; font-weight: bold;">לא מוקצה לעובד</span>'
+                            }
+                            <div style="margin-top: 10px;">
+                                <button onclick="showQuickAssignModal(${lead.id})" style="background: #059669; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
+                                    👤 ${lead.assigned_to ? 'שנה הקצאה' : 'הקצה לעובד'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-label">מוקצה ל</div>
-                        <div class="detail-value">${lead.assigned_to || 'לא מוקצה'}</div>
+                        <div class="detail-label">מקור</div>
+                        <div class="detail-value">
+                            <strong>${lead.platform === 'ig' ? '📷 Instagram' : '📘 Facebook'}</strong>
+                            <div style="font-size: 0.9em; color: #6b7280; margin-top: 4px;">מזהה: ${lead.external_lead_id || 'אין'}</div>
+                        </div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-label">פלטפורמה</div>
-                        <div class="detail-value">${lead.platform === 'ig' ? 'Instagram' : 'Facebook'}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">תאריך קבלה</div>
-                        <div class="detail-value">${formatDate(lead.received_at || lead.created_time)}</div>
+                        <div class="detail-label">זמנים</div>
+                        <div class="detail-value">
+                            <div><strong>הגיע:</strong> ${formatDate(lead.received_at || lead.created_time)}</div>
+                            ${lead.updated_at ? `<div><strong>עודכן:</strong> ${formatDate(lead.updated_at)}</div>` : ''}
+                        </div>
                     </div>
                 </div>
+
+                ${Object.keys(jobQuestions).length > 0 ? `
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #1e293b; margin-bottom: 15px; border-bottom: 2px solid #059669; padding-bottom: 8px;">💼 תשובות מהטופס</h3>
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                        ${Object.entries(jobQuestions).map(([question, answer]) => `
+                            <div style="margin-bottom: 15px; padding: 15px; background: white; border-radius: 8px; border-right: 4px solid #059669;">
+                                <div style="font-weight: bold; color: #1e293b; margin-bottom: 8px;">${question}:</div>
+                                <div style="color: #374151; font-size: 1em; line-height: 1.4;">${answer || 'לא נענה'}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
                 
                 <div class="activities-section">
-                    <h3>פעילויות</h3>
-                    <div class="activities-list">
+                    <h3 style="color: #1e293b; margin-bottom: 15px; border-bottom: 2px solid #f59e0b; padding-bottom: 8px;">📈 היסטוריית פעילות (${activities.length})</h3>
+                    <div class="activities-list" style="max-height: 300px; overflow-y: auto;">
                         ${activities.length > 0 ? activities.map(activity => `
-                            <div class="activity-item">
-                                <div class="activity-header">
-                                    <span class="activity-type">${getActivityTypeLabel(activity.activity_type)}</span>
-                                    <span class="activity-date">${formatDate(activity.activity_date || activity.created_at)}</span>
+                            <div class="activity-item" style="margin-bottom: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #3b82f6;">
+                                <div class="activity-header" style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span class="activity-type" style="font-weight: bold; color: #1e40af;">${getActivityTypeLabel(activity.activity_type)}</span>
+                                    <span class="activity-date" style="color: #6b7280; font-size: 0.9em;">${formatDate(activity.activity_date || activity.created_at)}</span>
                                 </div>
-                                <div class="activity-description">${activity.description || ''}</div>
+                                <div class="activity-description" style="color: #374151;">${activity.description || 'אין תיאור'}</div>
+                                ${activity.call_outcome ? `<div style="color: #059669; font-size: 0.9em; margin-top: 5px;"><strong>תוצאה:</strong> ${activity.call_outcome}</div>` : ''}
                             </div>
-                        `).join('') : '<div style="padding: 20px; text-align: center; color: #6b7280;">אין פעילויות רשומות</div>'}
+                        `).join('') : '<div style="padding: 30px; text-align: center; color: #6b7280; background: #f8fafc; border-radius: 8px;">אין פעילויות רשומות - זה הזמן לפתוח קשר!</div>'}
                     </div>
                 </div>
             `;
@@ -1026,9 +1113,112 @@
             document.getElementById('leadModal').style.display = 'none';
         }
 
+        function showQuickAssignModal(leadId) {
+            const lead = allLeads.find(l => l.id === leadId);
+            if (!lead) return;
+            
+            // Create quick assign modal
+            const existingModal = document.getElementById('quickAssignModal');
+            if (existingModal) existingModal.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'quickAssignModal';
+            modal.style.cssText = `
+                display: block;
+                position: fixed;
+                z-index: 1001;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(5px);
+            `;
+            
+            modal.innerHTML = `
+                <div style="background-color: white; margin: 10% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; direction: rtl;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
+                        <h3 style="color: #1e293b; margin: 0;">👤 הקצה ליד לעובד</h3>
+                        <button onclick="closeQuickAssignModal()" style="background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em;">✖️</button>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-right: 4px solid #059669;">
+                        <strong>${lead.name || 'ללא שם'}</strong>
+                        <div style="font-size: 0.9em; color: #6b7280; margin-top: 5px;">
+                            ${lead.phone || ''} ${lead.phone && lead.email ? '•' : ''} ${lead.email || ''}
+                        </div>
+                        <div style="font-size: 0.9em; color: #6b7280;">
+                            ${lead.campaign_name || 'ללא קמפיין'}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e293b;">בחר עובד:</label>
+                        <select id="quickAssignSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; direction: rtl;">
+                            <option value="">הסר הקצאה</option>
+                            ${availableUsers.filter(user => user.active).map(user => `
+                                <option value="${user.username}" ${lead.assigned_to === user.username ? 'selected' : ''}>
+                                    ${user.full_name} (${user.username})
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <button onclick="executeQuickAssign(${leadId})" style="background: #059669; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold; margin-left: 10px;">
+                            ✅ הקצה
+                        </button>
+                        <button onclick="closeQuickAssignModal()" style="background: #6b7280; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-size: 1.1em; font-weight: bold;">
+                            ❌ ביטול
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        function closeQuickAssignModal() {
+            const modal = document.getElementById('quickAssignModal');
+            if (modal) modal.remove();
+        }
+        
+        async function executeQuickAssign(leadId) {
+            const selectedUser = document.getElementById('quickAssignSelect').value;
+            
+            try {
+                const response = await fetch(`/admin/leads/${leadId}/assign`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ assigned_to: selectedUser })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(`ליד הוקצה בהצלחה ${selectedUser ? 'ל' + selectedUser : '(הוסרה הקצאה)'}`, 'success');
+                    
+                    // Update the lead in memory
+                    const lead = allLeads.find(l => l.id === leadId);
+                    if (lead) {
+                        lead.assigned_to = selectedUser;
+                    }
+                    
+                    // Refresh the view
+                    applyFilters();
+                    closeQuickAssignModal();
+                } else {
+                    showToast(`שגיאה בהקצאת הליד: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error assigning lead:', error);
+                showToast('שגיאה בהקצאת הליד', 'error');
+            }
+        }
+
         function assignLead(leadId) {
-            // Simple assignment - could be enhanced with user selection
-            showToast('פונקציונליות הקצאה תתווסף בעתיד', 'error');
+            showQuickAssignModal(leadId);
         }
 
         function downloadReport() {
