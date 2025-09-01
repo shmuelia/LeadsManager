@@ -345,8 +345,9 @@ def webhook():
         }), 500
 
 @app.route('/leads')
+@login_required
 def get_leads():
-    """View all received leads"""
+    """View all received leads (filtered by assignment for non-admin users)"""
     try:
         conn = get_db_connection()
         if not conn:
@@ -354,13 +355,27 @@ def get_leads():
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        cur.execute("""
-            SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
-                   lead_source, created_time, received_at, status, assigned_to, priority, 
-                   raw_data, notes, updated_at
-            FROM leads 
-            ORDER BY COALESCE(created_time, received_at) DESC
-        """)
+        # Filter leads based on user role
+        if session.get('role') == 'admin':
+            # Admin sees all leads
+            cur.execute("""
+                SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
+                       lead_source, created_time, received_at, status, assigned_to, priority, 
+                       raw_data, notes, updated_at
+                FROM leads 
+                ORDER BY COALESCE(created_time, received_at) DESC
+            """)
+        else:
+            # Regular users see only leads assigned to them
+            username = session.get('username')
+            cur.execute("""
+                SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
+                       lead_source, created_time, received_at, status, assigned_to, priority, 
+                       raw_data, notes, updated_at
+                FROM leads 
+                WHERE assigned_to = %s
+                ORDER BY COALESCE(created_time, received_at) DESC
+            """, (username,))
         
         leads = cur.fetchall()
         
@@ -1342,6 +1357,69 @@ def get_user(user_id):
         
     except Exception as e:
         logger.error(f"Error getting user: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/leads/<int:lead_id>/assign', methods=['PUT'])
+@admin_required
+def assign_lead(lead_id):
+    """Admin: Assign lead to user"""
+    try:
+        data = request.get_json()
+        assigned_to = data.get('assigned_to', '').strip()
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check if lead exists
+        cur.execute("SELECT id, name FROM leads WHERE id = %s", (lead_id,))
+        lead = cur.fetchone()
+        if not lead:
+            return jsonify({'error': 'Lead not found'}), 404
+        
+        lead_name = lead[1]
+        
+        # If assigning to a user, validate user exists
+        if assigned_to:
+            cur.execute("SELECT full_name FROM users WHERE username = %s AND active = true", (assigned_to,))
+            user = cur.fetchone()
+            if not user:
+                return jsonify({'error': 'User not found or inactive'}), 400
+            user_full_name = user[0]
+        else:
+            user_full_name = None
+        
+        # Update lead assignment
+        cur.execute("""
+            UPDATE leads SET assigned_to = %s, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s
+        """, (assigned_to if assigned_to else None, lead_id))
+        
+        # Log assignment activity
+        cur.execute("""
+            INSERT INTO lead_activities 
+            (lead_id, user_name, activity_type, description)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            lead_id, 
+            session.get('username', 'מנהל'),
+            'assignment',
+            f'ליד הוקצה ל{user_full_name}' if assigned_to else 'הקצאת הליד בוטלה'
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'ליד {lead_name} הוקצה בהצלחה' if assigned_to else f'הקצאת ליד {lead_name} בוטלה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error assigning lead: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health')

@@ -340,6 +340,7 @@
     <script>
         let selectedLeads = new Set();
         let allLeads = [];
+        let availableUsers = [];
 
         async function loadStats() {
             try {
@@ -432,7 +433,12 @@
                             <th>טלפון</th>
                             <th>סטטוס</th>
                             <th>קמפיין</th>
+                            <th>טופס</th>
+                            <th>מקור</th>
+                            <th>פלטפורמה</th>
+                            <th>מוקצה ל</th>
                             <th>תאריך ליד מקורי</th>
+                            <th>עדכון אחרון</th>
                             <th>פעולות</th>
                         </tr>
                     </thead>
@@ -445,7 +451,19 @@
                                 <td>${lead.phone || '-'}</td>
                                 <td><span class="status-badge status-${lead.status}">${getStatusInHebrew(lead.status)}</span></td>
                                 <td>${lead.campaign_name || '-'}</td>
+                                <td>${lead.form_name || '-'}</td>
+                                <td>${lead.lead_source || '-'}</td>
+                                <td>${lead.platform === 'ig' ? 'אינסטגרם' : (lead.platform || 'פייסבוק')}</td>
+                                <td>
+                                    <select onchange="assignLead(${lead.id}, this.value)" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #bdc3c7;">
+                                        <option value="">בחר משתמש</option>
+                                        ${availableUsers.map(user => `
+                                            <option value="${user.username}" ${lead.assigned_to === user.username ? 'selected' : ''}>${user.full_name}</option>
+                                        `).join('')}
+                                    </select>
+                                </td>
                                 <td>${lead.created_time ? formatDate(lead.created_time) : formatDate(lead.received_at)}</td>
+                                <td>${formatDate(lead.updated_at)}</td>
                                 <td>
                                     <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="viewLeadDetails(${lead.id})">👁️ פרטים</button>
                                     <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="editLead(${lead.id})">✏️ ערוך</button>
@@ -742,8 +760,95 @@
             }
         }
 
+        // Load users for assignment dropdown
+        async function loadUsers() {
+            try {
+                const response = await fetch('/admin/users/api');
+                const data = await response.json();
+                if (data.users) {
+                    availableUsers = data.users.filter(user => user.active);
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Assign lead to user
+        async function assignLead(leadId, username) {
+            try {
+                const response = await fetch(`/admin/leads/${leadId}/assign`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ assigned_to: username })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(`ליד הוקצה בהצלחה ל${username ? username : 'ללא הקצאה'}`, 'success');
+                    // Update the lead in memory
+                    const lead = allLeads.find(l => l.id === leadId);
+                    if (lead) {
+                        lead.assigned_to = username;
+                    }
+                } else {
+                    showToast(`שגיאה בהקצאת הליד: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error assigning lead:', error);
+                showToast('שגיאה בהקצאת הליד', 'error');
+            }
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+                color: white;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-size: 16px;
+                font-weight: bold;
+                opacity: 0;
+                transform: translateY(-20px);
+                transition: all 0.3s ease;
+            `;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            }, 100);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+
         // Load data when page loads
         document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
             loadAllLeads();
         });
 
