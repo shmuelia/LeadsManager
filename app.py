@@ -122,7 +122,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -177,7 +177,14 @@ def login():
             
             flash(f'ברוך הבא, {user["full_name"]}!')
             
-            # Redirect based on role
+            # Check if there's a next URL to redirect to
+            next_page = request.args.get('next')
+            
+            # Validate next URL for security (must be relative)
+            if next_page and next_page.startswith('/') and not next_page.startswith('//'):
+                return redirect(next_page)
+            
+            # Default redirect based on role
             if user['role'] == 'admin':
                 return redirect(url_for('admin_dashboard'))
             else:
