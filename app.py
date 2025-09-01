@@ -1099,7 +1099,7 @@ def get_users_api():
         
         # Get user role and customer from session
         user_role = session.get('role')
-        user_customer_id = session.get('customer_id')
+        user_customer_id = session.get('selected_customer_id')
         
         # Admin query - include plain_password for admins
         if user_role == 'admin':
@@ -1227,7 +1227,7 @@ def create_user():
     try:
         data = request.get_json()
         user_role = session.get('role')
-        user_customer_id = session.get('customer_id')
+        user_customer_id = session.get('selected_customer_id')
         
         # Check permissions
         if user_role not in ['admin', 'campaign_manager']:
@@ -1306,7 +1306,7 @@ def update_user(user_id):
     try:
         data = request.get_json()
         user_role = session.get('role')
-        user_customer_id = session.get('customer_id')
+        user_customer_id = session.get('selected_customer_id')
         
         # Check permissions
         if user_role not in ['admin', 'campaign_manager']:
