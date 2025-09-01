@@ -580,11 +580,11 @@
             </div>
             
             <div class="control-card" id="userManagementCard">
-                <h3>👥 ניהול עובדים</h3>
-                <button class="campaign-btn" onclick="showUserManagement()" title="הצג ונהל את רשימת העובדים של הלקוח">👤 נהל עובדים</button>
-                <button class="campaign-btn secondary" onclick="showAddUserModal()" title="הוסף עובד חדש לצוות הלקוח">➕ הוסף עובד חדש</button>
+                <h3>👥 ניהול משתמשים</h3>
+                <button class="campaign-btn" onclick="showUserManagement()" title="הצג ונהל את רשימת המשתמשים של הלקוח">👤 נהל משתמשים</button>
+                <button class="campaign-btn secondary" onclick="showAddUserModal()" title="הוסף משתמש חדש לצוות הלקוח">➕ הוסף משתמש חדש</button>
                 <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                    DEBUG: אזור ניהול עובדים נטען
+                    DEBUG: אזור ניהול משתמשים נטען
                 </div>
             </div>
         </div>
@@ -592,14 +592,14 @@
         <!-- User Management Table -->
         <div id="userManagementTable" class="leads-table" style="display: none;">
             <div class="table-header">
-                <div class="table-title">👥 ניהול עובדים</div>
+                <div class="table-title">👥 ניהול משתמשים</div>
                 <div class="filters">
                     <button class="campaign-btn" onclick="hideUserManagement()">🔙 חזרה ללידים</button>
                 </div>
             </div>
             
             <div class="leads-grid" id="usersContainer">
-                <div class="loading">טוען עובדים...</div>
+                <div class="loading">טוען משתמשים...</div>
             </div>
         </div>
 
@@ -613,7 +613,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <span class="close" onclick="closeUserModal()">&times;</span>
-                <h2 id="userModalTitle">הוסף עובד חדש</h2>
+                <h2 id="userModalTitle">הוסף משתמש חדש</h2>
             </div>
             <div class="modal-body">
                 <form id="userForm">
@@ -633,7 +633,7 @@
                     <div class="detail-item" style="margin-bottom: 15px;">
                         <div class="detail-label">תפקיד:</div>
                         <select id="userRole" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
-                            <option value="user">עובד</option>
+                            <option value="user">משתמש</option>
                         </select>
                     </div>
                     <div class="detail-item" style="margin-bottom: 15px;">
@@ -757,10 +757,10 @@
                                 <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="toggleLead(${lead.id}, this.checked)" title="בחר ליד לפעולה המונית"></td>
                                 <td>
                                     <button class="action-btn primary" onclick="viewLead(${lead.id})" title="הצג פרטים מלאים והיסטוריית פעילות">👁️ פרטים</button>
-                                    <button class="action-btn" onclick="showQuickAssignModal(${lead.id})" title="הקצה ליד לעובד מתאים">👤 הקצה</button>
+                                    <button class="action-btn" onclick="showQuickAssignModal(${lead.id})" title="הקצה ליד למשתמש מתאים">👤 הקצה</button>
                                 </td>
                                 <td><span class="status-badge status-${lead.status}" title="סטטוס נוכחי: ${getStatusLabel(lead.status)}">${getStatusLabel(lead.status)}</span></td>
-                                <td title="${lead.assigned_to ? 'מוקצה ל: ' + lead.assigned_to : 'ליד זה טרם הוקצה לעובד'}">${lead.assigned_to || 'לא מוקצה'}</td>
+                                <td title="${lead.assigned_to ? 'מוקצה ל: ' + lead.assigned_to : 'ליד זה טרם הוקצה למשתמש'}">${lead.assigned_to || 'לא מוקצה'}</td>
                                 <td title="${lead.campaign_name || 'לא צוין שם קמפיין'}">${(lead.campaign_name || 'לא צוין').substring(0, 25)}${(lead.campaign_name || '').length > 25 ? '...' : ''}</td>
                                 <td title="שם מלא: ${lead.name || 'לא צוין'}"><strong>${lead.name || 'לא צוין'}</strong></td>
                                 <td title="תאריך יצירה בפייסבוק: ${lead.created_time ? formatDate(lead.created_time) : 'לא ידוע'}">${lead.created_time ? formatDate(lead.created_time) : formatDate(lead.received_at)}</td>
@@ -809,7 +809,25 @@
         }
 
         function loadStats() {
-            loadAllLeads();
+            // Use unified lead manager to refresh leads and update statistics
+            if (window.leadManager) {
+                window.leadManager.loadLeads();
+            }
+            // Also update user stats
+            updateStats();
+        }
+        
+        function updateStats() {
+            // This function will be called by the unified component or when stats need refresh
+            if (window.leadManager && window.leadManager.allLeads) {
+                const leads = window.leadManager.allLeads;
+                
+                // Update campaign statistics
+                document.getElementById('totalLeads').textContent = leads.length;
+                document.getElementById('activeLeads').textContent = leads.filter(l => ['new', 'contacted', 'qualified', 'interested'].includes(l.status)).length;
+                document.getElementById('qualifiedLeads').textContent = leads.filter(l => l.status === 'qualified').length;  
+                document.getElementById('hiredLeads').textContent = leads.filter(l => l.status === 'hired').length;
+            }
         }
 
         function toggleAllLeads(checked) {
@@ -960,11 +978,11 @@
                         <div class="detail-value">
                             ${lead.assigned_to ? 
                                 `<span style="color: #059669; font-weight: bold;">מוקצה ל: ${lead.assigned_to}</span>` : 
-                                '<span style="color: #dc2626; font-weight: bold;">לא מוקצה לעובד</span>'
+                                '<span style="color: #dc2626; font-weight: bold;">לא מוקצה למשתמש</span>'
                             }
                             <div style="margin-top: 10px;">
                                 <button onclick="showQuickAssignModal(${lead.id})" style="background: #059669; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
-                                    👤 ${lead.assigned_to ? 'שנה הקצאה' : 'הקצה לעובד'}
+                                    👤 ${lead.assigned_to ? 'שנה הקצאה' : 'הקצה למשתמש'}
                                 </button>
                             </div>
                         </div>
@@ -1085,7 +1103,7 @@
             modal.innerHTML = `
                 <div style="background-color: white; margin: 10% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; direction: rtl;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
-                        <h3 style="color: #1e293b; margin: 0;">👤 הקצה ליד לעובד</h3>
+                        <h3 style="color: #1e293b; margin: 0;">👤 הקצה ליד למשתמש</h3>
                         <button onclick="closeQuickAssignModal()" style="background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em;">✖️</button>
                     </div>
                     
@@ -1100,7 +1118,7 @@
                     </div>
                     
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e293b;">בחר עובד:</label>
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e293b;">בחר משתמש:</label>
                         <select id="quickAssignSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; background: white; direction: rtl;">
                             <option value="">הסר הקצאה</option>
                             ${availableUsers.filter(user => user.active).map(user => `
@@ -1215,7 +1233,7 @@
 
         async function loadUsers() {
             try {
-                document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען עובדים...</div>';
+                document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
                 
                 const response = await fetch('/admin/users/api');
                 const data = await response.json();
@@ -1229,7 +1247,7 @@
                     renderUsersTable(availableUsers);
                 } else {
                     console.error('No users in response:', data); // Debug log
-                    document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת העובדים</div>';
+                    document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת המשתמשים</div>';
                 }
             } catch (error) {
                 console.error('Error loading users:', error);
@@ -1241,7 +1259,7 @@
             const container = document.getElementById('usersContainer');
             
             if (users.length === 0) {
-                container.innerHTML = '<div class="loading">אין עובדים להצגה</div>';
+                container.innerHTML = '<div class="loading">אין משתמשים להצגה</div>';
                 return;
             }
 
@@ -1291,14 +1309,14 @@
             const labels = {
                 'admin': 'מנהל מערכת',
                 'campaign_manager': 'מנהל קמפיין',
-                'user': 'עובד'
+                'user': 'משתמש'
             };
             return labels[role] || role;
         }
 
         function showAddUserModal() {
             currentEditingUser = null;
-            document.getElementById('userModalTitle').textContent = 'הוסף עובד חדש';
+            document.getElementById('userModalTitle').textContent = 'הוסף משתמש חדש';
             document.getElementById('userUsername').value = '';
             document.getElementById('userFullName').value = '';
             document.getElementById('userPassword').value = '';
@@ -1312,7 +1330,7 @@
             if (!user) return;
             
             currentEditingUser = user;
-            document.getElementById('userModalTitle').textContent = 'עריכת עובד';
+            document.getElementById('userModalTitle').textContent = 'עריכת משתמש';
             document.getElementById('userUsername').value = user.username;
             document.getElementById('userFullName').value = user.full_name || '';
             document.getElementById('userPassword').value = user.plain_password || '';
@@ -1355,11 +1373,11 @@
 
                 const result = await response.json();
                 if (result.status === 'success') {
-                    showToast(currentEditingUser ? 'עובד עודכן בהצלחה' : 'עובד נוסף בהצלחה', 'success');
+                    showToast(currentEditingUser ? 'משתמש עודכן בהצלחה' : 'משתמש נוסף בהצלחה', 'success');
                     closeUserModal();
                     loadUsers();
                 } else {
-                    showToast(result.error || 'שגיאה בשמירת העובד', 'error');
+                    showToast(result.error || 'שגיאה בשמירת המשתמש', 'error');
                 }
             } catch (error) {
                 console.error('Error saving user:', error);
@@ -1381,10 +1399,10 @@
 
                 const result = await response.json();
                 if (result.status === 'success') {
-                    showToast(`עובד ${newStatus ? 'הופעל' : 'הושבת'} בהצלחה`, 'success');
+                    showToast(`משתמש ${newStatus ? 'הופעל' : 'הושבת'} בהצלחה`, 'success');
                     loadUsers();
                 } else {
-                    showToast(result.error || 'שגיאה בעדכון סטטוס העובד', 'error');
+                    showToast(result.error || 'שגיאה בעדכון סטטוס המשתמש', 'error');
                 }
             } catch (error) {
                 console.error('Error toggling user status:', error);
