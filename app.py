@@ -264,6 +264,63 @@ def server_status():
         'database_url_set': bool(DATABASE_URL)
     })
 
+@app.route('/debug/session')
+@login_required
+def debug_session():
+    """Debug endpoint to check session data and user info"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Get current user info from database
+        user_id = session.get('user_id')
+        if user_id:
+            cur.execute("""
+                SELECT u.id, u.username, u.full_name, u.role, u.customer_id, c.name as customer_name
+                FROM users u
+                LEFT JOIN customers c ON u.customer_id = c.id
+                WHERE u.id = %s
+            """, (user_id,))
+            user_db = cur.fetchone()
+        else:
+            user_db = None
+            
+        # Get users for this customer
+        customer_id = session.get('selected_customer_id')
+        if customer_id:
+            cur.execute("""
+                SELECT u.id, u.username, u.full_name, u.role, u.active, u.customer_id
+                FROM users u
+                WHERE u.customer_id = %s
+            """, (customer_id,))
+            customer_users = cur.fetchall()
+        else:
+            customer_users = []
+            
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'session_data': {
+                'user_id': session.get('user_id'),
+                'username': session.get('username'),
+                'full_name': session.get('full_name'),
+                'role': session.get('role'),
+                'selected_customer_id': session.get('selected_customer_id'),
+                'selected_customer_name': session.get('selected_customer_name')
+            },
+            'user_in_database': dict(user_db) if user_db else None,
+            'customer_users': [dict(u) for u in customer_users],
+            'customer_users_count': len(customer_users)
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug session error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     """Receive Facebook leads from Zapier"""
