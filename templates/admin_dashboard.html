@@ -236,6 +236,9 @@
             </div>
         </div>
         
+        <!-- Include Unified Lead Management Component for Admin -->
+        {% include 'lead_management_component.html' %}
+        
     </div>
 
 
@@ -396,6 +399,9 @@
             loadSystemStats();
             loadCustomers();
             loadSelectedCustomer();
+            
+            // Initialize unified lead management component for admin
+            window.leadManager = new LeadManager('admin', true, true);
         });
     </script>
 </body>
