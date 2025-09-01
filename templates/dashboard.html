@@ -436,6 +436,37 @@
                 flex-direction: column;
             }
         }
+        
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-size: 16px;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast.error {
+            background: #f44336;
+        }
+        
+        .toast.warning {
+            background: #ff9800;
+        }
     </style>
 </head>
 <body>
@@ -1030,7 +1061,7 @@
                 if (result.status === 'success') {
                     closeModal('statusModal');
                     loadLeads(); // Refresh the leads list
-                    alert('סטטוס עודכן בהצלחה!');
+                    showToast('✅ סטטוס עודכן בהצלחה!', 'success');
                 } else {
                     alert(`שגיאה בעדכון הסטטוס: ${result.error || 'שגיאה לא ידועה'}`);
                 }
@@ -1049,7 +1080,7 @@
             
             await logActivity(currentLeadId, 'note', noteText);
             closeModal('noteModal');
-            alert('הערה נוספה בהצלחה!');
+            showToast('📝 הערה נוספה בהצלחה!', 'success');
         }
         
         async function saveCallResult() {
@@ -1076,7 +1107,7 @@
                 const result = await response.json();
                 if (result.status === 'success') {
                     closeModal('callModal');
-                    alert('תוצאת השיחה נשמרה!');
+                    showToast('📞 תוצאת השיחה נשמרה!', 'success');
                     
                     // If call was successful, maybe update status
                     if (outcome === 'answered') {
@@ -1117,6 +1148,38 @@
             });
         }
         
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            // Remove any existing toast
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // Create new toast
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(toast);
+            
+            // Show with animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300); // Wait for fade out animation
+            }, 3000);
+        }
+
         // Load leads when page loads
         document.addEventListener('DOMContentLoaded', loadLeads);
         
