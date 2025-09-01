@@ -1233,30 +1233,57 @@
 
         async function loadUsers() {
             try {
+                console.log('=== DEBUG: Starting loadUsers() ===');
                 document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
                 
+                console.log('Fetching /admin/users/api...');
                 const response = await fetch('/admin/users/api');
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאת API: ${response.status}</div>`;
+                    return;
+                }
+                
                 const data = await response.json();
+                console.log('Users API full response:', data);
+                console.log('Response has users property:', !!data.users);
                 
-                console.log('Users API response:', data); // Debug log
-                
-                if (data.users) {
+                if (data.users && Array.isArray(data.users)) {
                     availableUsers = data.users;
-                    console.log('Available users count:', availableUsers.length); // Debug log
-                    console.log('Users for this customer:', availableUsers); // Debug log
+                    console.log('Available users count:', availableUsers.length);
+                    console.log('First user example:', availableUsers[0]);
+                    
+                    if (availableUsers.length === 0) {
+                        document.getElementById('usersContainer').innerHTML = '<div class="loading">אין משתמשים למצוא עבור הלקוח</div>';
+                        return;
+                    }
+                    
                     renderUsersTable(availableUsers);
+                } else if (data.error) {
+                    console.error('API returned error:', data.error);
+                    document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאה: ${data.error}</div>`;
                 } else {
-                    console.error('No users in response:', data); // Debug log
-                    document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת המשתמשים</div>';
+                    console.error('No users in response:', data);
+                    document.getElementById('usersContainer').innerHTML = '<div class="loading">תגובת API לא תקינה</div>';
                 }
             } catch (error) {
-                console.error('Error loading users:', error);
-                document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בחיבור לשרת</div>';
+                console.error('Exception in loadUsers:', error);
+                document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאה: ${error.message}</div>`;
             }
         }
 
         function renderUsersTable(users) {
+            console.log('=== DEBUG: renderUsersTable called with:', users);
             const container = document.getElementById('usersContainer');
+            
+            if (!container) {
+                console.error('ERROR: usersContainer element not found!');
+                return;
+            }
             
             if (users.length === 0) {
                 container.innerHTML = '<div class="loading">אין משתמשים להצגה</div>';
