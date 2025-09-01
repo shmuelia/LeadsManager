@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
@@ -273,6 +273,11 @@ def get_lead(lead_id):
     except Exception as e:
         logger.error(f"Error fetching lead {lead_id}: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/dashboard')
+def dashboard():
+    """Beautiful web dashboard for viewing leads"""
+    return render_template('dashboard.html')
 
 @app.route('/test')
 def test():
