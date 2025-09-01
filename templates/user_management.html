@@ -132,8 +132,10 @@
             <button class="btn back" onclick="goBackToAdmin()">↩️ חזור ללוח הבקרה</button>
         </div>
         
-        <!-- Include Unified User Management Component -->
-        {% include 'user_management_component.html' %}
+        <!-- Standalone User Management Table -->
+        <div class="users-grid" id="usersContainer">
+            <div class="loading">טוען משתמשים...</div>
+        </div>
     </div>
     
     <script>
@@ -164,21 +166,93 @@
             }
         }
         
-        // Filter users by customer (triggers unified component reload)
-        function loadUsers() {
-            // Call the unified component's loadUsers function
-            if (window.loadUsersFromComponent && typeof window.loadUsersFromComponent === 'function') {
-                window.loadUsersFromComponent();
-            } else {
-                // Fallback: reload page to refresh data
-                window.location.reload();
+        // Load users from API
+        async function loadUsers() {
+            try {
+                document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
+                
+                const customerId = document.getElementById('customerFilter').value;
+                const url = customerId ? `/admin/users/api?customer_id=${customerId}` : '/admin/users/api';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.users && Array.isArray(data.users)) {
+                    renderUsersTable(data.users);
+                } else {
+                    document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת המשתמשים</div>';
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בחיבור לשרת</div>';
             }
+        }
+        
+        // Render users table
+        function renderUsersTable(users) {
+            const container = document.getElementById('usersContainer');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="loading">אין משתמשים להצגה</div>';
+                return;
+            }
+            
+            const table = `
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <thead>
+                        <tr style="background: #34495e; color: white;">
+                            <th style="padding: 15px; text-align: right;">פעולות</th>
+                            <th style="padding: 15px; text-align: right;">סטטוס</th>
+                            <th style="padding: 15px; text-align: right;">תפקיד</th>
+                            <th style="padding: 15px; text-align: right;">מחלקה</th>
+                            <th style="padding: 15px; text-align: right;">שם מלא</th>
+                            <th style="padding: 15px; text-align: right;">שם משתמש</th>
+                            <th style="padding: 15px; text-align: right;">לקוח</th>
+                            <th style="padding: 15px; text-align: right;">סיסמה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map((user, index) => `
+                            <tr style="border-bottom: 1px solid #ecf0f1; ${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}">
+                                <td style="padding: 12px;">
+                                    <button onclick="editUser(${user.id})" style="background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px;">✏️ ערוך</button>
+                                    <button onclick="toggleUserStatus(${user.id}, ${!user.active})" style="background: ${user.active ? '#e74c3c' : '#27ae60'}; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px;">
+                                        ${user.active ? '❌ השבת' : '✅ הפעל'}
+                                    </button>
+                                </td>
+                                <td style="padding: 12px;">
+                                    <span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: ${user.active ? '#27ae60' : '#95a5a6'};">
+                                        ${user.active ? 'פעיל' : 'לא פעיל'}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px;">${getRoleLabel(user.role)}</td>
+                                <td style="padding: 12px;">${user.department || 'לא צוין'}</td>
+                                <td style="padding: 12px;"><strong>${user.full_name || 'לא צוין'}</strong></td>
+                                <td style="padding: 12px;">${user.username}</td>
+                                <td style="padding: 12px;">${user.customer_name || 'לא משויך'}</td>
+                                <td style="padding: 12px; font-family: monospace; background: #f1f5f9; font-size: 14px;">${user.plain_password || 'לא זמין'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = table;
+        }
+        
+        function getRoleLabel(role) {
+            const labels = {
+                'admin': 'מנהל מערכת',
+                'campaign_manager': 'מנהל קמפיין',
+                'user': 'משתמש'
+            };
+            return labels[role] || role;
         }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             loadCustomers();
-            // The unified component will handle user loading
+            loadUsers(); // Load users on page load
         });
     </script>
 </body>
