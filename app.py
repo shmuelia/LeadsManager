@@ -160,9 +160,10 @@ def login():
         
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            SELECT id, username, full_name, role, active 
-            FROM users 
-            WHERE username = %s AND password_hash = %s AND active = true
+            SELECT u.id, u.username, u.full_name, u.role, u.active, u.customer_id, c.name as customer_name
+            FROM users u
+            LEFT JOIN customers c ON u.customer_id = c.id
+            WHERE u.username = %s AND u.password_hash = %s AND u.active = true
         """, (username, hash_password(password)))
         
         user = cur.fetchone()
@@ -174,6 +175,15 @@ def login():
             session['username'] = user['username']
             session['full_name'] = user['full_name']
             session['role'] = user['role']
+            
+            # Set customer context if user has an assigned customer
+            if user['customer_id']:
+                session['selected_customer_id'] = user['customer_id']
+                session['selected_customer_name'] = user['customer_name']
+            else:
+                # Default to customer #1 if no customer assigned
+                session['selected_customer_id'] = 1
+                session['selected_customer_name'] = 'מאפיית משמרות - לקוח ברירת מחדל'
             
             flash(f'ברוך הבא, {user["full_name"]}!')
             
