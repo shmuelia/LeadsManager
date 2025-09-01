@@ -12,25 +12,27 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f1f5f9;
             min-height: 100vh;
             direction: rtl;
-            color: #333;
+            color: #0f172a;
+            line-height: 1.6;
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 32px 24px;
         }
         
         .header {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         
         .header-content {
@@ -52,9 +54,13 @@
         }
         
         .user-info {
-            color: #e74c3c;
-            font-weight: bold;
-            font-size: 1em;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
         }
         
         .logout-btn {
@@ -75,9 +81,11 @@
         }
         
         .header h1 {
-            color: #e74c3c;
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            color: white;
+            font-size: 2.25rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
         }
         
         .admin-controls {
@@ -336,7 +344,10 @@
         <div style="background: white; margin: 2% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 800px; max-height: 90%; overflow-y: auto; direction: rtl;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px;">
                 <h2 style="color: #2c3e50;">📋 פרטי ליד מלאים</h2>
-                <button onclick="closeLeadDetails()" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2em;">✖️</button>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="copyLeadDetails()" style="background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold;">📋 העתק פרטים</button>
+                    <button onclick="closeLeadDetails()" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2em;">✖️</button>
+                </div>
             </div>
             
             <div id="leadDetailsContent">
@@ -349,6 +360,7 @@
         let selectedLeads = new Set();
         let allLeads = [];
         let availableUsers = [];
+        let currentLeadDetails = null;
 
         async function loadStats() {
             try {
@@ -656,6 +668,7 @@
                 const data = await response.json();
                 
                 if (data.lead) {
+                    currentLeadDetails = { lead: data.lead, activities: data.activities || [] };
                     displayLeadDetails(data.lead, data.activities || []);
                     document.getElementById('leadDetailsModal').style.display = 'block';
                 } else {
@@ -772,8 +785,129 @@
             `;
         }
 
+        async function copyLeadDetails() {
+            if (!currentLeadDetails) {
+                alert('אין פרטי ליד זמינים להעתקה');
+                return;
+            }
+
+            const lead = currentLeadDetails.lead;
+            const activities = currentLeadDetails.activities;
+
+            // Parse job data for Hebrew questions
+            let jobData = {};
+            try {
+                if (lead.raw_data && typeof lead.raw_data === 'object') {
+                    jobData = lead.raw_data;
+                } else if (lead.raw_data && typeof lead.raw_data === 'string') {
+                    jobData = JSON.parse(lead.raw_data);
+                }
+            } catch (e) {
+                console.log('Could not parse raw_data:', e);
+            }
+
+            // Create formatted text for copying
+            let copyText = `📋 פרטי ליד מלאים - ${lead.name || 'ללא שם'}
+═════════════════════════════════════
+
+👤 פרטים אישיים:
+• שם: ${lead.name || 'לא צוין'}
+• אימייל: ${lead.email || 'לא צוין'}
+• טלפון: ${lead.phone || 'לא צוין'}
+• סטטוס: ${getStatusInHebrew(lead.status)}
+• עדיפות: ${lead.priority || 0}
+• מוקצה ל: ${lead.assigned_to || 'לא מוקצה'}
+
+📅 מידע זמני:
+• תאריך יצירה בפייסבוק: ${lead.created_time ? formatDateForCopy(lead.created_time) : 'לא ידוע'}
+• התקבל במערכת: ${formatDateForCopy(lead.received_at)}
+• עדכון אחרון: ${lead.updated_at ? formatDateForCopy(lead.updated_at) : 'לא עודכן'}
+• פלטפורמה: ${lead.platform === 'ig' ? 'אינסטגרם' : lead.platform || 'פייסבוק'}
+
+🎯 פרטי קמפיין:
+• שם קמפיין: ${lead.campaign_name || 'לא צוין'}
+• שם טופס: ${lead.form_name || 'לא צוין'}
+• מקור הליד: ${lead.lead_source || 'לא ידוע'}
+• מזהה חיצוני: ${lead.external_lead_id || 'לא קיים'}`;
+
+            // Add job application details if available
+            if (jobData && Object.keys(jobData).length > 0) {
+                copyText += `
+
+💼 מידע מקצועי מהטופס:`;
+                
+                Object.entries(jobData).forEach(([key, value]) => {
+                    if (key !== 'raw' && typeof value !== 'object') {
+                        copyText += `\n• ${key.replace(/_/g, ' ')}: ${value || 'לא מולא'}`;
+                    }
+                });
+
+                // Add detailed answers if available
+                if (jobData.raw) {
+                    copyText += `\n\n🔍 תשובות מפורטות:`;
+                    Object.entries(jobData.raw).forEach(([question, answer]) => {
+                        copyText += `\n\n📝 ${question}:\n${answer || 'לא נענה'}`;
+                    });
+                }
+            }
+
+            // Add manager notes if available
+            if (lead.notes) {
+                copyText += `\n\n📝 הערות מנהל:\n${lead.notes}`;
+            }
+
+            // Add activity history if available
+            if (activities && activities.length > 0) {
+                copyText += `\n\n📈 היסטוריית פעילות:`;
+                activities.forEach(activity => {
+                    copyText += `\n\n🔸 ${formatDateForCopy(activity.activity_date)} - ${activity.user_name}`;
+                    copyText += `\n   ${activity.activity_type}: ${activity.description || 'ללא תיאור'}`;
+                    if (activity.call_outcome) {
+                        copyText += `\n   תוצאה: ${activity.call_outcome}`;
+                    }
+                });
+            } else {
+                copyText += `\n\n📈 היסטוריית פעילות:\nאין פעילות עדיין`;
+            }
+
+            copyText += `\n\n═════════════════════════════════════\n📅 הפרטים הועתקו ב${formatDateForCopy(new Date().toISOString())}`;
+
+            // Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(copyText);
+                showToast('פרטי הליד הועתקו ללוח! ניתן להדביק בוואטסאפ או כל מקום אחר', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = copyText;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('פרטי הליד הועתקו ללוח! ניתן להדביק בוואטסאפ או כל מקום אחר', 'success');
+                } catch (err) {
+                    showToast('שגיאה בהעתקת הפרטים. נסה שוב', 'error');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function formatDateForCopy(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('he-IL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
         function closeLeadDetails() {
             document.getElementById('leadDetailsModal').style.display = 'none';
+            currentLeadDetails = null;
         }
 
         function deleteLead(leadId) {
