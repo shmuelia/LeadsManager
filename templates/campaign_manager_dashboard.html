@@ -589,7 +589,7 @@
             </div>
         </div>
 
-        <!-- User Management Table -->
+        <!-- User Management Section -->
         <div id="userManagementTable" class="leads-table" style="display: none;">
             <div class="table-header">
                 <div class="table-title">👥 ניהול משתמשים</div>
@@ -598,9 +598,8 @@
                 </div>
             </div>
             
-            <div class="leads-grid" id="usersContainer">
-                <div class="loading">טוען משתמשים...</div>
-            </div>
+            <!-- Include Unified User Management Component -->
+            {% include 'user_management_component.html' %}
         </div>
 
         <!-- Include Unified Lead Management Component -->
@@ -608,46 +607,6 @@
     </div>
 
 
-    <!-- Add/Edit User Modal -->
-    <div id="userModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="close" onclick="closeUserModal()">&times;</span>
-                <h2 id="userModalTitle">הוסף משתמש חדש</h2>
-            </div>
-            <div class="modal-body">
-                <form id="userForm">
-                    <div class="detail-item" style="margin-bottom: 15px;">
-                        <div class="detail-label">שם משתמש:</div>
-                        <input type="text" id="userUsername" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
-                    </div>
-                    <div class="detail-item" style="margin-bottom: 15px;">
-                        <div class="detail-label">שם מלא:</div>
-                        <input type="text" id="userFullName" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
-                    </div>
-                    <div class="detail-item" style="margin-bottom: 15px;">
-                        <div class="detail-label">סיסמה:</div>
-                        <input type="text" id="userPassword" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
-                        <small style="color: #6b7280;">הסיסמה תהיה נראית לכל המנהלים</small>
-                    </div>
-                    <div class="detail-item" style="margin-bottom: 15px;">
-                        <div class="detail-label">תפקיד:</div>
-                        <select id="userRole" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
-                            <option value="user">משתמש</option>
-                        </select>
-                    </div>
-                    <div class="detail-item" style="margin-bottom: 15px;">
-                        <div class="detail-label">פעיל:</div>
-                        <input type="checkbox" id="userActive" checked style="transform: scale(1.2);">
-                    </div>
-                    <div style="margin-top: 20px; text-align: center;">
-                        <button type="button" class="campaign-btn" onclick="saveUser()">💾 שמור</button>
-                        <button type="button" class="campaign-btn secondary" onclick="closeUserModal()">❌ ביטול</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <script>
         let selectedLeads = new Set();
@@ -1233,28 +1192,14 @@
         function showUserManagement() {
             console.log('=== DEBUG: showUserManagement() called ===');
             
-            try {
-                const userTable = document.getElementById('userManagementTable');
-                const mainTable = document.querySelector('.leads-table:not(#userManagementTable)');
-                
-                console.log('User table element:', userTable);
-                console.log('Main table element:', mainTable);
-                
-                if (!userTable) {
-                    console.error('ERROR: userManagementTable element not found!');
-                    return;
-                }
-                
+            const userTable = document.getElementById('userManagementTable');
+            const mainTable = document.querySelector('.leads-table:not(#userManagementTable)');
+            
+            if (userTable) {
                 userTable.style.display = 'block';
-                if (mainTable) {
-                    mainTable.style.display = 'none';
-                }
-                
-                console.log('Tables toggled, now calling loadUsers()');
-                loadUsers();
-                
-            } catch (error) {
-                console.error('Error in showUserManagement:', error);
+            }
+            if (mainTable) {
+                mainTable.style.display = 'none';
             }
         }
 
@@ -1263,58 +1208,19 @@
             document.querySelector('.leads-table:not(#userManagementTable)').style.display = 'block';
         }
 
-        async function loadUsers() {
-            try {
-                console.log('=== DEBUG: Starting loadUsers() ===');
-                document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
-                
-                console.log('Fetching /admin/users/api...');
-                const response = await fetch('/admin/users/api');
-                console.log('Response status:', response.status);
-                console.log('Response ok:', response.ok);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error:', response.status, errorText);
-                    document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאת API: ${response.status}</div>`;
-                    return;
-                }
-                
-                const data = await response.json();
-                console.log('Users API full response:', data);
-                console.log('Response has users property:', !!data.users);
-                
-                if (data.users && Array.isArray(data.users)) {
-                    availableUsers = data.users;
-                    console.log('Available users count:', availableUsers.length);
-                    console.log('First user example:', availableUsers[0]);
-                    
-                    if (availableUsers.length === 0) {
-                        document.getElementById('usersContainer').innerHTML = '<div class="loading">אין משתמשים למצוא עבור הלקוח</div>';
-                        return;
-                    }
-                    
-                    renderUsersTable(availableUsers);
-                } else if (data.error) {
-                    console.error('API returned error:', data.error);
-                    document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאה: ${data.error}</div>`;
-                } else {
-                    console.error('No users in response:', data);
-                    document.getElementById('usersContainer').innerHTML = '<div class="loading">תגובת API לא תקינה</div>';
-                }
-            } catch (error) {
-                console.error('Exception in loadUsers:', error);
-                document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאה: ${error.message}</div>`;
-            }
-        }
 
-        function renderUsersTable(users) {
-            console.log('=== DEBUG: renderUsersTable called with:', users);
-            const container = document.getElementById('usersContainer');
+        // User management functions removed - now using unified component
+        
+        // Load user info
+        function loadUserInfo() {
+            // Load user information from template variables
+            const userInfo = document.getElementById('userInfo');
+            const userName = '{{ user_name|safe }}';
+            const customerName = '{{ customer_name|safe }}';
             
-            if (!container) {
-                console.error('ERROR: usersContainer element not found!');
-                return;
+            console.log('User info:', userName, 'Customer:', customerName); // Debug log
+            userInfo.textContent = `${userName} - לקוח: ${customerName}`;
+        }
             }
             
             if (users.length === 0) {

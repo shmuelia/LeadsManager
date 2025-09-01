@@ -1,0 +1,435 @@
+<!-- Unified User Management Component -->
+<!-- This component provides user management functionality for both admin and campaign manager roles -->
+
+<!-- User Management Table -->
+<div id="userManagementContainer" style="margin-top: 20px;">
+    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div class="table-title" style="font-size: 1.4em; font-weight: bold; color: #2c3e50;">👥 ניהול משתמשים</div>
+        <div class="user-actions">
+            <button class="btn success" onclick="showUserModal()" style="background: #27ae60; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; margin: 0 5px;">➕ הוסף משתמש חדש</button>
+            <button class="btn" onclick="loadUsers()" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; margin: 0 5px;">🔄 רענן רשימה</button>
+        </div>
+    </div>
+    
+    <!-- Users Grid -->
+    <div class="users-grid" id="usersContainer">
+        <div class="loading">טוען משתמשים...</div>
+    </div>
+</div>
+
+<!-- Unified Add/Edit User Modal -->
+<div id="userModal" class="user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div class="user-modal-content" style="background: white; margin: 5% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 600px; direction: rtl;">
+        <div class="user-modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
+            <h2 id="userModalTitle" style="color: #2c3e50; margin: 0;">הוסף משתמש חדש</h2>
+            <button onclick="closeUserModal()" style="background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em;">✖️</button>
+        </div>
+        
+        <form id="userForm" style="display: grid; gap: 20px;">
+            <!-- Username -->
+            <div class="form-field">
+                <label for="userUsername" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">שם משתמש:</label>
+                <input type="text" id="userUsername" name="username" required 
+                       style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
+            </div>
+            
+            <!-- Full Name -->
+            <div class="form-field">
+                <label for="userFullName" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">שם מלא:</label>
+                <input type="text" id="userFullName" name="full_name" required 
+                       style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
+            </div>
+            
+            <!-- Email -->
+            <div class="form-field">
+                <label for="userEmail" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">אימייל:</label>
+                <input type="email" id="userEmail" name="email" 
+                       style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: ltr; font-size: 16px;">
+            </div>
+            
+            <!-- Password -->
+            <div class="form-field">
+                <label for="userPassword" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">סיסמה:</label>
+                <input type="text" id="userPassword" name="password" 
+                       style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: ltr; font-size: 16px; font-family: monospace;">
+                <small style="color: #6b7280; font-size: 0.9em; margin-top: 5px; display: block;">הסיסמה תהיה נראית לכל המנהלים</small>
+            </div>
+            
+            <!-- Current Password Display (for editing) -->
+            <div class="form-field" id="currentPasswordField" style="display: none;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #059669;">סיסמה נוכחית:</label>
+                <div id="currentPasswordDisplay" style="background: #f0f9ff; padding: 12px; border-radius: 8px; border: 2px solid #3b82f6; font-family: monospace; color: #1e40af;"></div>
+                <small style="color: #059669; font-size: 0.9em; margin-top: 5px; display: block;">זוהי הסיסמה הנוכחית. השאר את השדה למעלה ריק כדי לא לשנות.</small>
+            </div>
+            
+            <!-- Department -->
+            <div class="form-field">
+                <label for="userDepartment" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">מחלקה:</label>
+                <select id="userDepartment" name="department" 
+                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
+                    <option value="">בחר מחלקה</option>
+                    <option value="מטבח">מטבח</option>
+                    <option value="מאפייה">מאפייה</option>
+                    <option value="פלור">פלור</option>
+                    <option value="הנהלה">הנהלה</option>
+                    <option value="אחזקה ונקיון">אחזקה ונקיון</option>
+                </select>
+            </div>
+            
+            <!-- Role (Admin only) -->
+            <div class="form-field" id="roleField">
+                <label for="userRole" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">תפקיד:</label>
+                <select id="userRole" name="role" 
+                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
+                    <option value="user">משתמש</option>
+                    <option value="campaign_manager">מנהל קמפיין</option>
+                    <option value="admin">מנהל מערכת</option>
+                </select>
+            </div>
+            
+            <!-- Customer Assignment (Admin only) -->
+            <div class="form-field" id="customerField">
+                <label for="userCustomer" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">לקוח:</label>
+                <select id="userCustomer" name="customer_id" 
+                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
+                    <option value="">טוען לקוחות...</option>
+                </select>
+            </div>
+            
+            <!-- Active Status -->
+            <div class="form-field">
+                <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold; color: #2c3e50;">
+                    <input type="checkbox" id="userActive" name="active" checked 
+                           style="margin-left: 10px; transform: scale(1.2);">
+                    משתמש פעיל
+                </label>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="form-actions" style="display: flex; gap: 15px; justify-content: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <button type="submit" style="background: #27ae60; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                    💾 שמור משתמש
+                </button>
+                <button type="button" onclick="closeUserModal()" style="background: #95a5a6; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                    ❌ ביטול
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Unified User Management JavaScript
+let currentEditingUser = null;
+let availableUsers = [];
+let availableCustomers = [];
+let userRole = '{{ session.get("role") }}'; // Get current user role
+
+// Initialize component based on user role
+function initUserManagement() {
+    console.log('Initializing user management for role:', userRole);
+    
+    // Configure UI based on role
+    if (userRole === 'campaign_manager') {
+        // Hide admin-only fields for campaign managers
+        document.getElementById('roleField').style.display = 'none';
+        document.getElementById('customerField').style.display = 'none';
+    } else if (userRole === 'admin') {
+        // Load customers for admin
+        loadCustomers();
+    }
+    
+    // Load users
+    loadUsers();
+}
+
+// Load available customers (admin only)
+async function loadCustomers() {
+    if (userRole !== 'admin') return;
+    
+    try {
+        const response = await fetch('/admin/customers/api');
+        const customers = await response.json();
+        
+        const customerSelect = document.getElementById('userCustomer');
+        customerSelect.innerHTML = '<option value="">בחר לקוח</option>';
+        
+        customers.forEach(customer => {
+            if (customer.active) {
+                const option = document.createElement('option');
+                option.value = customer.id;
+                option.textContent = customer.name;
+                customerSelect.appendChild(option);
+            }
+        });
+        
+        availableCustomers = customers;
+    } catch (error) {
+        console.error('Error loading customers:', error);
+    }
+}
+
+// Load users based on role
+async function loadUsers() {
+    try {
+        document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
+        
+        const response = await fetch('/admin/users/api');
+        const data = await response.json();
+        
+        if (data.users && Array.isArray(data.users)) {
+            availableUsers = data.users;
+            renderUsersTable(availableUsers);
+        } else if (data.error) {
+            document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאה: ${data.error}</div>`;
+        } else {
+            document.getElementById('usersContainer').innerHTML = '<div class="loading">תגובת API לא תקינה</div>';
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('usersContainer').innerHTML = `<div class="loading">שגיאה: ${error.message}</div>`;
+    }
+}
+
+// Render users table
+function renderUsersTable(users) {
+    const container = document.getElementById('usersContainer');
+    
+    if (users.length === 0) {
+        container.innerHTML = '<div class="loading">אין משתמשים להצגה</div>';
+        return;
+    }
+    
+    const table = `
+        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <thead>
+                <tr style="background: #34495e; color: white;">
+                    <th style="padding: 15px; text-align: right;">פעולות</th>
+                    <th style="padding: 15px; text-align: right;">סטטוס</th>
+                    <th style="padding: 15px; text-align: right;">תפקיד</th>
+                    <th style="padding: 15px; text-align: right;">מחלקה</th>
+                    <th style="padding: 15px; text-align: right;">אימייל</th>
+                    <th style="padding: 15px; text-align: right;">שם מלא</th>
+                    <th style="padding: 15px; text-align: right;">שם משתמש</th>
+                    ${userRole === 'admin' ? '<th style="padding: 15px; text-align: right;">לקוח</th>' : ''}
+                    <th style="padding: 15px; text-align: right;">סיסמה</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map((user, index) => `
+                    <tr style="border-bottom: 1px solid #ecf0f1; ${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}">
+                        <td style="padding: 12px;">
+                            <button onclick="editUser(${user.id})" style="background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px;">✏️ ערוך</button>
+                            <button onclick="toggleUserStatus(${user.id}, ${!user.active})" style="background: ${user.active ? '#e74c3c' : '#27ae60'}; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px;">
+                                ${user.active ? '❌ השבת' : '✅ הפעל'}
+                            </button>
+                        </td>
+                        <td style="padding: 12px;">
+                            <span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: ${user.active ? '#27ae60' : '#95a5a6'};">
+                                ${user.active ? 'פעיל' : 'לא פעיל'}
+                            </span>
+                        </td>
+                        <td style="padding: 12px;">${getRoleLabel(user.role)}</td>
+                        <td style="padding: 12px;">${user.department || 'לא צוין'}</td>
+                        <td style="padding: 12px; direction: ltr;">${user.email || 'לא צוין'}</td>
+                        <td style="padding: 12px;"><strong>${user.full_name || 'לא צוין'}</strong></td>
+                        <td style="padding: 12px;">${user.username}</td>
+                        ${userRole === 'admin' ? `<td style="padding: 12px;">${user.customer_name || 'לא משויך'}</td>` : ''}
+                        <td style="padding: 12px; font-family: monospace; background: #f1f5f9; font-size: 14px;">${user.plain_password || 'לא זמין'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = table;
+}
+
+// Show user modal for create/edit
+function showUserModal(userId = null) {
+    currentEditingUser = null;
+    
+    if (userId) {
+        // Edit mode
+        const user = availableUsers.find(u => u.id === userId);
+        if (!user) {
+            alert('משתמש לא נמצא');
+            return;
+        }
+        
+        currentEditingUser = user;
+        document.getElementById('userModalTitle').textContent = 'ערוך משתמש';
+        
+        // Populate form
+        document.getElementById('userUsername').value = user.username;
+        document.getElementById('userFullName').value = user.full_name || '';
+        document.getElementById('userEmail').value = user.email || '';
+        document.getElementById('userPassword').value = ''; // Don't show current password
+        document.getElementById('userDepartment').value = user.department || '';
+        document.getElementById('userRole').value = user.role;
+        document.getElementById('userActive').checked = user.active;
+        
+        if (userRole === 'admin') {
+            document.getElementById('userCustomer').value = user.customer_id || '';
+        }
+        
+        // Show current password
+        if (user.plain_password) {
+            document.getElementById('currentPasswordField').style.display = 'block';
+            document.getElementById('currentPasswordDisplay').textContent = user.plain_password;
+        }
+    } else {
+        // Create mode
+        document.getElementById('userModalTitle').textContent = 'הוסף משתמש חדש';
+        document.getElementById('userForm').reset();
+        document.getElementById('userActive').checked = true;
+        document.getElementById('currentPasswordField').style.display = 'none';
+        
+        if (userRole === 'campaign_manager') {
+            document.getElementById('userRole').value = 'user'; // Force user role for campaign managers
+        }
+    }
+    
+    document.getElementById('userModal').style.display = 'block';
+}
+
+// Close user modal
+function closeUserModal() {
+    document.getElementById('userModal').style.display = 'none';
+    currentEditingUser = null;
+}
+
+// Edit specific user
+function editUser(userId) {
+    showUserModal(userId);
+}
+
+// Toggle user active status
+async function toggleUserStatus(userId, newStatus) {
+    try {
+        const response = await fetch(`/admin/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: newStatus })
+        });
+        
+        const result = await response.json();
+        if (result.status === 'success') {
+            showToast(`משתמש ${newStatus ? 'הופעל' : 'הושבת'} בהצלחה`, 'success');
+            loadUsers();
+        } else {
+            showToast(result.error || 'שגיאה בעדכון סטטוס המשתמש', 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling user status:', error);
+        showToast('שגיאה בחיבור לשרת', 'error');
+    }
+}
+
+// Handle form submission
+document.getElementById('userForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        username: document.getElementById('userUsername').value.trim(),
+        full_name: document.getElementById('userFullName').value.trim(),
+        email: document.getElementById('userEmail').value.trim(),
+        password: document.getElementById('userPassword').value.trim(),
+        department: document.getElementById('userDepartment').value,
+        role: document.getElementById('userRole').value,
+        active: document.getElementById('userActive').checked
+    };
+    
+    if (userRole === 'admin') {
+        formData.customer_id = parseInt(document.getElementById('userCustomer').value) || null;
+    }
+    
+    // Validation
+    if (!formData.username || !formData.full_name) {
+        alert('שם משתמש ושם מלא הם שדות חובה');
+        return;
+    }
+    
+    try {
+        let response;
+        if (currentEditingUser) {
+            // Update existing user
+            response = await fetch(`/admin/users/${currentEditingUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+        } else {
+            // Create new user  
+            if (!formData.password) {
+                alert('סיסמה נדרשת עבור משתמש חדש');
+                return;
+            }
+            response = await fetch('/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+        }
+        
+        const result = await response.json();
+        if (result.status === 'success') {
+            showToast(currentEditingUser ? 'משתמש עודכן בהצלחה' : 'משתמש נוסף בהצלחה', 'success');
+            closeUserModal();
+            loadUsers();
+        } else {
+            showToast(result.error || 'שגיאה בשמירת המשתמש', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showToast('שגיאה בחיבור לשרת', 'error');
+    }
+});
+
+// Helper functions
+function getRoleLabel(role) {
+    const labels = {
+        'admin': 'מנהל מערכת',
+        'campaign_manager': 'מנהל קמפיין',
+        'user': 'משתמש'
+    };
+    return labels[role] || role;
+}
+
+// Toast notification function (if not already defined)
+function showToast(message, type = 'success') {
+    // Remove existing toast
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) existingToast.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 10000;
+        background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+        color: white; padding: 15px 25px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 16px; font-weight: bold;
+        opacity: 0; transform: translateY(-20px); transition: all 0.3s ease;
+    `;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    }, 100);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initUserManagement);
+} else {
+    initUserManagement();
+}
+</script>
