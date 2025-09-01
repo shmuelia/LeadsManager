@@ -383,6 +383,31 @@
         let availableUsers = [];
         let currentLeadDetails = null;
 
+        // Filter state management
+        function saveFilterState(filters) {
+            localStorage.setItem('adminFilters', JSON.stringify(filters));
+        }
+
+        function restoreFilterState() {
+            try {
+                const savedFilters = localStorage.getItem('adminFilters');
+                if (savedFilters) {
+                    const filters = JSON.parse(savedFilters);
+                    
+                    // Restore filter values to dropdowns
+                    if (filters.campaign) document.getElementById('adminCampaignFilter').value = filters.campaign;
+                    if (filters.status) document.getElementById('adminStatusFilter').value = filters.status;
+                    if (filters.assignment) document.getElementById('assignmentFilter').value = filters.assignment;
+                    if (filters.assignedUser) document.getElementById('assignedUserFilter').value = filters.assignedUser;
+                    
+                    return filters;
+                }
+            } catch (e) {
+                console.log('Could not restore filter state:', e);
+            }
+            return null;
+        }
+
         async function loadStats() {
             try {
                 const response = await fetch('/leads');
@@ -410,7 +435,13 @@
                 allLeads = data.leads || [];
                 
                 populateAdminCampaignFilter(allLeads);
-                filterAdminLeads();
+                
+                // Restore filter state after data is loaded
+                setTimeout(() => {
+                    restoreFilterState();
+                    filterAdminLeads();
+                }, 100);
+                
                 loadStats();
                 
             } catch (error) {
@@ -441,6 +472,14 @@
             const statusFilter = document.getElementById('adminStatusFilter').value;
             const assignmentFilter = document.getElementById('assignmentFilter').value;
             const assignedUserFilter = document.getElementById('assignedUserFilter').value;
+            
+            // Save filter state to localStorage
+            saveFilterState({
+                campaign: campaignFilter,
+                status: statusFilter,
+                assignment: assignmentFilter,
+                assignedUser: assignedUserFilter
+            });
             
             let filteredLeads = allLeads.filter(lead => {
                 const campaignMatch = !campaignFilter || lead.campaign_name === campaignFilter;
@@ -947,6 +986,14 @@
                 if (data.users) {
                     availableUsers = data.users.filter(user => user.active);
                     populateAssignedUserFilter();
+                    
+                    // Restore user filter after users are loaded
+                    setTimeout(() => {
+                        const savedFilters = restoreFilterState();
+                        if (savedFilters && savedFilters.assignedUser) {
+                            document.getElementById('assignedUserFilter').value = savedFilters.assignedUser;
+                        }
+                    }, 50);
                 }
             } catch (error) {
                 console.error('Error loading users:', error);
@@ -985,11 +1032,13 @@
                 const result = await response.json();
                 if (result.status === 'success') {
                     showToast(`ליד הוקצה בהצלחה ל${username ? username : 'ללא הקצאה'}`, 'success');
-                    // Update the lead in memory
+                    // Update the lead in memory and refresh filtered view
                     const lead = allLeads.find(l => l.id === leadId);
                     if (lead) {
                         lead.assigned_to = username;
                     }
+                    // Refresh the filtered view to reflect assignment changes
+                    filterAdminLeads();
                 } else {
                     showToast(`שגיאה בהקצאת הליד: ${result.error}`, 'error');
                 }
