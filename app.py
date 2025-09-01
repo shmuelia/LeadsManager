@@ -1182,6 +1182,161 @@ def create_user():
         logger.error(f"Error creating user: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/users/update/<int:user_id>', methods=['PUT'])
+@admin_required
+def update_user(user_id):
+    """Admin: Update existing user"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check if user exists
+        cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cur.fetchone():
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Build update query dynamically based on provided fields
+        update_fields = []
+        update_values = []
+        
+        if 'username' in data:
+            # Check username uniqueness
+            cur.execute("SELECT id FROM users WHERE username = %s AND id != %s", (data['username'], user_id))
+            if cur.fetchone():
+                return jsonify({'error': 'Username already exists'}), 400
+            update_fields.append("username = %s")
+            update_values.append(data['username'])
+        
+        if 'password' in data and data['password']:
+            update_fields.append("password_hash = %s")
+            update_values.append(hash_password(data['password']))
+        
+        if 'full_name' in data:
+            update_fields.append("full_name = %s")
+            update_values.append(data['full_name'])
+        
+        if 'email' in data:
+            update_fields.append("email = %s")
+            update_values.append(data['email'])
+        
+        if 'role' in data:
+            update_fields.append("role = %s")
+            update_values.append(data['role'])
+        
+        if 'department' in data:
+            update_fields.append("department = %s")
+            update_values.append(data['department'])
+        
+        if 'active' in data:
+            update_fields.append("active = %s")
+            update_values.append(data['active'])
+        
+        if not update_fields:
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        # Add timestamp
+        update_fields.append("updated_at = CURRENT_TIMESTAMP")
+        
+        # Execute update
+        update_values.append(user_id)
+        query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
+        cur.execute(query, update_values)
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'משתמש עודכן בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating user: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users/delete/<int:user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    """Admin: Delete user"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check if user exists
+        cur.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+        result = cur.fetchone()
+        if not result:
+            return jsonify({'error': 'User not found'}), 404
+        
+        username = result[0]
+        
+        # Prevent deleting the last admin
+        cur.execute("SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = true")
+        admin_count = cur.fetchone()[0]
+        
+        cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        user_role = cur.fetchone()[0]
+        
+        if user_role == 'admin' and admin_count <= 1:
+            return jsonify({'error': 'Cannot delete the last admin user'}), 400
+        
+        # Delete user
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'משתמש {username} נמחק בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting user: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users/<int:user_id>', methods=['GET'])
+@admin_required
+def get_user(user_id):
+    """Admin: Get single user details"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, username, full_name, email, role, department, active, created_at, updated_at
+            FROM users WHERE id = %s
+        """, (user_id,))
+        
+        user = cur.fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        user_dict = dict(user)
+        user_dict['created_at'] = user_dict['created_at'].isoformat() if user_dict['created_at'] else None
+        user_dict['updated_at'] = user_dict['updated_at'].isoformat() if user_dict['updated_at'] else None
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({'user': user_dict})
+        
+    except Exception as e:
+        logger.error(f"Error getting user: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
