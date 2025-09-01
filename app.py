@@ -1649,6 +1649,121 @@ def select_customer():
         logger.error(f"Error selecting customer: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/run-customer-migration')
+@admin_required
+def run_customer_migration():
+    """Temporary route to run customer system migration"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check if customers table already exists
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'customers'
+            );
+        """)
+        
+        if cur.fetchone()[0]:
+            return jsonify({'status': 'already_migrated', 'message': 'Customer system already exists'})
+        
+        # Run the migration SQL
+        migration_sql = """
+        -- Create customers table
+        CREATE TABLE IF NOT EXISTS customers (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            webhook_url VARCHAR(500),
+            zapier_webhook_key VARCHAR(255),
+            zapier_account_email VARCHAR(255),
+            facebook_app_id VARCHAR(100),
+            instagram_app_id VARCHAR(100),
+            api_settings JSONB DEFAULT '{}',
+            active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Add customer_id to leads table
+        ALTER TABLE leads 
+        ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+
+        -- Add customer_id to users table
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+
+        -- Add customer_id to lead_activities table
+        ALTER TABLE lead_activities 
+        ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+
+        -- Add customer_id to lead_assignments table (if it exists)
+        ALTER TABLE lead_assignments 
+        ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+
+        -- Create indexes for better performance
+        CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
+        CREATE INDEX IF NOT EXISTS idx_leads_customer_id ON leads(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_users_customer_id ON users(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_lead_activities_customer_id ON lead_activities(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_lead_assignments_customer_id ON lead_assignments(customer_id);
+
+        -- Create trigger to automatically update updated_at on customers table
+        DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
+        CREATE TRIGGER update_customers_updated_at 
+            BEFORE UPDATE ON customers 
+            FOR EACH ROW 
+            EXECUTE FUNCTION update_updated_at_column();
+
+        -- Insert default customer #1 (Bakery) with current webhook details
+        INSERT INTO customers (id, name, webhook_url, zapier_webhook_key, active) 
+        VALUES (1, 'מאפיית משמרות - לקוח ברירת מחדל', '/webhook', 'default_webhook_key', true)
+        ON CONFLICT (id) DO NOTHING;
+
+        -- Update all existing data to belong to customer #1
+        UPDATE leads SET customer_id = 1 WHERE customer_id IS NULL;
+        UPDATE users SET customer_id = 1 WHERE customer_id IS NULL;
+        UPDATE lead_activities SET customer_id = 1 WHERE customer_id IS NULL;
+        UPDATE lead_assignments SET customer_id = 1 WHERE customer_id IS NULL;
+
+        -- Reset sequence to start from 2 for new customers
+        SELECT setval('customers_id_seq', 1, true);
+        """
+        
+        cur.execute(migration_sql)
+        conn.commit()
+        
+        # Get migration results
+        cur.execute("SELECT COUNT(*) FROM customers")
+        customer_count = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM leads WHERE customer_id = 1")
+        migrated_leads = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM users WHERE customer_id = 1")
+        migrated_users = cur.fetchone()[0]
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Customer system migration completed successfully!',
+            'results': {
+                'customers_created': customer_count,
+                'leads_migrated': migrated_leads,
+                'users_migrated': migrated_users
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Migration error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""

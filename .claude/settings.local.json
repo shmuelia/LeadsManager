@@ -11,7 +11,9 @@
       "WebFetch(domain:eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com)",
       "Bash(heroku git:remote:*)",
       "Bash(git remote add:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(heroku run:*)",
+      "Bash(where heroku)"
     ],
     "deny": [],
     "ask": []
