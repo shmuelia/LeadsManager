@@ -755,16 +755,6 @@
         }
         
         function getStatusInHebrew(status) {
-            const statusMap = {
-                'new': 'חדש',
-                'contacted': 'נוצר קשר',
-                'qualified': 'מוכשר',
-                'interested': 'מעוניין',
-                'not_interested': 'לא מעוניין',
-                'callback': 'לחזור',
-                'converted': 'הומר',
-                'closed': 'סגור'
-            };
             return statusMap[status] || status;
         }
         
@@ -791,6 +781,18 @@
         // Global variables for modal state
         let currentLeadId = null;
         let currentLeadStatus = null;
+        
+        // Global status map for Hebrew translations
+        const statusMap = {
+            'new': 'חדש',
+            'contacted': 'נוצר קשר',
+            'qualified': 'מוכשר',
+            'interested': 'מעוניין',
+            'not_interested': 'לא מעוניין',
+            'callback': 'לחזור',
+            'converted': 'הומר',
+            'closed': 'סגור'
+        };
         
         // Activity logging functions
         async function makeCall(leadId, phone, name) {
@@ -843,10 +845,14 @@
         }
 
         async function showDetailsModal(leadId) {
-            currentLeadId = leadId;
-            const lead = allLeads.find(l => l.id === leadId);
-            
-            if (!lead) return;
+            try {
+                currentLeadId = leadId;
+                const lead = allLeads.find(l => l.id === leadId);
+                
+                if (!lead) {
+                    console.error('Lead not found:', leadId);
+                    return;
+                }
             
             // Build details HTML with mobile-friendly layout
             let detailsHTML = `
@@ -962,6 +968,10 @@
             
             document.getElementById('detailsContent').innerHTML = detailsHTML;
             showModal('detailsModal');
+            } catch (error) {
+                console.error('Error in showDetailsModal:', error);
+                alert('שגיאה בטעינת פרטי הליד');
+            }
         }
         
         function getActivityTypeLabel(type) {
