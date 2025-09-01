@@ -1221,9 +1221,31 @@
 
         // User Management Functions
         function showUserManagement() {
-            document.getElementById('userManagementTable').style.display = 'block';
-            document.querySelector('.leads-table:not(#userManagementTable)').style.display = 'none';
-            loadUsers();
+            console.log('=== DEBUG: showUserManagement() called ===');
+            
+            try {
+                const userTable = document.getElementById('userManagementTable');
+                const mainTable = document.querySelector('.leads-table:not(#userManagementTable)');
+                
+                console.log('User table element:', userTable);
+                console.log('Main table element:', mainTable);
+                
+                if (!userTable) {
+                    console.error('ERROR: userManagementTable element not found!');
+                    return;
+                }
+                
+                userTable.style.display = 'block';
+                if (mainTable) {
+                    mainTable.style.display = 'none';
+                }
+                
+                console.log('Tables toggled, now calling loadUsers()');
+                loadUsers();
+                
+            } catch (error) {
+                console.error('Error in showUserManagement:', error);
+            }
         }
 
         function hideUserManagement() {
