@@ -273,6 +273,21 @@ def webhook():
                         created_time = datetime.fromisoformat(lead_data['created_time'].replace('Z', '+00:00'))
                     except:
                         pass
+                else:
+                    # If no created_time from Zapier, try to extract from raw_data
+                    created_date = (lead_data.get('﻿נוצר') or lead_data.get('נוצר') or 
+                                  lead_data.get('Created Time') or lead_data.get('date'))
+                    if created_date:
+                        try:
+                            # Handle am/pm format properly
+                            if 'am' in created_date.lower() or 'pm' in created_date.lower():
+                                date_str = created_date.replace('am', ' AM').replace('pm', ' PM')
+                                created_time = datetime.strptime(date_str, '%m/%d/%Y %I:%M %p')
+                            else:
+                                created_time = datetime.strptime(created_date, '%m/%d/%Y %H:%M')
+                        except Exception as e:
+                            logger.warning(f"Could not parse date from raw_data '{created_date}': {e}")
+                            pass
                 
                 cur.execute("""
                     INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data)
