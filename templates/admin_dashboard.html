@@ -227,6 +227,7 @@
             
             <div class="control-card">
                 <h3>⚙️ הגדרות מערכת</h3>
+                <button class="admin-btn secondary" onclick="fixLeadDates()">📅 תיקון תאריכי לידים</button>
                 <button class="admin-btn secondary" onclick="exportDatabase()">💾 גיבוי מסד נתונים</button>
                 <button class="admin-btn secondary" onclick="manageUsers()">👤 ניהול משתמשים</button>
             </div>
@@ -519,6 +520,30 @@
 
         function exportDatabase() {
             alert('תכונה זו תמומש בקרוב');
+        }
+
+        async function fixLeadDates() {
+            if (!confirm('האם אתה בטוח שברצונך לתקן את תאריכי הלידים? פעולה זו תעדכן לידים שלא בהם תאריך יצירה.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/fix-dates', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert(`✅ ${result.updated_count} לידים עודכנו בהצלחה!`);
+                    loadAllLeads();
+                } else {
+                    alert('❌ שגיאה בתיקון התאריכים');
+                }
+            } catch (error) {
+                alert('❌ שגיאה בתיקון התאריכים');
+                console.error(error);
+            }
         }
 
         function manageUsers() {

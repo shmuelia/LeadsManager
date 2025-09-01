@@ -693,7 +693,7 @@ def upload_csv():
                         row.get('מספר טלפון'))
                 
                 # Also try to get created date and other info
-                created_date = (row.get('נוצר') or row.get('created_time') or 
+                created_date = (row.get('﻿נוצר') or row.get('נוצר') or row.get('created_time') or 
                               row.get('Created Time') or row.get('date') or 
                               row.get('Date') or row.get('תאריך'))
                 
@@ -718,15 +718,20 @@ def upload_csv():
                 if created_date:
                     try:
                         # Try to parse the Hebrew date format from your CSV
-                        # e.g., "09/01/2025 1:39am" 
+                        # e.g., "12/10/2024 12:36am" 
                         from datetime import datetime
                         import re
                         
-                        # Remove "am/pm" and convert to 24h format if needed
-                        date_str = created_date.replace('am', '').replace('pm', '').strip()
-                        created_time = datetime.strptime(date_str, '%m/%d/%Y %I:%M')
-                    except:
-                        logger.warning(f"Could not parse date: {created_date}")
+                        # Handle am/pm format properly
+                        if 'am' in created_date.lower() or 'pm' in created_date.lower():
+                            # Use %I for 12-hour format with %p for AM/PM
+                            date_str = created_date.replace('am', ' AM').replace('pm', ' PM')
+                            created_time = datetime.strptime(date_str, '%m/%d/%Y %I:%M %p')
+                        else:
+                            # Try 24-hour format
+                            created_time = datetime.strptime(created_date, '%m/%d/%Y %H:%M')
+                    except Exception as e:
+                        logger.warning(f"Could not parse date '{created_date}': {e}")
                         pass
                 
                 # Insert lead
@@ -1042,6 +1047,70 @@ def get_users_api():
         
     except Exception as e:
         logger.error(f"Error fetching users: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/fix-dates', methods=['POST'])
+@admin_required
+def fix_lead_dates():
+    """Update existing leads to parse creation dates from raw_data"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Find leads with null created_time but date in raw_data
+        cur.execute("""
+            SELECT id, raw_data 
+            FROM leads 
+            WHERE created_time IS NULL AND raw_data IS NOT NULL
+        """)
+        
+        leads_to_update = cur.fetchall()
+        updated_count = 0
+        
+        for lead in leads_to_update:
+            raw_data = lead['raw_data']
+            created_date = None
+            
+            # Try to find date in raw_data
+            if isinstance(raw_data, dict):
+                created_date = (raw_data.get('﻿נוצר') or raw_data.get('נוצר') or 
+                               raw_data.get('created_time') or raw_data.get('Created Time'))
+            
+            if created_date:
+                try:
+                    # Parse the date
+                    if 'am' in created_date.lower() or 'pm' in created_date.lower():
+                        date_str = created_date.replace('am', ' AM').replace('pm', ' PM')
+                        created_time = datetime.strptime(date_str, '%m/%d/%Y %I:%M %p')
+                    else:
+                        created_time = datetime.strptime(created_date, '%m/%d/%Y %H:%M')
+                    
+                    # Update the lead
+                    cur.execute("""
+                        UPDATE leads SET created_time = %s WHERE id = %s
+                    """, (created_time, lead['id']))
+                    
+                    updated_count += 1
+                    logger.info(f"Updated lead {lead['id']} with date {created_time}")
+                    
+                except Exception as e:
+                    logger.warning(f"Could not parse date '{created_date}' for lead {lead['id']}: {e}")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Updated {updated_count} leads with creation dates',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fixing dates: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/users/create', methods=['POST'])
