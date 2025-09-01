@@ -390,18 +390,36 @@ def get_lead(lead_id):
             conn.close()
             return jsonify({'error': 'Lead not found'}), 404
         
+        # Get activities for this lead
+        cur.execute("""
+            SELECT user_name, activity_type, description, call_duration, call_outcome, 
+                   previous_status, new_status, activity_date, activity_metadata
+            FROM lead_activities 
+            WHERE lead_id = %s 
+            ORDER BY activity_date DESC
+        """, (lead_id,))
+        
+        activities = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
         # Convert to JSON-serializable format
         lead_dict = dict(lead)
         for key in ['created_time', 'received_at', 'updated_at']:
             if lead_dict[key]:
                 lead_dict[key] = lead_dict[key].isoformat()
         
-        cur.close()
-        conn.close()
+        # Convert activities to JSON-serializable format
+        activities_list = []
+        for activity in activities:
+            activity_dict = dict(activity)
+            activity_dict['activity_date'] = activity_dict['activity_date'].isoformat() if activity_dict['activity_date'] else None
+            activities_list.append(activity_dict)
         
         return jsonify({
             'lead': lead_dict,
-            'activities': []  # Activities can be added later
+            'activities': activities_list
         })
         
     except Exception as e:

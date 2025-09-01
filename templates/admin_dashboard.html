@@ -274,6 +274,20 @@
         </div>
     </div>
 
+    <!-- Lead Details Modal -->
+    <div id="leadDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="background: white; margin: 2% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 800px; max-height: 90%; overflow-y: auto; direction: rtl;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px;">
+                <h2 style="color: #2c3e50;">📋 פרטי ליד מלאים</h2>
+                <button onclick="closeLeadDetails()" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2em;">✖️</button>
+            </div>
+            
+            <div id="leadDetailsContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <script>
         let selectedLeads = new Set();
         let allLeads = [];
@@ -380,6 +394,7 @@
                                 <td>${lead.campaign_name || '-'}</td>
                                 <td>${formatDate(lead.received_at)}</td>
                                 <td>
+                                    <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="viewLeadDetails(${lead.id})">👁️ פרטים</button>
                                     <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="editLead(${lead.id})">✏️ ערוך</button>
                                     <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="deleteLead(${lead.id})">🗑️ מחק</button>
                                 </td>
@@ -516,6 +531,132 @@
 
         function editLead(leadId) {
             alert(`עריכת ליד ${leadId} - תכונה זו תמומש בקרוב`);
+        }
+
+        async function viewLeadDetails(leadId) {
+            try {
+                const response = await fetch(`/leads/${leadId}`);
+                const data = await response.json();
+                
+                if (data.lead) {
+                    displayLeadDetails(data.lead, data.activities || []);
+                    document.getElementById('leadDetailsModal').style.display = 'block';
+                } else {
+                    alert('שגיאה בטעינת פרטי הליד');
+                }
+            } catch (error) {
+                console.error('Error loading lead details:', error);
+                alert('שגיאה בטעינת פרטי הליד');
+            }
+        }
+
+        function displayLeadDetails(lead, activities) {
+            const content = document.getElementById('leadDetailsContent');
+            
+            // Parse raw_data for Hebrew job questions
+            let jobData = {};
+            try {
+                if (lead.raw_data && typeof lead.raw_data === 'object') {
+                    jobData = lead.raw_data;
+                } else if (lead.raw_data && typeof lead.raw_data === 'string') {
+                    jobData = JSON.parse(lead.raw_data);
+                }
+            } catch (e) {
+                console.log('Could not parse raw_data:', e);
+            }
+
+            content.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                    <div>
+                        <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #3498db; padding-bottom: 10px;">👤 פרטים אישיים</h3>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                            <p><strong>שם:</strong> ${lead.name || 'לא צוין'}</p>
+                            <p><strong>אימייל:</strong> ${lead.email || 'לא צוין'}</p>
+                            <p><strong>טלפון:</strong> ${lead.phone || 'לא צוין'}</p>
+                            <p><strong>סטטוס:</strong> <span class="status-badge status-${lead.status}">${getStatusInHebrew(lead.status)}</span></p>
+                            <p><strong>עדיפות:</strong> ${lead.priority || 0}</p>
+                            <p><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e67e22; padding-bottom: 10px;">📅 מידע זמני</h3>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                            <p><strong>תאריך יצירה בפייסבוק:</strong> ${lead.created_time ? formatDate(lead.created_time) : 'לא ידוע'}</p>
+                            <p><strong>התקבל במערכת:</strong> ${formatDate(lead.received_at)}</p>
+                            <p><strong>עדכון אחרון:</strong> ${lead.updated_at ? formatDate(lead.updated_at) : 'לא עודכן'}</p>
+                            <p><strong>פלטפורמה:</strong> ${lead.platform === 'ig' ? 'אינסטגרם' : lead.platform || 'פייסבוק'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">🎯 פרטי קמפיין</h3>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        <p><strong>שם קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</p>
+                        <p><strong>שם טופס:</strong> ${lead.form_name || 'לא צוין'}</p>
+                        <p><strong>מקור הליד:</strong> ${lead.lead_source || 'לא ידוע'}</p>
+                        <p><strong>מזהה חיצוני:</strong> ${lead.external_lead_id || 'לא קיים'}</p>
+                    </div>
+                </div>
+
+                ${jobData && Object.keys(jobData).length > 0 ? `
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #9b59b6; padding-bottom: 10px;">💼 מידע מקצועי מהטופס</h3>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        ${Object.entries(jobData).map(([key, value]) => {
+                            if (key === 'raw' || typeof value === 'object') return '';
+                            return `<p><strong>${key.replace(/_/g, ' ')}:</strong> ${value || 'לא מולא'}</p>`;
+                        }).join('')}
+                        
+                        ${jobData.raw ? `
+                        <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-right: 4px solid #9b59b6;">
+                            <h4 style="color: #9b59b6; margin-bottom: 10px;">תשובות מפורטות:</h4>
+                            ${Object.entries(jobData.raw).map(([question, answer]) => `
+                                <div style="margin-bottom: 15px; padding: 10px; background: #f1f2f6; border-radius: 5px;">
+                                    <strong style="color: #2c3e50;">${question}:</strong>
+                                    <div style="margin-top: 5px; color: #34495e;">${answer || 'לא נענה'}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${lead.notes ? `
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e74c3c; padding-bottom: 10px;">📝 הערות מנהל</h3>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        <p>${lead.notes}</p>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${activities && activities.length > 0 ? `
+                <div>
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #f39c12; padding-bottom: 10px;">📈 היסטוריית פעילות</h3>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; max-height: 300px; overflow-y: auto;">
+                        ${activities.map(activity => `
+                            <div style="margin-bottom: 15px; padding: 15px; background: white; border-radius: 8px; border-right: 4px solid #3498db;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span style="font-weight: bold; color: #2c3e50;">${activity.user_name}</span>
+                                    <span style="color: #7f8c8d; font-size: 0.9em;">${formatDate(activity.activity_date)}</span>
+                                </div>
+                                <div style="color: #34495e;">
+                                    <strong>${activity.activity_type}</strong>: ${activity.description || 'ללא תיאור'}
+                                </div>
+                                ${activity.call_outcome ? `<div style="color: #27ae60; font-size: 0.9em;">תוצאה: ${activity.call_outcome}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : '<div><h3 style="color: #7f8c8d;">📈 אין פעילות עדיין</h3></div>'}
+            `;
+        }
+
+        function closeLeadDetails() {
+            document.getElementById('leadDetailsModal').style.display = 'none';
         }
 
         function deleteLead(leadId) {
