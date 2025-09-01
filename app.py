@@ -1181,6 +1181,12 @@ def get_users_api():
         # Campaign Manager query - only their customer's users
         elif user_role == 'campaign_manager':
             logger.info(f"Campaign manager {session.get('username')} requesting users for customer {user_customer_id}")
+            logger.info(f"Session data: {dict(session)}")  # Debug session data
+            
+            if not user_customer_id:
+                logger.error(f"Campaign manager {session.get('username')} has no customer_id in session!")
+                return jsonify({'error': 'No customer assigned to your account'}), 400
+                
             cur.execute("""
                 SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
                        u.customer_id, c.name as customer_name, u.plain_password
