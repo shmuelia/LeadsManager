@@ -1290,46 +1290,57 @@
                 return;
             }
 
-            const table = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>פעולות</th>
-                            <th>סטטוס</th>
-                            <th>תפקיד</th>
-                            <th>שם מלא</th>
-                            <th>שם משתמש</th>
-                            <th>סיסמה נוכחית</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${users.map(user => `
+            try {
+                const table = `
+                    <table>
+                        <thead>
                             <tr>
-                                <td>
-                                    <button class="action-btn primary" onclick="editUser(${user.id})">✏️ עריכה</button>
-                                    <button class="action-btn" onclick="toggleUserStatus(${user.id}, ${!user.active})" 
-                                            style="background: ${user.active ? '#dc2626' : '#059669'}; color: white;">
-                                        ${user.active ? '❌ השבת' : '✅ הפעל'}
-                                    </button>
-                                </td>
-                                <td>
-                                    <span class="status-badge ${user.active ? 'status-qualified' : 'status-closed'}">
-                                        ${user.active ? 'פעיל' : 'לא פעיל'}
-                                    </span>
-                                </td>
-                                <td>${getRoleLabel(user.role)}</td>
-                                <td><strong>${user.full_name || 'לא צוין'}</strong></td>
-                                <td>${user.username}</td>
-                                <td style="font-family: monospace; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
-                                    ${user.plain_password || 'לא זמין'}
-                                </td>
+                                <th>פעולות</th>
+                                <th>סטטוס</th>
+                                <th>תפקיד</th>
+                                <th>שם מלא</th>
+                                <th>שם משתמש</th>
+                                <th>סיסמה נוכחית</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            
-            container.innerHTML = table;
+                        </thead>
+                        <tbody>
+                            ${users.map(user => {
+                                console.log('Processing user:', user);
+                                return `
+                                    <tr>
+                                        <td>
+                                            <button class="action-btn primary" onclick="editUser(${user.id})">✏️ עריכה</button>
+                                            <button class="action-btn" onclick="toggleUserStatus(${user.id}, ${!user.active})" 
+                                                    style="background: ${user.active ? '#dc2626' : '#059669'}; color: white;">
+                                                ${user.active ? '❌ השבת' : '✅ הפעל'}
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge ${user.active ? 'status-qualified' : 'status-closed'}">
+                                                ${user.active ? 'פעיל' : 'לא פעיל'}
+                                            </span>
+                                        </td>
+                                        <td>${getRoleLabel(user.role)}</td>
+                                        <td><strong>${user.full_name || 'לא צוין'}</strong></td>
+                                        <td>${user.username}</td>
+                                        <td style="font-family: monospace; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                                            ${user.plain_password || 'לא זמין'}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                console.log('Generated table HTML length:', table.length);
+                container.innerHTML = table;
+                console.log('Table inserted successfully');
+                
+            } catch (error) {
+                console.error('Error in renderUsersTable:', error);
+                container.innerHTML = '<div class="loading">שגיאה בהצגת המשתמשים: ' + error.message + '</div>';
+            }
         }
 
         function getRoleLabel(role) {
