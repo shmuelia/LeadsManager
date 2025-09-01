@@ -538,6 +538,17 @@
         </div>
     </div>
 
+    <!-- Details Modal -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('detailsModal')">&times;</span>
+            <h3>פרטי ליד מלאים</h3>
+            <div id="detailsContent" style="max-height: 70vh; overflow-y: auto;">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
     <!-- Call Result Modal -->
     <div id="callModal" class="modal">
         <div class="modal-content">
@@ -681,6 +692,9 @@
                     <button onclick="showNoteModal(${lead.id})" class="action-btn note-btn">
                         📝 הוסף הערה
                     </button>
+                    <button onclick="showDetailsModal(${lead.id})" class="action-btn details-btn">
+                        🔍 פרטים מלאים
+                    </button>
                 </div>
                 ` : `
                 <div class="actions">
@@ -689,6 +703,9 @@
                     </button>
                     <button onclick="showNoteModal(${lead.id})" class="action-btn note-btn">
                         📝 הוסף הערה
+                    </button>
+                    <button onclick="showDetailsModal(${lead.id})" class="action-btn details-btn">
+                        🔍 פרטים מלאים
                     </button>
                 </div>
                 `}
@@ -823,6 +840,152 @@
             currentLeadId = leadId;
             document.getElementById('noteText').value = '';
             showModal('noteModal');
+        }
+
+        async function showDetailsModal(leadId) {
+            currentLeadId = leadId;
+            const lead = allLeads.find(l => l.id === leadId);
+            
+            if (!lead) return;
+            
+            // Build details HTML with mobile-friendly layout
+            let detailsHTML = `
+                <div style="padding: 10px;">
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📋 פרטים בסיסיים</h4>
+                        <p><strong>שם:</strong> ${lead.name || 'לא צוין'}</p>
+                        <p><strong>טלפון:</strong> ${lead.phone || 'לא צוין'}</p>
+                        <p><strong>אימייל:</strong> ${lead.email || 'לא צוין'}</p>
+                        <p><strong>סטטוס:</strong> ${statusMap[lead.status] || lead.status}</p>
+                        ${lead.assigned_to ? `<p><strong>מוקצה ל:</strong> ${lead.assigned_to}</p>` : ''}
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📅 תאריכים</h4>
+                        <p><strong>נוצר בפייסבוק:</strong> ${formatDate(lead.created_time || lead.received_at)}</p>
+                        <p><strong>התקבל במערכת:</strong> ${formatDate(lead.received_at)}</p>
+                        <p><strong>עודכן לאחרונה:</strong> ${formatDate(lead.updated_at)}</p>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">🎯 מקור הליד</h4>
+                        <p><strong>קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</p>
+                        <p><strong>טופס:</strong> ${lead.form_name || 'לא צוין'}</p>
+                        <p><strong>פלטפורמה:</strong> ${lead.platform || 'facebook'}</p>
+                        <p><strong>מקור:</strong> ${lead.lead_source || 'לא צוין'}</p>
+                    </div>
+            `;
+            
+            // Add job info if available
+            const jobInfo = parseJobInfo(lead.raw_data);
+            if (jobInfo) {
+                detailsHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">💼 פרטי מועמדות</h4>
+                        <p><strong>ניסיון בתחום:</strong> ${jobInfo.hasExperience}</p>
+                        <p><strong>מיקום מגורים:</strong> ${jobInfo.location}</p>
+                        <p><strong>תיאור עצמי:</strong></p>
+                        <div style="background: #f4f4f4; padding: 10px; border-radius: 5px; margin-top: 5px;">
+                            ${jobInfo.description}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add all raw data fields
+            if (lead.raw_data && Object.keys(lead.raw_data).length > 0) {
+                detailsHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📊 כל הנתונים</h4>
+                        <div style="background: #f9f9f9; padding: 10px; border-radius: 5px;">
+                `;
+                
+                for (const [key, value] of Object.entries(lead.raw_data)) {
+                    if (value && value !== '') {
+                        detailsHTML += `<p style="margin: 5px 0;"><strong>${key}:</strong> ${value}</p>`;
+                    }
+                }
+                
+                detailsHTML += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add notes if available
+            if (lead.notes) {
+                detailsHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📝 הערות</h4>
+                        <div style="background: #fffbf0; padding: 10px; border-radius: 5px;">
+                            ${lead.notes}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Load activity history
+            try {
+                const response = await fetch(`/leads/${leadId}`);
+                const leadData = await response.json();
+                
+                if (leadData.activities && leadData.activities.length > 0) {
+                    detailsHTML += `
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 10px;">📜 היסטוריית פעילות</h4>
+                            <div style="background: #f9f9f9; padding: 10px; border-radius: 5px;">
+                    `;
+                    
+                    leadData.activities.forEach(activity => {
+                        const activityDate = new Date(activity.activity_date);
+                        detailsHTML += `
+                            <div style="border-bottom: 1px solid #ddd; padding: 10px 0;">
+                                <p style="margin: 0;"><strong>${formatDate(activity.activity_date)}</strong></p>
+                                <p style="margin: 5px 0;">👤 ${activity.user_name}</p>
+                                <p style="margin: 5px 0;">📌 ${getActivityTypeLabel(activity.activity_type)}</p>
+                                ${activity.description ? `<p style="margin: 5px 0;">💬 ${activity.description}</p>` : ''}
+                                ${activity.call_outcome ? `<p style="margin: 5px 0;">📞 תוצאה: ${getCallOutcomeLabel(activity.call_outcome)}</p>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    detailsHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading activities:', error);
+            }
+            
+            detailsHTML += '</div>';
+            
+            document.getElementById('detailsContent').innerHTML = detailsHTML;
+            showModal('detailsModal');
+        }
+        
+        function getActivityTypeLabel(type) {
+            const types = {
+                'call': '📞 שיחה',
+                'whatsapp': '💬 וואטסאפ',
+                'email': '📧 אימייל',
+                'note': '📝 הערה',
+                'status_change': '🔄 שינוי סטטוס',
+                'assignment': '👤 הקצאה'
+            };
+            return types[type] || type;
+        }
+        
+        function getCallOutcomeLabel(outcome) {
+            const outcomes = {
+                'answered': 'נענה',
+                'no_answer': 'לא נענה',
+                'busy': 'תפוס',
+                'interested': 'מעוניין',
+                'not_interested': 'לא מעוניין',
+                'callback': 'לחזור אליו'
+            };
+            return outcomes[outcome] || outcome;
         }
         
         async function updateStatus() {
