@@ -225,6 +225,94 @@
             background: #2980b9;
         }
         
+        .status-btn {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-btn:hover {
+            background: #e67e22;
+        }
+        
+        .note-btn {
+            background: #9b59b6;
+            color: white;
+        }
+        
+        .note-btn:hover {
+            background: #8e44ad;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            text-align: right;
+            direction: rtl;
+        }
+        
+        .close {
+            color: #aaa;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: black;
+        }
+        
+        .modal-form {
+            margin-top: 20px;
+        }
+        
+        .modal-form select, .modal-form textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            direction: rtl;
+        }
+        
+        .modal-form button {
+            background: #27ae60;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .modal-form button:hover {
+            background: #229954;
+        }
+        
+        .modal-form .cancel-btn {
+            background: #e74c3c;
+        }
+        
+        .modal-form .cancel-btn:hover {
+            background: #c0392b;
+        }
+        
         .job-info {
             background: #ecf0f1;
             border-radius: 8px;
@@ -343,6 +431,68 @@
         </div>
     </div>
 
+    <!-- Status Update Modal -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('statusModal')">&times;</span>
+            <h3>עדכון סטטוס ליד</h3>
+            <div class="modal-form">
+                <label>סטטוס חדש:</label>
+                <select id="newStatus">
+                    <option value="new">חדש</option>
+                    <option value="contacted">נוצר קשר</option>
+                    <option value="qualified">מוכשר</option>
+                    <option value="interested">מעוניין</option>
+                    <option value="not_interested">לא מעוניין</option>
+                    <option value="callback">להתקשר חזרה</option>
+                    <option value="interview_scheduled">נקבע ראיון</option>
+                    <option value="hired">התקבל לעבודה</option>
+                    <option value="rejected">נדחה</option>
+                    <option value="closed">סגור</option>
+                </select>
+                <button onclick="updateStatus()">עדכן סטטוס</button>
+                <button onclick="closeModal('statusModal')" class="cancel-btn">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Note Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('noteModal')">&times;</span>
+            <h3>הוספת הערה</h3>
+            <div class="modal-form">
+                <label>הערה:</label>
+                <textarea id="noteText" rows="4" placeholder="הכנס הערה..."></textarea>
+                <button onclick="addNote()">שמור הערה</button>
+                <button onclick="closeModal('noteModal')" class="cancel-btn">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call Result Modal -->
+    <div id="callModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('callModal')">&times;</span>
+            <h3>תוצאת השיחה</h3>
+            <div class="modal-form">
+                <label>תוצאה:</label>
+                <select id="callOutcome">
+                    <option value="answered">נענה</option>
+                    <option value="no_answer">לא נענה</option>
+                    <option value="busy">תפוס</option>
+                    <option value="voicemail">תא קולי</option>
+                </select>
+                <label>משך השיחה (דקות):</label>
+                <input type="number" id="callDuration" placeholder="0" min="0">
+                <label>הערות:</label>
+                <textarea id="callNotes" rows="3" placeholder="הערות על השיחה..."></textarea>
+                <button onclick="saveCallResult()">שמור</button>
+                <button onclick="closeModal('callModal')" class="cancel-btn">ביטול</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '';
         
@@ -399,19 +549,30 @@
                 
                 ${lead.phone ? `
                 <div class="actions">
-                    <a href="tel:${lead.phone}" class="action-btn call-btn">
+                    <button onclick="makeCall(${lead.id}, '${lead.phone}', '${lead.name}')" class="action-btn call-btn">
                         📞 התקשר
-                    </a>
+                    </button>
                     <a href="https://wa.me/${lead.phone}?text=שלום ${lead.name}, התקבלה פנייתך למשרה באלחנן מאפיית לחם" 
-                       target="_blank" class="action-btn whatsapp-btn">
+                       target="_blank" class="action-btn whatsapp-btn" onclick="logActivity(${lead.id}, 'whatsapp', 'הודעת WhatsApp נשלחה')">
                         💬 WhatsApp
                     </a>
-                    <a href="mailto:${lead.email}?subject=בנוגע לפנייתך למשרה באלחנן מאפיית לחם" 
-                       class="action-btn email-btn">
-                        ✉️ אימייל
-                    </a>
+                    <button onclick="showStatusModal(${lead.id}, '${lead.status}')" class="action-btn status-btn">
+                        📋 עדכן סטטוס
+                    </button>
+                    <button onclick="showNoteModal(${lead.id})" class="action-btn note-btn">
+                        📝 הוסף הערה
+                    </button>
                 </div>
-                ` : ''}
+                ` : `
+                <div class="actions">
+                    <button onclick="showStatusModal(${lead.id}, '${lead.status}')" class="action-btn status-btn">
+                        📋 עדכן סטטוס
+                    </button>
+                    <button onclick="showNoteModal(${lead.id})" class="action-btn note-btn">
+                        📝 הוסף הערה
+                    </button>
+                </div>
+                `}
                 
                 ${jobInfo ? `
                 <div class="job-info">
@@ -484,6 +645,166 @@
             const today = new Date().toDateString();
             const todayLeads = leads.filter(l => new Date(l.received_at).toDateString() === today);
             document.getElementById('todayLeads').textContent = todayLeads.length;
+        }
+        
+        // Global variables for modal state
+        let currentLeadId = null;
+        let currentLeadStatus = null;
+        
+        // Activity logging functions
+        async function makeCall(leadId, phone, name) {
+            // Open phone dialer
+            window.location.href = `tel:${phone}`;
+            
+            // Show call result modal after a delay
+            setTimeout(() => {
+                currentLeadId = leadId;
+                showModal('callModal');
+            }, 1000);
+        }
+        
+        async function logActivity(leadId, activityType, description, metadata = {}) {
+            try {
+                const response = await fetch(`/leads/${leadId}/activity`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_name: 'משתמש', // TODO: Get actual user name
+                        activity_type: activityType,
+                        description: description,
+                        metadata: metadata
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    // Optionally show success message
+                    console.log('פעילות נרשמה:', description);
+                }
+            } catch (error) {
+                console.error('שגיאה בתיעוד פעילות:', error);
+            }
+        }
+        
+        function showStatusModal(leadId, currentStatus) {
+            currentLeadId = leadId;
+            currentLeadStatus = currentStatus;
+            document.getElementById('newStatus').value = currentStatus;
+            showModal('statusModal');
+        }
+        
+        function showNoteModal(leadId) {
+            currentLeadId = leadId;
+            document.getElementById('noteText').value = '';
+            showModal('noteModal');
+        }
+        
+        async function updateStatus() {
+            const newStatus = document.getElementById('newStatus').value;
+            
+            try {
+                const response = await fetch(`/leads/${currentLeadId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: newStatus,
+                        user_name: 'משתמש' // TODO: Get actual user name
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    closeModal('statusModal');
+                    loadLeads(); // Refresh the leads list
+                    alert('סטטוס עודכן בהצלחה!');
+                } else {
+                    alert('שגיאה בעדכון הסטטוס');
+                }
+            } catch (error) {
+                alert('שגיאה בעדכון הסטטוס');
+                console.error(error);
+            }
+        }
+        
+        async function addNote() {
+            const noteText = document.getElementById('noteText').value;
+            if (!noteText.trim()) {
+                alert('אנא הכנס הערה');
+                return;
+            }
+            
+            await logActivity(currentLeadId, 'note', noteText);
+            closeModal('noteModal');
+            alert('הערה נוספה בהצלחה!');
+        }
+        
+        async function saveCallResult() {
+            const outcome = document.getElementById('callOutcome').value;
+            const duration = parseInt(document.getElementById('callDuration').value) || 0;
+            const notes = document.getElementById('callNotes').value;
+            
+            try {
+                const response = await fetch(`/leads/${currentLeadId}/activity`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_name: 'משתמש', // TODO: Get actual user name
+                        activity_type: 'call',
+                        description: `שיחה - ${getOutcomeInHebrew(outcome)}${notes ? ': ' + notes : ''}`,
+                        call_duration: duration * 60, // Convert to seconds
+                        call_outcome: outcome,
+                        metadata: { notes: notes }
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    closeModal('callModal');
+                    alert('תוצאת השיחה נשמרה!');
+                    
+                    // If call was successful, maybe update status
+                    if (outcome === 'answered') {
+                        showStatusModal(currentLeadId, currentLeadStatus);
+                    }
+                }
+            } catch (error) {
+                alert('שגיאה בשמירת תוצאת השיחה');
+                console.error(error);
+            }
+        }
+        
+        function getOutcomeInHebrew(outcome) {
+            const outcomes = {
+                'answered': 'נענה',
+                'no_answer': 'לא נענה', 
+                'busy': 'תפוס',
+                'voicemail': 'תא קולי'
+            };
+            return outcomes[outcome] || outcome;
+        }
+        
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
         }
         
         // Load leads when page loads

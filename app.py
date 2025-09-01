@@ -1,12 +1,15 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
 import json
 import logging
 import os
+import hashlib
+from functools import wraps
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +44,7 @@ def init_database():
         cur = conn.cursor()
         
         # Create leads table
+        # Create leads table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS leads (
                 id SERIAL PRIMARY KEY,
@@ -63,6 +67,46 @@ def init_database():
             );
         """)
         
+        # Create users table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                email VARCHAR(255),
+                role VARCHAR(50) DEFAULT 'user',
+                department VARCHAR(100),
+                active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # Create activities table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS lead_activities (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                user_name VARCHAR(255) NOT NULL,
+                activity_type VARCHAR(50) NOT NULL,
+                description TEXT,
+                call_duration INTEGER,
+                call_outcome VARCHAR(100),
+                previous_status VARCHAR(50),
+                new_status VARCHAR(50),
+                activity_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                activity_metadata JSONB
+            );
+        """)
+        
+        # Insert default admin user if not exists
+        cur.execute("""
+            INSERT INTO users (username, password_hash, full_name, email, role, department)
+            VALUES ('admin', %s, 'System Administrator', 'admin@leadmanager.com', 'admin', 'management')
+            ON CONFLICT (username) DO NOTHING;
+        """, (hash_password('admin123'),))
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -73,9 +117,99 @@ def init_database():
         logger.error(f"Database initialization error: {e}")
         return False
 
+# Authentication decorators
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('role') != 'admin':
+            flash('נדרשות הרשאות מנהל לצפייה בדף זה')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def hash_password(password):
+    """Simple MD5 hash for passwords (upgrade to bcrypt in production)"""
+    return hashlib.md5(password.encode()).hexdigest()
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return render_template('login.html')
+    
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        flash('שם משתמש וסיסמה נדרשים')
+        return render_template('login.html')
+    
+    try:
+        conn = get_db_connection()
+        if not conn:
+            flash('שגיאה בהתחברות למסד הנתונים')
+            return render_template('login.html')
+        
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, username, full_name, role, active 
+            FROM users 
+            WHERE username = %s AND password_hash = %s AND active = true
+        """, (username, hash_password(password)))
+        
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if user:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['full_name'] = user['full_name']
+            session['role'] = user['role']
+            
+            flash(f'ברוך הבא, {user["full_name"]}!')
+            
+            # Redirect based on role
+            if user['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('dashboard'))
+        else:
+            flash('שם משתמש או סיסמה שגויים')
+            return render_template('login.html')
+            
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        flash('שגיאה בהתחברות')
+        return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('התנתקת בהצלחה')
+    return redirect(url_for('login'))
+
 @app.route('/')
 def home():
-    """Home page showing server status"""
+    """Home page - redirect to login if not authenticated"""
+    if 'user_id' in session:
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+@app.route('/status')
+def server_status():
+    """Public server status endpoint"""
     try:
         conn = get_db_connection()
         if conn:
@@ -275,6 +409,7 @@ def get_lead(lead_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     """Beautiful web dashboard for viewing leads"""
     return render_template('dashboard.html')
@@ -679,6 +814,272 @@ def test():
         'webhook_ready': True,
         'database_url_present': bool(DATABASE_URL)
     })
+
+@app.route('/leads/<int:lead_id>/activity', methods=['POST'])
+def add_activity():
+    """Add activity to a lead"""
+    try:
+        activity_data = request.get_json()
+        lead_id = request.view_args['lead_id']
+        
+        if not activity_data:
+            return jsonify({'error': 'No activity data provided'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Insert activity
+        cur.execute("""
+            INSERT INTO lead_activities 
+            (lead_id, user_name, activity_type, description, call_duration, call_outcome, activity_metadata)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id;
+        """, (
+            lead_id,
+            activity_data.get('user_name', 'אנונימי'),
+            activity_data.get('activity_type'),
+            activity_data.get('description'),
+            activity_data.get('call_duration'),
+            activity_data.get('call_outcome'),
+            json.dumps(activity_data.get('metadata', {}))
+        ))
+        
+        activity_id = cur.fetchone()[0]
+        
+        # Update lead status if provided
+        if activity_data.get('new_status'):
+            cur.execute("""
+                UPDATE leads SET status = %s, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = %s
+            """, (activity_data.get('new_status'), lead_id))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"Activity added to lead {lead_id}: {activity_data.get('activity_type')}")
+        
+        return jsonify({
+            'status': 'success',
+            'activity_id': activity_id,
+            'message': 'פעילות נוספה בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding activity: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'שגיאה בהוספת הפעילות',
+            'error': str(e)
+        }), 500
+
+@app.route('/leads/<int:lead_id>/status', methods=['PUT'])
+def update_lead_status():
+    """Update lead status"""
+    try:
+        data = request.get_json()
+        lead_id = request.view_args['lead_id']
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Get current status
+        cur.execute("SELECT status FROM leads WHERE id = %s", (lead_id,))
+        result = cur.fetchone()
+        if not result:
+            return jsonify({'error': 'Lead not found'}), 404
+            
+        old_status = result[0]
+        new_status = data.get('status')
+        user_name = data.get('user_name', 'אנונימי')
+        
+        # Update status
+        cur.execute("""
+            UPDATE leads SET status = %s, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s
+        """, (new_status, lead_id))
+        
+        # Log status change activity
+        cur.execute("""
+            INSERT INTO lead_activities 
+            (lead_id, user_name, activity_type, description, previous_status, new_status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            lead_id, user_name, 'status_change',
+            f'סטטוס שונה מ-{old_status} ל-{new_status}',
+            old_status, new_status
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'סטטוס עודכן בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    """Admin-only dashboard - desktop design"""
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin/mass-close', methods=['POST'])
+def mass_close_leads():
+    """Admin: Mass close multiple leads"""
+    try:
+        data = request.get_json()
+        lead_ids = data.get('lead_ids', [])
+        user_name = data.get('user_name', 'Admin')
+        
+        if not lead_ids:
+            return jsonify({'error': 'No leads selected'}), 400
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        closed_count = 0
+        for lead_id in lead_ids:
+            # Update status
+            cur.execute("""
+                UPDATE leads SET status = 'closed', updated_at = CURRENT_TIMESTAMP 
+                WHERE id = %s AND status != 'closed'
+            """, (lead_id,))
+            
+            if cur.rowcount > 0:
+                # Log activity
+                cur.execute("""
+                    INSERT INTO lead_activities 
+                    (lead_id, user_name, activity_type, description, new_status)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (
+                    lead_id, user_name, 'status_change',
+                    'סגירה המונית על ידי מנהל', 'closed'
+                ))
+                closed_count += 1
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'closed_count': closed_count,
+            'message': f'{closed_count} לידים נסגרו בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in mass close: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users')
+@admin_required
+def manage_users():
+    """Admin: User management page"""
+    return render_template('user_management.html')
+
+@app.route('/admin/users/api')
+@admin_required
+def get_users_api():
+    """Admin: Get all users (API)"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, username, full_name, email, role, department, active, created_at
+            FROM users
+            ORDER BY created_at DESC
+        """)
+        
+        users = cur.fetchall()
+        
+        # Convert to JSON-serializable format
+        users_list = []
+        for user in users:
+            user_dict = dict(user)
+            user_dict['created_at'] = user_dict['created_at'].isoformat() if user_dict['created_at'] else None
+            users_list.append(user_dict)
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({'users': users_list})
+        
+    except Exception as e:
+        logger.error(f"Error fetching users: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users/create', methods=['POST'])
+@admin_required
+def create_user():
+    """Admin: Create new user"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['username', 'password', 'full_name', 'role']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check if username exists
+        cur.execute("SELECT id FROM users WHERE username = %s", (data['username'],))
+        if cur.fetchone():
+            return jsonify({'error': 'Username already exists'}), 400
+        
+        # Create user
+        cur.execute("""
+            INSERT INTO users (username, password_hash, full_name, email, role, department, active)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id;
+        """, (
+            data['username'],
+            hash_password(data['password']),
+            data['full_name'],
+            data.get('email'),
+            data['role'],
+            data.get('department'),
+            data.get('active', True)
+        ))
+        
+        user_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"User created: {data['username']} by {session.get('username')}")
+        
+        return jsonify({
+            'status': 'success',
+            'user_id': user_id,
+            'message': 'משתמש נוצר בהצלחה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
 def health_check():

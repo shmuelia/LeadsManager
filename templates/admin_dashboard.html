@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לוח בקרה מנהל - ניהול לידים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            min-height: 100vh;
+            direction: rtl;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #e74c3c;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .control-card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        
+        .admin-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .admin-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .admin-btn.secondary {
+            background: #34495e;
+        }
+        
+        .admin-btn.secondary:hover {
+            background: #2c3e50;
+        }
+        
+        .admin-btn.success {
+            background: #27ae60;
+        }
+        
+        .admin-btn.success:hover {
+            background: #229954;
+        }
+        
+        .leads-table {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: right;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .status-new { background: #3498db; }
+        .status-contacted { background: #f39c12; }
+        .status-qualified { background: #27ae60; }
+        .status-interested { background: #8bc34a; }
+        .status-not_interested { background: #e74c3c; }
+        .status-callback { background: #9b59b6; }
+        .status-hired { background: #00c851; }
+        .status-closed { background: #78909c; }
+        
+        .checkbox {
+            transform: scale(1.2);
+        }
+        
+        .bulk-actions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #bdc3c7;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔧 לוח בקרה מנהל</h1>
+            <p>ניהול מתקדם של מערכת הלידים - אלחנן מאפיית לחם</p>
+        </div>
+        
+        <!-- Admin Controls -->
+        <div class="admin-controls">
+            <div class="control-card">
+                <h3>📊 סטטיסטיקות מערכת</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalLeads">-</div>
+                        <div class="stat-label">סה"כ לידים</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="activeLeads">-</div>
+                        <div class="stat-label">פעילים</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="hiredCount">-</div>
+                        <div class="stat-label">התקבלו</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="todayActivities">-</div>
+                        <div class="stat-label">פעילויות היום</div>
+                    </div>
+                </div>
+                <button class="admin-btn success" onclick="loadStats()">🔄 רענן סטטיסטיקות</button>
+            </div>
+            
+            <div class="control-card">
+                <h3>🔧 פעולות מנהל</h3>
+                <button class="admin-btn" onclick="downloadReport()">📊 הורד דוח Excel</button>
+                <button class="admin-btn secondary" onclick="openUserDashboard()">👥 לוח משתמשים</button>
+                <button class="admin-btn secondary" onclick="showBulkActions()">📋 פעולות המוניות</button>
+            </div>
+            
+            <div class="control-card">
+                <h3>⚙️ הגדרות מערכת</h3>
+                <button class="admin-btn secondary" onclick="exportDatabase()">💾 גיבוי מסד נתונים</button>
+                <button class="admin-btn secondary" onclick="manageUsers()">👤 ניהול משתמשים</button>
+            </div>
+        </div>
+        
+        <!-- Leads Management Table -->
+        <div class="leads-table">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>📋 ניהול כל הלידים</h2>
+                <div>
+                    <button class="admin-btn success" onclick="loadAllLeads()">🔄 רענן רשימה</button>
+                    <button class="admin-btn" onclick="selectAll()">☑️ בחר הכל</button>
+                    <button class="admin-btn secondary" onclick="clearSelection()">☐ נקה בחירה</button>
+                </div>
+            </div>
+            
+            <div id="leadsTableContainer">
+                <div class="loading">טוען נתוני לידים...</div>
+            </div>
+            
+            <!-- Bulk Actions -->
+            <div class="bulk-actions" id="bulkActions" style="display: none;">
+                <h4>פעולות על לידים נבחרים:</h4>
+                <button class="admin-btn" onclick="massClose()">🔒 סגור הכל</button>
+                <button class="admin-btn secondary" onclick="massAssign()">👤 הקצה למשתמש</button>
+                <button class="admin-btn secondary" onclick="massExport()">📤 יצא לאקסל</button>
+                <span id="selectedCount" style="margin-right: 20px; font-weight: bold;">0 נבחרו</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedLeads = new Set();
+        let allLeads = [];
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/leads');
+                const data = await response.json();
+                const leads = data.leads || [];
+                
+                document.getElementById('totalLeads').textContent = leads.length;
+                document.getElementById('activeLeads').textContent = 
+                    leads.filter(l => !['closed', 'hired', 'rejected'].includes(l.status)).length;
+                document.getElementById('hiredCount').textContent = 
+                    leads.filter(l => l.status === 'hired').length;
+                
+                // TODO: Load activities count
+                document.getElementById('todayActivities').textContent = '?';
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadAllLeads() {
+            try {
+                const response = await fetch('/leads');
+                const data = await response.json();
+                allLeads = data.leads || [];
+                
+                displayLeadsTable(allLeads);
+                loadStats();
+                
+            } catch (error) {
+                console.error('Error loading leads:', error);
+                document.getElementById('leadsTableContainer').innerHTML = 
+                    '<div class="loading">שגיאה בטעינת הלידים</div>';
+            }
+        }
+
+        function displayLeadsTable(leads) {
+            const container = document.getElementById('leadsTableContainer');
+            
+            if (leads.length === 0) {
+                container.innerHTML = '<div class="loading">אין לידים להצגה</div>';
+                return;
+            }
+
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheck" onchange="toggleSelectAll()"></th>
+                            <th>שם</th>
+                            <th>אימייל</th>
+                            <th>טלפון</th>
+                            <th>סטטוס</th>
+                            <th>קמפיין</th>
+                            <th>תאריך יצירה</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${leads.map(lead => `
+                            <tr>
+                                <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="updateSelection()"></td>
+                                <td><strong>${lead.name || 'ללא שם'}</strong></td>
+                                <td>${lead.email || '-'}</td>
+                                <td>${lead.phone || '-'}</td>
+                                <td><span class="status-badge status-${lead.status}">${getStatusInHebrew(lead.status)}</span></td>
+                                <td>${lead.campaign_name || '-'}</td>
+                                <td>${formatDate(lead.received_at)}</td>
+                                <td>
+                                    <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="editLead(${lead.id})">✏️ ערוך</button>
+                                    <button class="admin-btn" style="padding: 5px 10px; font-size: 0.8em;" onclick="deleteLead(${lead.id})">🗑️ מחק</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = table;
+        }
+
+        function getStatusInHebrew(status) {
+            const statusMap = {
+                'new': 'חדש',
+                'contacted': 'נוצר קשר',
+                'qualified': 'מוכשר',
+                'interested': 'מעוניין',
+                'not_interested': 'לא מעוניין',
+                'callback': 'להתקשר חזרה',
+                'interview_scheduled': 'נקבע ראיון',
+                'hired': 'התקבל',
+                'rejected': 'נדחה',
+                'closed': 'סגור'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('he-IL', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function toggleSelectAll() {
+            const selectAllCheck = document.getElementById('selectAllCheck');
+            const checkboxes = document.querySelectorAll('.lead-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheck.checked;
+            });
+            
+            updateSelection();
+        }
+
+        function updateSelection() {
+            selectedLeads.clear();
+            const checkboxes = document.querySelectorAll('.lead-checkbox:checked');
+            checkboxes.forEach(checkbox => {
+                selectedLeads.add(parseInt(checkbox.value));
+            });
+
+            document.getElementById('selectedCount').textContent = `${selectedLeads.size} נבחרו`;
+            document.getElementById('bulkActions').style.display = selectedLeads.size > 0 ? 'block' : 'none';
+        }
+
+        function selectAll() {
+            document.getElementById('selectAllCheck').checked = true;
+            toggleSelectAll();
+        }
+
+        function clearSelection() {
+            document.getElementById('selectAllCheck').checked = false;
+            toggleSelectAll();
+        }
+
+        async function massClose() {
+            if (selectedLeads.size === 0) {
+                alert('לא נבחרו לידים');
+                return;
+            }
+
+            if (!confirm(`האם אתה בטוח שברצונך לסגור ${selectedLeads.size} לידים?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/mass-close', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lead_ids: Array.from(selectedLeads),
+                        user_name: 'Admin'
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert(`✅ ${result.closed_count} לידים נסגרו בהצלחה!`);
+                    loadAllLeads();
+                    clearSelection();
+                } else {
+                    alert('❌ שגיאה בסגירת לידים');
+                }
+            } catch (error) {
+                alert('❌ שגיאה בסגירת לידים');
+                console.error(error);
+            }
+        }
+
+        function downloadReport() {
+            // TODO: Implement Excel export
+            alert('תכונה זו תמומש בקרוב');
+        }
+
+        function openUserDashboard() {
+            window.open('/dashboard', '_blank');
+        }
+
+        function showBulkActions() {
+            document.getElementById('bulkActions').style.display = 'block';
+        }
+
+        function exportDatabase() {
+            alert('תכונה זו תמומש בקרוב');
+        }
+
+        function manageUsers() {
+            alert('תכונה זו תמומש בקרוב');
+        }
+
+        function massAssign() {
+            alert('תכונה זו תמומש בקרוב');
+        }
+
+        function massExport() {
+            alert('תכונה זו תמומש בקרוב');
+        }
+
+        function editLead(leadId) {
+            alert(`עריכת ליד ${leadId} - תכונה זו תמומש בקרוב`);
+        }
+
+        function deleteLead(leadId) {
+            if (confirm('האם אתה בטוח שברצונך למחוק ליד זה?')) {
+                alert('תכונה זו תמומש בקרוב');
+            }
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllLeads();
+        });
+
+        // Auto refresh every 2 minutes
+        setInterval(loadAllLeads, 2 * 60 * 1000);
+    </script>
+</body>
+</html>
