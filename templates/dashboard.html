@@ -98,7 +98,7 @@
             color: #2c3e50;
         }
         
-        .refresh-btn {
+        .refresh-btn, .pull-history-btn {
             background: #3498db;
             color: white;
             border: none;
@@ -107,10 +107,24 @@
             cursor: pointer;
             font-size: 1em;
             transition: background 0.3s ease;
+            margin: 0 5px;
         }
         
-        .refresh-btn:hover {
+        .refresh-btn:hover, .pull-history-btn:hover {
             background: #2980b9;
+        }
+        
+        .pull-history-btn {
+            background: #e74c3c;
+        }
+        
+        .pull-history-btn:hover {
+            background: #c0392b;
+        }
+        
+        .pull-history-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
         }
         
         .lead-card {
@@ -332,7 +346,10 @@
         <div class="leads-container">
             <div class="leads-header">
                 <h2 class="leads-title">רשימת לידים</h2>
-                <button class="refresh-btn" onclick="loadLeads()">🔄 רענן</button>
+                <div>
+                    <button class="refresh-btn" onclick="loadLeads()">🔄 רענן</button>
+                    <button class="pull-history-btn" id="pullHistoryBtn" onclick="pullHistory()">📥 משוך היסטוריה</button>
+                </div>
             </div>
             
             <div id="leadsContainer">
@@ -486,6 +503,39 @@
         
         // Load leads when page loads
         document.addEventListener('DOMContentLoaded', loadLeads);
+        
+        // Pull history function
+        async function pullHistory() {
+            const btn = document.getElementById('pullHistoryBtn');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ מושך היסטוריה...';
+                
+                const response = await fetch('/pull-history', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert(`✅ הצלחה! נמשכו ${result.leads_imported || 0} לידים מההיסטוריה`);
+                    loadLeads(); // Refresh the leads list
+                } else {
+                    alert(`❌ שגיאה: ${result.message}`);
+                }
+            } catch (error) {
+                console.error('Error pulling history:', error);
+                alert('❌ שגיאה במשיכת ההיסטוריה');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
         
         // Auto refresh every 5 minutes
         setInterval(loadLeads, 5 * 60 * 1000);

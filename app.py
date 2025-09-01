@@ -279,6 +279,123 @@ def dashboard():
     """Beautiful web dashboard for viewing leads"""
     return render_template('dashboard.html')
 
+@app.route('/pull-history', methods=['POST'])
+def pull_history():
+    """Trigger to pull historical leads from Facebook via Zapier"""
+    try:
+        # This endpoint will be called by the dashboard
+        # It returns instructions for setting up the Zapier bulk pull
+        
+        # For now, return setup instructions
+        return jsonify({
+            'status': 'setup_required',
+            'message': 'Please set up Zapier bulk import',
+            'instructions': {
+                'step_1': 'Create new Zap: Facebook Lead Ads → Find Many Leads',
+                'step_2': 'Action: Webhooks by Zapier → POST',
+                'step_3': f'URL: {request.url_root}webhook-bulk',
+                'step_4': 'Test and run once to import all historical leads',
+                'step_5': 'Turn off Zap after import (let webhook handle new leads)'
+            },
+            'webhook_url': f'{request.url_root}webhook-bulk'
+        })
+    except Exception as e:
+        logger.error(f"Error in pull history: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/webhook-bulk', methods=['POST'])
+def webhook_bulk():
+    """Special webhook endpoint for bulk historical lead import from Zapier"""
+    try:
+        leads_data = request.get_json()
+        
+        if not leads_data:
+            return jsonify({'error': 'No data received'}), 400
+        
+        # Handle both single lead and array of leads
+        if not isinstance(leads_data, list):
+            leads_data = [leads_data]
+        
+        imported_count = 0
+        conn = get_db_connection()
+        
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+            
+        cur = conn.cursor()
+        
+        for lead_data in leads_data:
+            try:
+                # Check if lead already exists
+                external_id = lead_data.get('id')
+                if external_id:
+                    cur.execute("SELECT id FROM leads WHERE external_lead_id = %s", (external_id,))
+                    if cur.fetchone():
+                        logger.info(f"Lead {external_id} already exists, skipping")
+                        continue
+                
+                # Extract data same as regular webhook
+                name = lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name')
+                phone = lead_data.get('phone') or lead_data.get('phone_number')
+                
+                # Parse created_time
+                created_time = None
+                if lead_data.get('created_time'):
+                    try:
+                        created_time = datetime.fromisoformat(lead_data['created_time'].replace('Z', '+00:00'))
+                    except:
+                        pass
+                
+                # Insert lead
+                cur.execute("""
+                    INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id;
+                """, (
+                    lead_data.get('id'),
+                    name,
+                    lead_data.get('email'),
+                    phone,
+                    lead_data.get('platform', 'facebook'),
+                    lead_data.get('campaign_name'),
+                    lead_data.get('form_name'),
+                    lead_data.get('lead_source'),
+                    created_time,
+                    json.dumps(lead_data)
+                ))
+                
+                lead_id = cur.fetchone()[0]
+                imported_count += 1
+                
+                logger.info(f"Historical lead imported: {name} ({lead_data.get('email')}) - ID: {lead_id}")
+                
+            except Exception as e:
+                logger.error(f"Error importing individual lead: {str(e)}")
+                continue
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"Bulk import completed: {imported_count} leads imported")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Successfully imported {imported_count} historical leads',
+            'leads_imported': imported_count
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in bulk import: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to import historical leads',
+            'error': str(e)
+        }), 500
+
 @app.route('/test')
 def test():
     return jsonify({
