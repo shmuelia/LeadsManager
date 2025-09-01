@@ -534,6 +534,9 @@
                 <div class="header-user">
                     <div class="user-info">
                         <span id="userInfo">טוען...</span>
+                        <div style="font-size: 0.8em; margin-top: 5px;">
+                            תפקיד: {{ session.get('role', 'לא זמין') }}
+                        </div>
                     </div>
                     <a href="/logout" class="logout-btn">התנתק</a>
                 </div>
@@ -576,10 +579,13 @@
                 <button class="campaign-btn secondary" onclick="showBulkActions()">📋 פעולות המוניות</button>
             </div>
             
-            <div class="control-card">
+            <div class="control-card" id="userManagementCard">
                 <h3>👥 ניהול עובדים</h3>
                 <button class="campaign-btn" onclick="showUserManagement()">👤 נהל עובדים</button>
                 <button class="campaign-btn secondary" onclick="showAddUserModal()">➕ הוסף עובד חדש</button>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    DEBUG: אזור ניהול עובדים נטען
+                </div>
             </div>
         </div>
 
