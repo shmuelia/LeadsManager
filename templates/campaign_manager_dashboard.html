@@ -598,7 +598,10 @@
                 </div>
             </div>
             
-            <!-- User Management Component - Removed to avoid conflicts -->
+            <!-- Users Container -->
+            <div id="campaignUsersContainer" class="leads-grid">
+                <div class="loading">טוען משתמשים...</div>
+            </div>
         </div>
 
         <!-- Leads Table -->
@@ -1240,10 +1243,51 @@
             
             if (userTable) {
                 userTable.style.display = 'block';
+                // Render users in the container
+                renderCampaignUsersTable(availableUsers);
             }
             if (mainTable) {
                 mainTable.style.display = 'none';
             }
+        }
+        
+        // Render users table for campaign manager
+        function renderCampaignUsersTable(users) {
+            const container = document.getElementById('campaignUsersContainer');
+            
+            if (!users || users.length === 0) {
+                container.innerHTML = '<div class="loading">אין משתמשים להצגה</div>';
+                return;
+            }
+            
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>פעולות</th>
+                            <th>סטטוס</th>
+                            <th>תפקיד</th>
+                            <th>שם מלא</th>
+                            <th>שם משתמש</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>
+                                    <button class="action-btn primary" onclick="viewUserDetails(${user.id})" title="הצג פרטי משתמש">👁️ פרטים</button>
+                                </td>
+                                <td><span class="status-badge status-${user.active ? 'qualified' : 'closed'}">${user.active ? 'פעיל' : 'לא פעיל'}</span></td>
+                                <td>${getRoleLabel(user.role)}</td>
+                                <td><strong>${user.full_name || 'לא צוין'}</strong></td>
+                                <td>${user.username}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = table;
         }
 
         function hideUserManagement() {
