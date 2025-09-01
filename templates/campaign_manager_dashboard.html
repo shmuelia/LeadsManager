@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לוח בקרה מנהל קמפיין - ניהול לידים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            direction: rtl;
+            color: #0f172a;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 16px 12px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-main {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .header-user {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .user-info {
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 2.25rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+        
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .campaign-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .control-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .control-card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        
+        .campaign-btn {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .campaign-btn:hover {
+            background: #047857;
+            transform: translateY(-2px);
+        }
+        
+        .campaign-btn.secondary {
+            background: #6b7280;
+        }
+        
+        .campaign-btn.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #059669;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .leads-table {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .table-header {
+            background: #059669;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .table-title {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1f2937;
+            font-size: 14px;
+            direction: rtl;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 0 20px;
+            padding-top: 15px;
+        }
+        
+        .bulk-actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .bulk-close {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .bulk-close:hover {
+            background: #b91c1c;
+        }
+        
+        .bulk-assign {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .bulk-assign:hover {
+            background: #1d4ed8;
+        }
+        
+        .leads-grid {
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+        
+        .leads-grid table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+        
+        .leads-grid th {
+            background: #f8fafc;
+            color: #374151;
+            font-weight: 600;
+            padding: 12px 8px;
+            text-align: right;
+            border-bottom: 2px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        
+        .leads-grid td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .leads-grid tr:hover {
+            background: #f9fafb;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .status-new { background: #dbeafe; color: #1e40af; }
+        .status-contacted { background: #fef3c7; color: #92400e; }
+        .status-qualified { background: #d1fae5; color: #065f46; }
+        .status-interested { background: #dcfce7; color: #166534; }
+        .status-not_interested { background: #fee2e2; color: #991b1b; }
+        .status-callback { background: #fde68a; color: #92400e; }
+        .status-interview_scheduled { background: #e0e7ff; color: #3730a3; }
+        .status-hired { background: #dcfce7; color: #166534; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .status-closed { background: #f3f4f6; color: #6b7280; }
+        
+        .lead-checkbox {
+            transform: scale(1.2);
+            margin: 0;
+        }
+        
+        .action-btn {
+            background: none;
+            border: 1px solid #d1d5db;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 2px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            background: #f3f4f6;
+        }
+        
+        .action-btn.primary {
+            background: #059669;
+            color: white;
+            border-color: #059669;
+        }
+        
+        .action-btn.primary:hover {
+            background: #047857;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            font-size: 1.1em;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            direction: rtl;
+        }
+        
+        .close {
+            color: white;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            opacity: 0.7;
+        }
+        
+        .lead-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            color: #1f2937;
+            word-break: break-word;
+        }
+        
+        .activities-section {
+            margin-top: 25px;
+        }
+        
+        .activities-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .activity-item {
+            padding: 15px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .activity-type {
+            font-weight: 600;
+            color: #059669;
+        }
+        
+        .activity-date {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast-success {
+            background: #059669;
+        }
+        
+        .toast-error {
+            background: #dc2626;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .campaign-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                justify-content: center;
+            }
+            
+            .table-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .bulk-actions {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .modal-content {
+                margin: 10px;
+                width: calc(100% - 20px);
+                max-height: 90vh;
+            }
+            
+            .lead-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="header-user">
+                    <div class="user-info">
+                        <span id="userInfo">טוען...</span>
+                    </div>
+                    <a href="/logout" class="logout-btn">התנתק</a>
+                </div>
+                <div class="header-main">
+                    <h1>🎯 לוח בקרה מנהל קמפיין</h1>
+                    <div class="subtitle">ניהול לידים ומעקב קמפיינים</div>
+                </div>
+                <div></div>
+            </div>
+        </div>
+
+        <!-- Campaign Controls -->
+        <div class="campaign-controls">
+            <div class="control-card">
+                <h3>📊 סטטיסטיקות קמפיין</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalLeads">-</div>
+                        <div class="stat-label">סה"כ לידים</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="activeLeads">-</div>
+                        <div class="stat-label">פעילים</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="qualifiedLeads">-</div>
+                        <div class="stat-label">מוכשרים</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="hiredLeads">-</div>
+                        <div class="stat-label">התקבלו</div>
+                    </div>
+                </div>
+                <button class="campaign-btn" onclick="loadStats()">🔄 רענן סטטיסטיקות</button>
+            </div>
+            
+            <div class="control-card">
+                <h3>📋 פעולות על לידים</h3>
+                <button class="campaign-btn secondary" onclick="downloadReport()">📊 הורד דוח Excel</button>
+                <button class="campaign-btn secondary" onclick="showBulkActions()">📋 פעולות המוניות</button>
+            </div>
+        </div>
+
+        <!-- Leads Management Table -->
+        <div class="leads-table">
+            <div class="table-header">
+                <div class="table-title">🎯 ניהול לידים</div>
+                <div class="filters">
+                    <select id="statusFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="new">חדש</option>
+                        <option value="contacted">נוצר קשר</option>
+                        <option value="qualified">מוכשר</option>
+                        <option value="interested">מתעניין</option>
+                        <option value="not_interested">לא מתעניין</option>
+                        <option value="callback">חזרה</option>
+                        <option value="interview_scheduled">מתואם ראיון</option>
+                        <option value="hired">התקבל</option>
+                        <option value="rejected">נדחה</option>
+                        <option value="closed">סגור</option>
+                    </select>
+                    <select id="campaignFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">כל הקמפיינים</option>
+                    </select>
+                    <select id="assignmentFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">כל ההקצאות</option>
+                        <option value="unassigned">לא מוקצה</option>
+                        <option value="assigned">מוקצה</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="bulkActions" class="bulk-actions" style="display: none;">
+                <span>פעולות על לידים נבחרים:</span>
+                <button class="bulk-close" onclick="bulkCloseLeads()">סגור לידים</button>
+                <button class="bulk-assign" onclick="showBulkAssign()">הקצה לעובד</button>
+                <select id="bulkUserSelect" style="display: none;" class="filter-select">
+                    <option value="">בחר עובד</option>
+                </select>
+                <span id="selectedCount">0 נבחרו</span>
+            </div>
+            
+            <div class="leads-grid" id="leadsContainer">
+                <div class="loading">טוען לידים...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Details Modal -->
+    <div id="leadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeLeadModal()">&times;</span>
+                <h2>פרטי ליד</h2>
+            </div>
+            <div class="modal-body" id="leadModalBody">
+                <!-- Lead details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedLeads = new Set();
+        let allLeads = [];
+        let availableUsers = [];
+        let currentLeadDetails = null;
+
+        // Filter state management
+        function saveFilterState(filters) {
+            localStorage.setItem('campaignManagerFilters', JSON.stringify(filters));
+        }
+
+        function loadFilterState() {
+            const saved = localStorage.getItem('campaignManagerFilters');
+            return saved ? JSON.parse(saved) : {};
+        }
+
+        function applyFilters() {
+            const filters = {
+                status: document.getElementById('statusFilter').value,
+                campaign: document.getElementById('campaignFilter').value,
+                assignment: document.getElementById('assignmentFilter').value
+            };
+            
+            saveFilterState(filters);
+            renderLeadsTable(filterLeads(allLeads, filters));
+        }
+
+        function filterLeads(leads, filters) {
+            return leads.filter(lead => {
+                if (filters.status && lead.status !== filters.status) return false;
+                if (filters.campaign && lead.campaign_name !== filters.campaign) return false;
+                if (filters.assignment) {
+                    if (filters.assignment === 'unassigned' && lead.assigned_to) return false;
+                    if (filters.assignment === 'assigned' && !lead.assigned_to) return false;
+                    if (filters.assignment !== 'unassigned' && filters.assignment !== 'assigned' && lead.assigned_to !== filters.assignment) return false;
+                }
+                return true;
+            });
+        }
+
+        async function loadAllLeads() {
+            try {
+                document.getElementById('leadsContainer').innerHTML = '<div class="loading">טוען לידים...</div>';
+                
+                const response = await fetch('/leads');
+                const data = await response.json();
+                
+                if (data.leads) {
+                    allLeads = data.leads;
+                    
+                    // Populate campaign filter
+                    const campaigns = [...new Set(allLeads.map(lead => lead.campaign_name).filter(Boolean))];
+                    const campaignFilter = document.getElementById('campaignFilter');
+                    campaignFilter.innerHTML = '<option value="">כל הקמפיינים</option>';
+                    campaigns.forEach(campaign => {
+                        const option = document.createElement('option');
+                        option.value = campaign;
+                        option.textContent = campaign;
+                        campaignFilter.appendChild(option);
+                    });
+                    
+                    // Apply saved filters
+                    const savedFilters = loadFilterState();
+                    Object.keys(savedFilters).forEach(key => {
+                        const element = document.getElementById(key + 'Filter');
+                        if (element) element.value = savedFilters[key] || '';
+                    });
+                    
+                    applyFilters();
+                    updateStats();
+                } else {
+                    document.getElementById('leadsContainer').innerHTML = '<div class="loading">שגיאה בטעינת הלידים</div>';
+                }
+            } catch (error) {
+                console.error('Error loading leads:', error);
+                document.getElementById('leadsContainer').innerHTML = '<div class="loading">שגיאה בחיבור לשרת</div>';
+            }
+        }
+
+        function renderLeadsTable(leads) {
+            const container = document.getElementById('leadsContainer');
+            
+            if (leads.length === 0) {
+                container.innerHTML = '<div class="loading">אין לידים להצגה</div>';
+                return;
+            }
+
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" onchange="toggleAllLeads(this.checked)"></th>
+                            <th>פעולות</th>
+                            <th>סטטוס</th>
+                            <th>מוקצה ל</th>
+                            <th>קמפיין</th>
+                            <th>פלטפורמה</th>
+                            <th>טלפון</th>
+                            <th>אימייל</th>
+                            <th>שם</th>
+                            <th>תאריך קבלה</th>
+                            <th>מזהה חיצוני</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${leads.map(lead => `
+                            <tr>
+                                <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="toggleLead(${lead.id}, this.checked)"></td>
+                                <td>
+                                    <button class="action-btn primary" onclick="viewLead(${lead.id})">👁️</button>
+                                    <button class="action-btn" onclick="assignLead(${lead.id})">👤</button>
+                                </td>
+                                <td><span class="status-badge status-${lead.status}">${getStatusLabel(lead.status)}</span></td>
+                                <td>${lead.assigned_to || 'לא מוקצה'}</td>
+                                <td title="${lead.campaign_name || ''}">${(lead.campaign_name || 'לא צוין').substring(0, 20)}${(lead.campaign_name || '').length > 20 ? '...' : ''}</td>
+                                <td>${lead.platform === 'ig' ? 'Instagram' : 'Facebook'}</td>
+                                <td dir="ltr">${lead.phone || '-'}</td>
+                                <td dir="ltr">${lead.email || '-'}</td>
+                                <td><strong>${lead.name || 'לא צוין'}</strong></td>
+                                <td>${formatDate(lead.received_at || lead.created_time)}</td>
+                                <td>${lead.external_lead_id || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = table;
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'new': 'חדש',
+                'contacted': 'נוצר קשר',
+                'qualified': 'מוכשר',
+                'interested': 'מתעניין',
+                'not_interested': 'לא מתעניין',
+                'callback': 'חזרה',
+                'interview_scheduled': 'מתואם ראיון',
+                'hired': 'התקבל',
+                'rejected': 'נדחה',
+                'closed': 'סגור'
+            };
+            return labels[status] || status;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('he-IL');
+        }
+
+        function updateStats() {
+            const totalLeads = allLeads.length;
+            const activeLeads = allLeads.filter(lead => !['closed', 'rejected', 'hired'].includes(lead.status)).length;
+            const qualifiedLeads = allLeads.filter(lead => lead.status === 'qualified').length;
+            const hiredLeads = allLeads.filter(lead => lead.status === 'hired').length;
+            
+            document.getElementById('totalLeads').textContent = totalLeads;
+            document.getElementById('activeLeads').textContent = activeLeads;
+            document.getElementById('qualifiedLeads').textContent = qualifiedLeads;
+            document.getElementById('hiredLeads').textContent = hiredLeads;
+        }
+
+        function loadStats() {
+            loadAllLeads();
+        }
+
+        function toggleAllLeads(checked) {
+            document.querySelectorAll('.lead-checkbox').forEach(checkbox => {
+                checkbox.checked = checked;
+                toggleLead(parseInt(checkbox.value), checked);
+            });
+        }
+
+        function toggleLead(leadId, checked) {
+            if (checked) {
+                selectedLeads.add(leadId);
+            } else {
+                selectedLeads.delete(leadId);
+            }
+            
+            document.getElementById('selectedCount').textContent = `${selectedLeads.size} נבחרו`;
+            document.getElementById('bulkActions').style.display = selectedLeads.size > 0 ? 'flex' : 'none';
+        }
+
+        function showBulkActions() {
+            if (selectedLeads.size === 0) {
+                showToast('אנא בחר לידים לביצוע פעולות המוניות', 'error');
+                return;
+            }
+            document.getElementById('bulkActions').style.display = 'flex';
+        }
+
+        async function viewLead(leadId) {
+            try {
+                const response = await fetch(`/leads/${leadId}`);
+                const data = await response.json();
+                
+                if (data.lead) {
+                    currentLeadDetails = data.lead;
+                    showLeadModal(data.lead, data.activities || []);
+                } else {
+                    showToast('שגיאה בטעינת פרטי הליד', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading lead details:', error);
+                showToast('שגיאה בחיבור לשרת', 'error');
+            }
+        }
+
+        function showLeadModal(lead, activities) {
+            const modalBody = document.getElementById('leadModalBody');
+            
+            modalBody.innerHTML = `
+                <div class="lead-details">
+                    <div class="detail-item">
+                        <div class="detail-label">שם</div>
+                        <div class="detail-value">${lead.name || 'לא צוין'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">אימייל</div>
+                        <div class="detail-value" dir="ltr">${lead.email || 'לא צוין'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">טלפון</div>
+                        <div class="detail-value" dir="ltr">${lead.phone || 'לא צוין'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">סטטוס</div>
+                        <div class="detail-value">
+                            <select id="modalLeadStatus" onchange="updateLeadStatus(${lead.id}, this.value)">
+                                <option value="new" ${lead.status === 'new' ? 'selected' : ''}>חדש</option>
+                                <option value="contacted" ${lead.status === 'contacted' ? 'selected' : ''}>נוצר קשר</option>
+                                <option value="qualified" ${lead.status === 'qualified' ? 'selected' : ''}>מוכשר</option>
+                                <option value="interested" ${lead.status === 'interested' ? 'selected' : ''}>מתעניין</option>
+                                <option value="not_interested" ${lead.status === 'not_interested' ? 'selected' : ''}>לא מתעניין</option>
+                                <option value="callback" ${lead.status === 'callback' ? 'selected' : ''}>חזרה</option>
+                                <option value="interview_scheduled" ${lead.status === 'interview_scheduled' ? 'selected' : ''}>מתואם ראיון</option>
+                                <option value="hired" ${lead.status === 'hired' ? 'selected' : ''}>התקבל</option>
+                                <option value="rejected" ${lead.status === 'rejected' ? 'selected' : ''}>נדחה</option>
+                                <option value="closed" ${lead.status === 'closed' ? 'selected' : ''}>סגור</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">קמפיין</div>
+                        <div class="detail-value">${lead.campaign_name || 'לא צוין'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">מוקצה ל</div>
+                        <div class="detail-value">${lead.assigned_to || 'לא מוקצה'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">פלטפורמה</div>
+                        <div class="detail-value">${lead.platform === 'ig' ? 'Instagram' : 'Facebook'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">תאריך קבלה</div>
+                        <div class="detail-value">${formatDate(lead.received_at || lead.created_time)}</div>
+                    </div>
+                </div>
+                
+                <div class="activities-section">
+                    <h3>פעילויות</h3>
+                    <div class="activities-list">
+                        ${activities.length > 0 ? activities.map(activity => `
+                            <div class="activity-item">
+                                <div class="activity-header">
+                                    <span class="activity-type">${getActivityTypeLabel(activity.activity_type)}</span>
+                                    <span class="activity-date">${formatDate(activity.activity_date || activity.created_at)}</span>
+                                </div>
+                                <div class="activity-description">${activity.description || ''}</div>
+                            </div>
+                        `).join('') : '<div style="padding: 20px; text-align: center; color: #6b7280;">אין פעילויות רשומות</div>'}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('leadModal').style.display = 'block';
+        }
+
+        function getActivityTypeLabel(type) {
+            const labels = {
+                'lead_received': 'ליד התקבל',
+                'status_change': 'שינוי סטטוס',
+                'assignment': 'הקצאה',
+                'call': 'שיחה',
+                'note_added': 'הערה נוספה'
+            };
+            return labels[type] || type;
+        }
+
+        async function updateLeadStatus(leadId, newStatus) {
+            try {
+                const response = await fetch(`/leads/${leadId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        status: newStatus,
+                        user_name: document.getElementById('userInfo').textContent
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast('סטטוס עודכן בהצלחה', 'success');
+                    loadAllLeads(); // Refresh the table
+                } else {
+                    showToast(result.error || 'שגיאה בעדכון הסטטוס', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                showToast('שגיאה בחיבור לשרת', 'error');
+            }
+        }
+
+        function closeLeadModal() {
+            document.getElementById('leadModal').style.display = 'none';
+        }
+
+        function assignLead(leadId) {
+            // Simple assignment - could be enhanced with user selection
+            showToast('פונקציונליות הקצאה תתווסף בעתיד', 'error');
+        }
+
+        function downloadReport() {
+            showToast('הורדת דוח תתווסף בעתיד', 'error');
+        }
+
+        function bulkCloseLeads() {
+            if (selectedLeads.size === 0) {
+                showToast('אנא בחר לידים לסגירה', 'error');
+                return;
+            }
+            
+            if (confirm(`האם אתה בטוח שברצונך לסגור ${selectedLeads.size} לידים?`)) {
+                // Implementation would go here
+                showToast('פונקציית סגירה המונית תתווסף בעתיד', 'error');
+            }
+        }
+
+        function showBulkAssign() {
+            document.getElementById('bulkUserSelect').style.display = 'inline-block';
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Load user info
+        function loadUserInfo() {
+            // This would typically come from the server/session
+            document.getElementById('userInfo').textContent = 'מנהל קמפיין';
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserInfo();
+            loadAllLeads();
+        });
+
+        // Auto refresh every 2 minutes
+        setInterval(loadAllLeads, 2 * 60 * 1000);
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('leadModal');
+            if (event.target === modal) {
+                closeLeadModal();
+            }
+        }
+    </script>
+</body>
+</html>

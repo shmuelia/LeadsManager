@@ -379,6 +379,7 @@
                     <select id="role" name="role" required>
                         <option value="">בחר תפקיד</option>
                         <option value="admin">מנהל מערכת</option>
+                        <option value="campaign_manager">מנהל קמפיין של הלקוח</option>
                         <option value="user">משתמש רגיל</option>
                     </select>
                 </div>
@@ -492,6 +493,7 @@
         function getRoleLabel(role) {
             const roles = {
                 'admin': 'מנהל מערכת',
+                'campaign_manager': 'מנהל קמפיין של הלקוח',
                 'user': 'משתמש רגיל'
             };
             return roles[role] || role;

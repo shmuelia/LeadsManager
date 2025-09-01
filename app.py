@@ -135,6 +135,15 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def campaign_manager_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('role') not in ['admin', 'campaign_manager']:
+            flash('גישה מוגבלת למנהלי קמפיין ומנהלים בלבד')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def hash_password(password):
     """Simple MD5 hash for passwords (upgrade to bcrypt in production)"""
     return hashlib.md5(password.encode()).hexdigest()
@@ -197,6 +206,8 @@ def login():
             # Default redirect based on role
             if user['role'] == 'admin':
                 return redirect(url_for('admin_dashboard'))
+            elif user['role'] == 'campaign_manager':
+                return redirect(url_for('campaign_manager_dashboard'))
             else:
                 return redirect(url_for('dashboard'))
         else:
@@ -483,6 +494,12 @@ def get_lead(lead_id):
 def dashboard():
     """Beautiful web dashboard for viewing leads"""
     return render_template('dashboard.html')
+
+@app.route('/campaign-manager')
+@campaign_manager_required
+def campaign_manager_dashboard():
+    """Campaign manager dashboard - lead management only"""
+    return render_template('campaign_manager_dashboard.html')
 
 @app.route('/pull-history', methods=['POST'])
 def pull_history():
