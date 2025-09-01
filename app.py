@@ -264,6 +264,48 @@ def server_status():
         'database_url_set': bool(DATABASE_URL)
     })
 
+@app.route('/admin/fix-admin-customer')
+@admin_required
+def fix_admin_customer():
+    """Fix admin user customer assignment - create admin company and assign admins to it"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # First, create or get the admin company (customer_id = 0)
+        cur.execute("""
+            INSERT INTO customers (id, name, webhook_url, zapier_webhook_key, active)
+            VALUES (0, 'מערכת ניהול - מנהלים', '', '', true)
+            ON CONFLICT (id) DO UPDATE SET
+                name = 'מערכת ניהול - מנהלים',
+                active = true
+        """)
+        
+        # Update admin users to belong to the admin company (customer_id = 0)
+        cur.execute("""
+            UPDATE users 
+            SET customer_id = 0 
+            WHERE role = 'admin'
+        """)
+        
+        admin_count = cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Created admin company and updated {admin_count} admin users',
+            'admin_users_updated': admin_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Fix admin customer error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/debug/session')
 @login_required
 def debug_session():
@@ -1192,7 +1234,7 @@ def get_users_api():
                        u.customer_id, c.name as customer_name, u.plain_password
                 FROM users u
                 LEFT JOIN customers c ON u.customer_id = c.id
-                WHERE u.customer_id = %s
+                WHERE u.customer_id = %s AND u.customer_id > 0
                 ORDER BY u.created_at DESC
             """, (user_customer_id,))
         else:
