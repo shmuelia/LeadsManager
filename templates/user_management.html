@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ניהול משתמשים - ניהול לידים</title>
+    <title>ניהול משתמשים - מערכת ניהול</title>
     <style>
         * {
             margin: 0;
@@ -12,45 +12,43 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f1f5f9;
             min-height: 100vh;
             direction: rtl;
-            color: #2c3e50;
+            color: #0f172a;
+            line-height: 1.6;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
         
         .header {
-            background: white;
-            border-radius: 15px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             text-align: center;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
         
         .header h1 {
-            color: #2c3e50;
-            font-size: 2.5em;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-        }
-        
-        .header p {
-            color: #7f8c8d;
-            font-size: 1.1em;
+            font-weight: 700;
         }
         
         .controls {
             background: white;
-            border-radius: 15px;
             padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
         .controls h3 {
@@ -63,19 +61,19 @@
             background: #3498db;
             color: white;
             border: none;
-            padding: 12px 25px;
+            padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            margin: 5px;
+            font-size: 1em;
+            margin: 5px 10px;
             transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
         }
         
         .btn:hover {
             background: #2980b9;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
         .btn.success {
@@ -83,15 +81,7 @@
         }
         
         .btn.success:hover {
-            background: #219a52;
-        }
-        
-        .btn.danger {
-            background: #e74c3c;
-        }
-        
-        .btn.danger:hover {
-            background: #c0392b;
+            background: #229954;
         }
         
         .btn.back {
@@ -101,197 +91,7 @@
         .btn.back:hover {
             background: #7f8c8d;
         }
-        
-        .users-table {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        th, td {
-            padding: 15px;
-            text-align: right;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        
-        th {
-            background: #f8f9fa;
-            font-weight: bold;
-            color: #2c3e50;
-            position: sticky;
-            top: 0;
-        }
-        
-        tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .status-badge {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-        
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .role-badge {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-        
-        .role-admin {
-            background: #ffeaa7;
-            color: #2d3436;
-        }
-        
-        .role-user {
-            background: #a7e0ff;
-            color: #2d3436;
-        }
-        
-        .actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .actions .btn {
-            padding: 8px 15px;
-            font-size: 14px;
-            margin: 0;
-        }
-        
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        
-        .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 600px;
-            position: relative;
-        }
-        
-        .close {
-            position: absolute;
-            top: 15px;
-            left: 25px;
-            color: #aaa;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        
-        .close:hover {
-            color: #000;
-        }
-        
-        .modal h3 {
-            color: #2c3e50;
-            margin-bottom: 25px;
-            font-size: 1.5em;
-            text-align: center;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #2c3e50;
-            font-weight: bold;
-        }
-        
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ecf0f1;
-            border-radius: 8px;
-            font-size: 16px;
-            direction: rtl;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #3498db;
-        }
-        
-        .form-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 30px;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: #7f8c8d;
-        }
-        
-        /* Toast notification styles */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4CAF50;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 10000;
-            font-size: 16px;
-            font-weight: bold;
-            opacity: 0;
-            transform: translateY(-20px);
-            transition: all 0.3s ease;
-        }
-        
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .toast.error {
-            background: #f44336;
-        }
-        
-        .toast.warning {
-            background: #ff9800;
-        }
-        
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -301,22 +101,10 @@
                 font-size: 2em;
             }
             
-            table {
-                font-size: 14px;
-            }
-            
-            th, td {
-                padding: 10px 5px;
-            }
-            
-            .actions {
-                flex-direction: column;
-            }
-            
-            .modal-content {
-                width: 95%;
-                margin: 2% auto;
-                padding: 20px;
+            .btn {
+                display: block;
+                margin: 5px 0;
+                text-align: center;
             }
         }
     </style>
@@ -339,97 +127,22 @@
                 </select>
                 <span id="selectedCustomerInfo" style="color: #059669; font-weight: bold;"></span>
             </div>
-            <button class="btn success" onclick="showCreateModal()">➕ הוסף משתמש חדש</button>
+            <button class="btn success" onclick="showUserModal()">➕ הוסף משתמש חדש</button>
             <button class="btn" onclick="loadUsers()">🔄 רענן רשימה</button>
             <button class="btn back" onclick="goBackToAdmin()">↩️ חזור ללוח הבקרה</button>
         </div>
         
-        <!-- Users Table -->
-        <div class="users-table">
-            <h3>רשימת משתמשים</h3>
-            <div id="usersContainer">
-                <div class="loading">טוען משתמשים...</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Create/Edit User Modal -->
-    <div id="userModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h3 id="modalTitle">הוספת משתמש חדש</h3>
-            
-            <form id="userForm">
-                <div class="form-group">
-                    <label for="username">שם משתמש:</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">סיסמה:</label>
-                    <input type="text" id="password" name="password">
-                    <small style="color: #7f8c8d;">השאר ריק כדי לא לשנות סיסמה (רק בעדכון)</small>
-                </div>
-                
-                <div class="form-group" id="currentPasswordGroup" style="display: none;">
-                    <label for="currentPassword">סיסמה נוכחית:</label>
-                    <input type="text" id="currentPassword" readonly style="background: #f8f9fa; border: 1px solid #e9ecef;">
-                    <small style="color: #059669;">זוהי הסיסמה הנוכחית של המשתמש</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="fullName">שם מלא:</label>
-                    <input type="text" id="fullName" name="fullName" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="email">דואר אלקטרוני:</label>
-                    <input type="email" id="email" name="email">
-                </div>
-                
-                <div class="form-group">
-                    <label for="role">תפקיד:</label>
-                    <select id="role" name="role" required>
-                        <option value="">בחר תפקיד</option>
-                        <option value="admin">מנהל מערכת</option>
-                        <option value="campaign_manager">מנהל קמפיין של הלקוח</option>
-                        <option value="user">משתמש רגיל</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="department">מחלקה:</label>
-                    <input type="text" id="department" name="department" placeholder="אופציונלי">
-                </div>
-                
-                <div class="form-group">
-                    <label for="customer_id">לקוח:</label>
-                    <select id="customer_id" name="customer_id" required>
-                        <option value="">בחר לקוח</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="active">סטטוס:</label>
-                    <select id="active" name="active">
-                        <option value="true">פעיל</option>
-                        <option value="false">לא פעיל</option>
-                    </select>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn success">💾 שמור</button>
-                    <button type="button" class="btn" onclick="closeModal()">❌ ביטול</button>
-                </div>
-            </form>
-        </div>
+        <!-- Include Unified User Management Component -->
+        {% include 'user_management_component.html' %}
     </div>
     
     <script>
-        let currentUserId = null;
-        let isEditMode = false;
+        // Admin-specific functions only
+        function goBackToAdmin() {
+            window.location.href = '/admin';
+        }
         
-        // Load customers for filter
+        // Load customers for filter dropdown
         async function loadCustomers() {
             try {
                 const response = await fetch('/admin/customers/api');
@@ -450,278 +163,20 @@
                 console.error('Error loading customers:', error);
             }
         }
+        
+        // Filter users by customer (triggers unified component reload)
+        function loadUsers() {
+            // This will be handled by the unified component
+            if (window.loadUsers && typeof window.loadUsers === 'function') {
+                window.loadUsers();
+            }
+        }
 
-        // Load users when page loads
+        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            loadUsers();
             loadCustomers();
+            // The unified component will handle user loading
         });
-        
-        async function loadUsers() {
-            try {
-                document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
-                
-                // Get customer filter value
-                const customerFilter = document.getElementById('customerFilter').value;
-                const url = customerFilter ? `/admin/users/api?customer_id=${customerFilter}` : '/admin/users/api';
-                
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data.users) {
-                    displayUsers(data.users);
-                } else {
-                    document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת המשתמשים</div>';
-                }
-            } catch (error) {
-                console.error('Error loading users:', error);
-                document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת המשתמשים</div>';
-            }
-        }
-        
-        function displayUsers(users) {
-            if (users.length === 0) {
-                document.getElementById('usersContainer').innerHTML = '<div class="loading">אין משתמשים במערכת</div>';
-                return;
-            }
-            
-            let tableHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>שם משתמש</th>
-                            <th>שם מלא</th>
-                            <th>דואר אלקטרוני</th>
-                            <th>תפקיד</th>
-                            <th>מחלקה</th>
-                            <th>לקוח</th>
-                            <th>סטטוס</th>
-                            <th>נוצר</th>
-                            <th>פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            users.forEach(user => {
-                const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('he-IL') : '-';
-                tableHTML += `
-                    <tr>
-                        <td><strong>${user.username}</strong></td>
-                        <td>${user.full_name || '-'}</td>
-                        <td>${user.email || '-'}</td>
-                        <td><span class="role-badge role-${user.role}">${getRoleLabel(user.role)}</span></td>
-                        <td>${user.department || '-'}</td>
-                        <td>${user.customer_name || 'לא משויך'}</td>
-                        <td><span class="status-badge status-${user.active ? 'active' : 'inactive'}">${user.active ? 'פעיל' : 'לא פעיל'}</span></td>
-                        <td>${createdDate}</td>
-                        <td>
-                            <div class="actions">
-                                <button class="btn" onclick="editUser(${user.id})">✏️ ערוך</button>
-                                <button class="btn danger" onclick="deleteUser(${user.id}, '${user.username}')">🗑️ מחק</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            tableHTML += '</tbody></table>';
-            document.getElementById('usersContainer').innerHTML = tableHTML;
-        }
-        
-        function getRoleLabel(role) {
-            const roles = {
-                'admin': 'מנהל מערכת',
-                'campaign_manager': 'מנהל קמפיין של הלקוח',
-                'user': 'משתמש רגיל'
-            };
-            return roles[role] || role;
-        }
-
-        async function loadCustomers() {
-            try {
-                const response = await fetch('/admin/customers/api');
-                const customers = await response.json();
-                
-                const select = document.getElementById('customer_id');
-                select.innerHTML = '<option value="">בחר לקוח</option>';
-                
-                customers.forEach(customer => {
-                    if (customer.active) {
-                        const option = document.createElement('option');
-                        option.value = customer.id;
-                        option.textContent = customer.name;
-                        select.appendChild(option);
-                    }
-                });
-            } catch (error) {
-                console.error('Error loading customers:', error);
-            }
-        }
-        
-        function showCreateModal() {
-            isEditMode = false;
-            currentUserId = null;
-            document.getElementById('modalTitle').textContent = 'הוספת משתמש חדש';
-            document.getElementById('userForm').reset();
-            document.getElementById('password').required = true;
-            document.getElementById('currentPasswordGroup').style.display = 'none';
-            document.getElementById('userModal').style.display = 'block';
-        }
-        
-        async function editUser(userId) {
-            try {
-                isEditMode = true;
-                currentUserId = userId;
-                document.getElementById('modalTitle').textContent = 'עריכת משתמש';
-                document.getElementById('password').required = false;
-                
-                // Fetch user data
-                const response = await fetch(`/admin/users/${userId}`);
-                const data = await response.json();
-                
-                if (response.ok && data.user) {
-                    const user = data.user;
-                    document.getElementById('username').value = user.username;
-                    document.getElementById('fullName').value = user.full_name || '';
-                    document.getElementById('email').value = user.email || '';
-                    document.getElementById('role').value = user.role;
-                    document.getElementById('department').value = user.department || '';
-                    document.getElementById('customer_id').value = user.customer_id || '';
-                    document.getElementById('active').value = user.active.toString();
-                    
-                    // Show current password for admin reference
-                    if (user.plain_password) {
-                        document.getElementById('currentPassword').value = user.plain_password;
-                        document.getElementById('currentPasswordGroup').style.display = 'block';
-                    }
-                    
-                    document.getElementById('userModal').style.display = 'block';
-                } else {
-                    showToast('שגיאה בטעינת נתוני המשתמש', 'error');
-                }
-            } catch (error) {
-                console.error('Error editing user:', error);
-                showToast('שגיאה בטעינת נתוני המשתמש', 'error');
-            }
-        }
-        
-        async function deleteUser(userId, username) {
-            if (!confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${username}"?\n\nפעולה זו בלתי הפיכה!`)) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/admin/users/delete/${userId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok && result.status === 'success') {
-                    loadUsers();
-                    showToast('🗑️ משתמש נמחק בהצלחה!', 'success');
-                } else {
-                    showToast(`❌ שגיאה: ${result.error || 'שגיאה לא ידועה'}`, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                showToast('שגיאה במחיקת המשתמש', 'error');
-            }
-        }
-        
-        document.getElementById('userForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const userData = {
-                username: formData.get('username'),
-                password: formData.get('password'),
-                full_name: formData.get('fullName'),
-                email: formData.get('email'),
-                role: formData.get('role'),
-                department: formData.get('department'),
-                customer_id: parseInt(formData.get('customer_id')),
-                active: formData.get('active') === 'true'
-            };
-            
-            // Remove empty password for edit mode
-            if (isEditMode && !userData.password) {
-                delete userData.password;
-            }
-            
-            try {
-                const url = isEditMode ? `/admin/users/update/${currentUserId}` : '/admin/users/create';
-                const method = isEditMode ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(userData)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok && result.status === 'success') {
-                    closeModal();
-                    loadUsers();
-                    showToast(isEditMode ? '✅ משתמש עודכן בהצלחה!' : '✅ משתמש נוצר בהצלחה!', 'success');
-                } else {
-                    showToast(`❌ שגיאה: ${result.error || 'שגיאה לא ידועה'}`, 'error');
-                }
-            } catch (error) {
-                console.error('Error saving user:', error);
-                showToast('❌ שגיאה בשמירת המשתמש', 'error');
-            }
-        });
-        
-        function closeModal() {
-            document.getElementById('userModal').style.display = 'none';
-            document.getElementById('userForm').reset();
-            currentUserId = null;
-            isEditMode = false;
-        }
-        
-        function goBackToAdmin() {
-            window.location.href = '/admin';
-        }
-        
-        // Toast notification function
-        function showToast(message, type = 'success') {
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) {
-                existingToast.remove();
-            }
-            
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 100);
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.remove();
-                    }
-                }, 300);
-            }, 3000);
-        }
-        
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('userModal');
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
     </script>
 </body>
 </html>
