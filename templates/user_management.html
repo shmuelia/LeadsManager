@@ -332,6 +332,13 @@
         <!-- Controls -->
         <div class="controls">
             <h3>פעולות</h3>
+            <div style="margin-bottom: 20px;">
+                <label for="customerFilter" style="color: #2c3e50; font-weight: bold; margin-left: 10px;">סינון לפי לקוח:</label>
+                <select id="customerFilter" onchange="loadUsers()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7; direction: rtl; margin-left: 15px;">
+                    <option value="">כל הלקוחות</option>
+                </select>
+                <span id="selectedCustomerInfo" style="color: #059669; font-weight: bold;"></span>
+            </div>
             <button class="btn success" onclick="showCreateModal()">➕ הוסף משתמש חדש</button>
             <button class="btn" onclick="loadUsers()">🔄 רענן רשימה</button>
             <button class="btn back" onclick="goBackToAdmin()">↩️ חזור ללוח הבקרה</button>
@@ -422,6 +429,28 @@
         let currentUserId = null;
         let isEditMode = false;
         
+        // Load customers for filter
+        async function loadCustomers() {
+            try {
+                const response = await fetch('/admin/customers/api');
+                const customers = await response.json();
+                
+                const select = document.getElementById('customerFilter');
+                select.innerHTML = '<option value="">כל הלקוחות</option>';
+                
+                customers.forEach(customer => {
+                    if (customer.active) {
+                        const option = document.createElement('option');
+                        option.value = customer.id;
+                        option.textContent = customer.name;
+                        select.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading customers:', error);
+            }
+        }
+
         // Load users when page loads
         document.addEventListener('DOMContentLoaded', () => {
             loadUsers();
@@ -432,7 +461,11 @@
             try {
                 document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען משתמשים...</div>';
                 
-                const response = await fetch('/admin/users/api');
+                // Get customer filter value
+                const customerFilter = document.getElementById('customerFilter').value;
+                const url = customerFilter ? `/admin/users/api?customer_id=${customerFilter}` : '/admin/users/api';
+                
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 if (data.users) {

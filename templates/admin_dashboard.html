@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>לוח בקרה מנהל - ניהול לידים</title>
+    <title>לוח בקרה מנהל - מערכת ניהול</title>
     <style>
         * {
             margin: 0;
@@ -141,92 +141,6 @@
             background: #229954;
         }
         
-        .leads-table {
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            overflow-x: auto;
-            width: 100%;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 0.85rem;
-            min-width: 1200px;
-        }
-        
-        th, td {
-            padding: 6px 8px;
-            text-align: right;
-            border-bottom: 1px solid #ecf0f1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Specific column widths to control table size */
-        th:nth-child(1), td:nth-child(1) { width: 30px; } /* Checkbox */
-        th:nth-child(2), td:nth-child(2) { width: 120px; max-width: 120px; } /* Name */
-        th:nth-child(3), td:nth-child(3) { width: 140px; max-width: 140px; } /* Email */
-        th:nth-child(4), td:nth-child(4) { width: 100px; max-width: 100px; } /* Phone */
-        th:nth-child(5), td:nth-child(5) { width: 80px; max-width: 80px; } /* Status */
-        th:nth-child(6), td:nth-child(6) { width: 100px; max-width: 100px; } /* Campaign */
-        th:nth-child(7), td:nth-child(7) { width: 80px; max-width: 80px; } /* Form */
-        th:nth-child(8), td:nth-child(8) { width: 60px; max-width: 60px; } /* Source */
-        th:nth-child(9), td:nth-child(9) { width: 60px; max-width: 60px; } /* Platform */
-        th:nth-child(10), td:nth-child(10) { width: 100px; max-width: 100px; } /* Assigned */
-        th:nth-child(11), td:nth-child(11) { width: 90px; max-width: 90px; } /* Original Date */
-        th:nth-child(12), td:nth-child(12) { width: 90px; max-width: 90px; } /* Last Update */
-        th:nth-child(13), td:nth-child(13) { width: 160px; max-width: 160px; } /* Actions */
-        
-        th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        
-        tr:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .status-new { background: #3498db; }
-        .status-contacted { background: #f39c12; }
-        .status-qualified { background: #27ae60; }
-        .status-interested { background: #8bc34a; }
-        .status-not_interested { background: #e74c3c; }
-        .status-callback { background: #9b59b6; }
-        .status-hired { background: #00c851; }
-        .status-closed { background: #78909c; }
-        
-        .checkbox {
-            transform: scale(1.2);
-        }
-        
-        .bulk-actions {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 2px dashed #bdc3c7;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.2em;
-            color: #7f8c8d;
-        }
         
         .stats-grid {
             display: grid;
@@ -261,7 +175,7 @@
             <div class="header-content">
                 <div class="header-main">
                     <h1>🔧 לוח בקרה מנהל</h1>
-                    <p>ניהול מתקדם של מערכת הלידים - אלחנן מאפיית לחם</p>
+                    <p>ניהול מערכת - משתמשים ולקוחות - אלחנן מאפיית לחם</p>
                 </div>
                 <div class="header-user">
                     <span class="user-info">👤 {{ session.get('full_name', 'מנהל') }}</span>
@@ -276,30 +190,30 @@
                 <h3>📊 סטטיסטיקות מערכת</h3>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-number" id="totalLeads">-</div>
-                        <div class="stat-label">סה"כ לידים</div>
+                        <div class="stat-number" id="totalUsers">-</div>
+                        <div class="stat-label">סה"כ משתמשים</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="activeLeads">-</div>
+                        <div class="stat-number" id="activeUsers">-</div>
                         <div class="stat-label">פעילים</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="hiredCount">-</div>
-                        <div class="stat-label">התקבלו</div>
+                        <div class="stat-number" id="totalCustomers">-</div>
+                        <div class="stat-label">סה"כ לקוחות</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="todayActivities">-</div>
-                        <div class="stat-label">פעילויות היום</div>
+                        <div class="stat-number" id="systemHealth">✅</div>
+                        <div class="stat-label">בריאות מערכת</div>
                     </div>
                 </div>
-                <button class="admin-btn success" onclick="loadStats()">🔄 רענן סטטיסטיקות</button>
+                <button class="admin-btn success" onclick="loadSystemStats()">🔄 רענן סטטיסטיקות</button>
             </div>
             
             <div class="control-card">
                 <h3>🔧 פעולות מנהל</h3>
-                <button class="admin-btn" onclick="downloadReport()">📊 הורד דוח Excel</button>
-                <button class="admin-btn secondary" onclick="openUserDashboard()">👥 לוח משתמשים</button>
-                <button class="admin-btn secondary" onclick="showBulkActions()">📋 פעולות המוניות</button>
+                <button class="admin-btn" onclick="downloadSystemReport()">📊 הורד דוח מערכת</button>
+                <button class="admin-btn secondary" onclick="manageUsers()">👥 ניהול משתמשים</button>
+                <button class="admin-btn secondary" onclick="window.location.href='/admin/customers'">🏢 ניהול לקוחות</button>
             </div>
             
             <div class="control-card">
@@ -322,743 +236,53 @@
             </div>
         </div>
         
-        <!-- Leads Management Table -->
-        <div class="leads-table">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                <h2>📋 ניהול כל הלידים</h2>
-                <div class="admin-filters" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <select id="adminCampaignFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
-                        <option value="">כל הקמפיינים</option>
-                    </select>
-                    <select id="adminStatusFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
-                        <option value="">כל הסטטוסים</option>
-                        <option value="new">חדש</option>
-                        <option value="contacted">נוצר קשר</option>
-                        <option value="qualified">מוכשר</option>
-                        <option value="interested">מעוניין</option>
-                        <option value="not_interested">לא מעוניין</option>
-                        <option value="callback">להתקשר חזרה</option>
-                        <option value="interview_scheduled">נקבע ראיון</option>
-                        <option value="hired">התקבל</option>
-                        <option value="rejected">נדחה</option>
-                        <option value="closed">סגור</option>
-                    </select>
-                    <select id="assignmentFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
-                        <option value="">כל ההקצאות</option>
-                        <option value="unassigned">לא מוקצה</option>
-                        <option value="assigned">מוקצה</option>
-                    </select>
-                    <select id="assignedUserFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
-                        <option value="">כל המשתמשים</option>
-                    </select>
-                    <button class="admin-btn success" onclick="loadAllLeads()">🔄 רענן רשימה</button>
-                    <button class="admin-btn" onclick="selectAll()">☑️ בחר הכל</button>
-                    <button class="admin-btn secondary" onclick="clearSelection()">☐ נקה בחירה</button>
-                </div>
-            </div>
-            
-            <div id="leadsTableContainer">
-                <div class="loading">טוען נתוני לידים...</div>
-            </div>
-            
-            <!-- Bulk Actions -->
-            <div class="bulk-actions" id="bulkActions" style="display: none;">
-                <h4>פעולות על לידים נבחרים:</h4>
-                <button class="admin-btn" onclick="massClose()">🔒 סגור הכל</button>
-                <button class="admin-btn secondary" onclick="massAssign()">👤 הקצה למשתמש</button>
-                <button class="admin-btn secondary" onclick="massExport()">📤 יצא לאקסל</button>
-                <span id="selectedCount" style="margin-right: 20px; font-weight: bold;">0 נבחרו</span>
-            </div>
-        </div>
     </div>
 
-    <!-- Lead Details Modal -->
-    <div id="leadDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="background: white; margin: 2% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 800px; max-height: 90%; overflow-y: auto; direction: rtl;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px;">
-                <h2 style="color: #2c3e50;">📋 פרטי ליד מלאים</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="copyLeadDetails()" style="background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold;">📋 העתק פרטים</button>
-                    <button onclick="closeLeadDetails()" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2em;">✖️</button>
-                </div>
-            </div>
-            
-            <div id="leadDetailsContent">
-                <!-- Content will be populated by JavaScript -->
-            </div>
-        </div>
-    </div>
 
     <script>
-        let selectedLeads = new Set();
-        let allLeads = [];
         let availableUsers = [];
-        let currentLeadDetails = null;
 
-        // Filter state management
-        function saveFilterState(filters) {
-            localStorage.setItem('adminFilters', JSON.stringify(filters));
-        }
-
-        function restoreFilterState() {
+        async function loadSystemStats() {
             try {
-                const savedFilters = localStorage.getItem('adminFilters');
-                if (savedFilters) {
-                    const filters = JSON.parse(savedFilters);
-                    
-                    // Restore filter values to dropdowns
-                    if (filters.campaign) document.getElementById('adminCampaignFilter').value = filters.campaign;
-                    if (filters.status) document.getElementById('adminStatusFilter').value = filters.status;
-                    if (filters.assignment) document.getElementById('assignmentFilter').value = filters.assignment;
-                    if (filters.assignedUser) document.getElementById('assignedUserFilter').value = filters.assignedUser;
-                    
-                    return filters;
-                }
-            } catch (e) {
-                console.log('Could not restore filter state:', e);
-            }
-            return null;
-        }
-
-        async function loadStats() {
-            try {
-                const response = await fetch('/leads');
+                const response = await fetch('/admin/users/api');
                 const data = await response.json();
-                const leads = data.leads || [];
                 
-                document.getElementById('totalLeads').textContent = leads.length;
-                document.getElementById('activeLeads').textContent = 
-                    leads.filter(l => !['closed', 'hired', 'rejected'].includes(l.status)).length;
-                document.getElementById('hiredCount').textContent = 
-                    leads.filter(l => l.status === 'hired').length;
-                
-                // TODO: Load activities count
-                document.getElementById('todayActivities').textContent = '?';
-                
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
-        }
-
-        async function loadAllLeads() {
-            try {
-                const response = await fetch('/leads');
-                const data = await response.json();
-                allLeads = data.leads || [];
-                
-                populateAdminCampaignFilter(allLeads);
-                
-                // Restore filter state after data is loaded
-                setTimeout(() => {
-                    restoreFilterState();
-                    filterAdminLeads();
-                }, 100);
-                
-                loadStats();
-                
-            } catch (error) {
-                console.error('Error loading leads:', error);
-                document.getElementById('leadsTableContainer').innerHTML = 
-                    '<div class="loading">שגיאה בטעינת הלידים</div>';
-            }
-        }
-
-        function populateAdminCampaignFilter(leads) {
-            const campaignSelect = document.getElementById('adminCampaignFilter');
-            const campaigns = [...new Set(leads.map(lead => lead.campaign_name).filter(Boolean))];
-            
-            // Clear existing options (except "כל הקמפיינים")
-            campaignSelect.innerHTML = '<option value="">כל הקמפיינים</option>';
-            
-            // Add campaign options
-            campaigns.sort().forEach(campaign => {
-                const option = document.createElement('option');
-                option.value = campaign;
-                option.textContent = campaign;
-                campaignSelect.appendChild(option);
-            });
-        }
-
-        function filterAdminLeads() {
-            const campaignFilter = document.getElementById('adminCampaignFilter').value;
-            const statusFilter = document.getElementById('adminStatusFilter').value;
-            const assignmentFilter = document.getElementById('assignmentFilter').value;
-            const assignedUserFilter = document.getElementById('assignedUserFilter').value;
-            
-            // Save filter state to localStorage
-            saveFilterState({
-                campaign: campaignFilter,
-                status: statusFilter,
-                assignment: assignmentFilter,
-                assignedUser: assignedUserFilter
-            });
-            
-            let filteredLeads = allLeads.filter(lead => {
-                const campaignMatch = !campaignFilter || lead.campaign_name === campaignFilter;
-                const statusMatch = !statusFilter || lead.status === statusFilter;
-                
-                // Assignment filter logic
-                let assignmentMatch = true;
-                if (assignmentFilter === 'unassigned') {
-                    assignmentMatch = !lead.assigned_to;
-                } else if (assignmentFilter === 'assigned') {
-                    assignmentMatch = !!lead.assigned_to;
+                if (data.users) {
+                    const users = data.users;
+                    document.getElementById('totalUsers').textContent = users.length;
+                    document.getElementById('activeUsers').textContent = 
+                        users.filter(u => u.active).length;
                 }
                 
-                // Assigned user filter logic
-                const assignedUserMatch = !assignedUserFilter || lead.assigned_to === assignedUserFilter;
-                
-                return campaignMatch && statusMatch && assignmentMatch && assignedUserMatch;
-            });
-            
-            // Sort by original Facebook date (newest first), fallback to received_at
-            filteredLeads.sort((a, b) => {
-                const dateA = new Date(a.created_time || a.received_at);
-                const dateB = new Date(b.created_time || b.received_at);
-                return dateB - dateA;
-            });
-            
-            displayLeadsTable(filteredLeads);
-        }
-
-        function displayLeadsTable(leads) {
-            const container = document.getElementById('leadsTableContainer');
-            
-            if (leads.length === 0) {
-                container.innerHTML = '<div class="loading">אין לידים להצגה</div>';
-                return;
-            }
-
-            const table = `
-                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="selectAllCheck" onchange="toggleSelectAll()"></th>
-                            <th>שם</th>
-                            <th>אימייל</th>
-                            <th>טלפון</th>
-                            <th>סטטוס</th>
-                            <th>קמפיין</th>
-                            <th>טופס</th>
-                            <th>מקור</th>
-                            <th>פלטפורמה</th>
-                            <th>מוקצה ל</th>
-                            <th>תאריך מקורי</th>
-                            <th>עדכון</th>
-                            <th>פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${leads.map(lead => `
-                            <tr>
-                                <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="updateSelection()"></td>
-                                <td><strong>${lead.name || 'ללא שם'}</strong></td>
-                                <td>${lead.email || '-'}</td>
-                                <td>${lead.phone || '-'}</td>
-                                <td><span class="status-badge status-${lead.status}">${getStatusInHebrew(lead.status)}</span></td>
-                                <td>${lead.campaign_name || '-'}</td>
-                                <td>${lead.form_name || '-'}</td>
-                                <td>${lead.lead_source || '-'}</td>
-                                <td>${lead.platform === 'ig' ? 'אינסטגרם' : (lead.platform || 'פייסבוק')}</td>
-                                <td>
-                                    <select onchange="assignLead(${lead.id}, this.value)" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #bdc3c7;">
-                                        <option value="">בחר משתמש</option>
-                                        ${availableUsers.map(user => `
-                                            <option value="${user.username}" ${lead.assigned_to === user.username ? 'selected' : ''}>${user.full_name}</option>
-                                        `).join('')}
-                                    </select>
-                                </td>
-                                <td>${lead.created_time ? formatDate(lead.created_time) : formatDate(lead.received_at)}</td>
-                                <td>${formatDate(lead.updated_at)}</td>
-                                <td>
-                                    <button class="admin-btn" style="padding: 3px 6px; font-size: 0.7em; margin: 1px;" onclick="viewLeadDetails(${lead.id})">👁️</button>
-                                    <button class="admin-btn" style="padding: 3px 6px; font-size: 0.7em; margin: 1px;" onclick="editLead(${lead.id})">✏️</button>
-                                    <button class="admin-btn" style="padding: 3px 6px; font-size: 0.7em; margin: 1px;" onclick="deleteLead(${lead.id})">🗑️</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                </div>
-            `;
-            
-            container.innerHTML = table;
-        }
-
-        function getStatusInHebrew(status) {
-            const statusMap = {
-                'new': 'חדש',
-                'contacted': 'נוצר קשר',
-                'qualified': 'מוכשר',
-                'interested': 'מעוניין',
-                'not_interested': 'לא מעוניין',
-                'callback': 'להתקשר חזרה',
-                'interview_scheduled': 'נקבע ראיון',
-                'hired': 'התקבל',
-                'rejected': 'נדחה',
-                'closed': 'סגור'
-            };
-            return statusMap[status] || status;
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('he-IL', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        }
-
-        function toggleSelectAll() {
-            const selectAllCheck = document.getElementById('selectAllCheck');
-            const checkboxes = document.querySelectorAll('.lead-checkbox');
-            
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAllCheck.checked;
-            });
-            
-            updateSelection();
-        }
-
-        function updateSelection() {
-            selectedLeads.clear();
-            const checkboxes = document.querySelectorAll('.lead-checkbox:checked');
-            checkboxes.forEach(checkbox => {
-                selectedLeads.add(parseInt(checkbox.value));
-            });
-
-            document.getElementById('selectedCount').textContent = `${selectedLeads.size} נבחרו`;
-            document.getElementById('bulkActions').style.display = selectedLeads.size > 0 ? 'block' : 'none';
-        }
-
-        function selectAll() {
-            document.getElementById('selectAllCheck').checked = true;
-            toggleSelectAll();
-        }
-
-        function clearSelection() {
-            document.getElementById('selectAllCheck').checked = false;
-            toggleSelectAll();
-        }
-
-        async function massClose() {
-            if (selectedLeads.size === 0) {
-                alert('לא נבחרו לידים');
-                return;
-            }
-
-            if (!confirm(`האם אתה בטוח שברצונך לסגור ${selectedLeads.size} לידים?`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/admin/mass-close', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        lead_ids: Array.from(selectedLeads),
-                        user_name: 'Admin'
-                    })
-                });
-
-                const result = await response.json();
-                if (result.status === 'success') {
-                    alert(`✅ ${result.closed_count} לידים נסגרו בהצלחה!`);
-                    loadAllLeads();
-                    clearSelection();
-                } else {
-                    alert('❌ שגיאה בסגירת לידים');
+                // Load customers count
+                try {
+                    const customersResponse = await fetch('/admin/customers/api');
+                    const customers = await customersResponse.json();
+                    document.getElementById('totalCustomers').textContent = customers.length;
+                } catch (error) {
+                    document.getElementById('totalCustomers').textContent = '?';
                 }
+                
             } catch (error) {
-                alert('❌ שגיאה בסגירת לידים');
-                console.error(error);
+                console.error('Error loading system stats:', error);
+                document.getElementById('totalUsers').textContent = '?';
+                document.getElementById('activeUsers').textContent = '?';
             }
         }
 
-        function downloadReport() {
-            // TODO: Implement Excel export
+        function downloadSystemReport() {
+            // TODO: Implement system report export
             alert('תכונה זו תמומש בקרוב');
-        }
-
-        function openUserDashboard() {
-            window.open('/dashboard', '_blank');
-        }
-
-        function showBulkActions() {
-            document.getElementById('bulkActions').style.display = 'block';
         }
 
         function exportDatabase() {
             alert('תכונה זו תמומש בקרוב');
         }
 
-        async function fixLeadDates() {
-            if (!confirm('האם אתה בטוח שברצונך לתקן את תאריכי הלידים? פעולה זו תעדכן לידים שלא בהם תאריך יצירה.')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/admin/fix-dates', {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    alert(`✅ ${result.updated_count} לידים עודכנו בהצלחה!`);
-                    loadAllLeads();
-                } else {
-                    alert('❌ שגיאה בתיקון התאריכים');
-                }
-            } catch (error) {
-                alert('❌ שגיאה בתיקון התאריכים');
-                console.error(error);
-            }
-        }
-
         function manageUsers() {
             window.location.href = '/admin/users';
         }
 
-        function massAssign() {
-            alert('תכונה זו תמומש בקרוב');
-        }
-
-        function massExport() {
-            alert('תכונה זו תמומש בקרוב');
-        }
-
-        function editLead(leadId) {
-            alert(`עריכת ליד ${leadId} - תכונה זו תמומש בקרוב`);
-        }
-
-        async function viewLeadDetails(leadId) {
-            try {
-                const response = await fetch(`/leads/${leadId}`);
-                const data = await response.json();
-                
-                if (data.lead) {
-                    currentLeadDetails = { lead: data.lead, activities: data.activities || [] };
-                    displayLeadDetails(data.lead, data.activities || []);
-                    document.getElementById('leadDetailsModal').style.display = 'block';
-                } else {
-                    alert('שגיאה בטעינת פרטי הליד');
-                }
-            } catch (error) {
-                console.error('Error loading lead details:', error);
-                alert('שגיאה בטעינת פרטי הליד');
-            }
-        }
-
-        function displayLeadDetails(lead, activities) {
-            const content = document.getElementById('leadDetailsContent');
-            
-            // Parse raw_data for Hebrew job questions
-            let jobData = {};
-            try {
-                if (lead.raw_data && typeof lead.raw_data === 'object') {
-                    jobData = lead.raw_data;
-                } else if (lead.raw_data && typeof lead.raw_data === 'string') {
-                    jobData = JSON.parse(lead.raw_data);
-                }
-            } catch (e) {
-                console.log('Could not parse raw_data:', e);
-            }
-
-            content.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-                    <div>
-                        <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #3498db; padding-bottom: 10px;">👤 פרטים אישיים</h3>
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
-                            <p><strong>שם:</strong> ${lead.name || 'לא צוין'}</p>
-                            <p><strong>אימייל:</strong> ${lead.email || 'לא צוין'}</p>
-                            <p><strong>טלפון:</strong> ${lead.phone || 'לא צוין'}</p>
-                            <p><strong>סטטוס:</strong> <span class="status-badge status-${lead.status}">${getStatusInHebrew(lead.status)}</span></p>
-                            <p><strong>עדיפות:</strong> ${lead.priority || 0}</p>
-                            <p><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</p>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e67e22; padding-bottom: 10px;">📅 מידע זמני</h3>
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
-                            <p><strong>תאריך יצירה בפייסבוק:</strong> ${lead.created_time ? formatDate(lead.created_time) : 'לא ידוע'}</p>
-                            <p><strong>התקבל במערכת:</strong> ${formatDate(lead.received_at)}</p>
-                            <p><strong>עדכון אחרון:</strong> ${lead.updated_at ? formatDate(lead.updated_at) : 'לא עודכן'}</p>
-                            <p><strong>פלטפורמה:</strong> ${lead.platform === 'ig' ? 'אינסטגרם' : lead.platform || 'פייסבוק'}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 30px;">
-                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">🎯 פרטי קמפיין</h3>
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
-                        <p><strong>שם קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</p>
-                        <p><strong>שם טופס:</strong> ${lead.form_name || 'לא צוין'}</p>
-                        <p><strong>מקור הליד:</strong> ${lead.lead_source || 'לא ידוע'}</p>
-                        <p><strong>מזהה חיצוני:</strong> ${lead.external_lead_id || 'לא קיים'}</p>
-                    </div>
-                </div>
-
-                ${jobData && Object.keys(jobData).length > 0 ? `
-                <div style="margin-bottom: 30px;">
-                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #9b59b6; padding-bottom: 10px;">💼 מידע מקצועי מהטופס</h3>
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
-                        ${Object.entries(jobData).map(([key, value]) => {
-                            if (key === 'raw' || typeof value === 'object') return '';
-                            return `<p><strong>${key.replace(/_/g, ' ')}:</strong> ${value || 'לא מולא'}</p>`;
-                        }).join('')}
-                        
-                        ${jobData.raw ? `
-                        <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-right: 4px solid #9b59b6;">
-                            <h4 style="color: #9b59b6; margin-bottom: 10px;">תשובות מפורטות:</h4>
-                            ${Object.entries(jobData.raw).map(([question, answer]) => `
-                                <div style="margin-bottom: 15px; padding: 10px; background: #f1f2f6; border-radius: 5px;">
-                                    <strong style="color: #2c3e50;">${question}:</strong>
-                                    <div style="margin-top: 5px; color: #34495e;">${answer || 'לא נענה'}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-                ` : ''}
-
-                ${lead.notes ? `
-                <div style="margin-bottom: 30px;">
-                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e74c3c; padding-bottom: 10px;">📝 הערות מנהל</h3>
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
-                        <p>${lead.notes}</p>
-                    </div>
-                </div>
-                ` : ''}
-
-                ${activities && activities.length > 0 ? `
-                <div>
-                    <h3 style="color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #f39c12; padding-bottom: 10px;">📈 היסטוריית פעילות</h3>
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; max-height: 300px; overflow-y: auto;">
-                        ${activities.map(activity => `
-                            <div style="margin-bottom: 15px; padding: 15px; background: white; border-radius: 8px; border-right: 4px solid #3498db;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                    <span style="font-weight: bold; color: #2c3e50;">${activity.user_name}</span>
-                                    <span style="color: #7f8c8d; font-size: 0.9em;">${formatDate(activity.activity_date)}</span>
-                                </div>
-                                <div style="color: #34495e;">
-                                    <strong>${activity.activity_type}</strong>: ${activity.description || 'ללא תיאור'}
-                                </div>
-                                ${activity.call_outcome ? `<div style="color: #27ae60; font-size: 0.9em;">תוצאה: ${activity.call_outcome}</div>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : '<div><h3 style="color: #7f8c8d;">📈 אין פעילות עדיין</h3></div>'}
-            `;
-        }
-
-        async function copyLeadDetails() {
-            if (!currentLeadDetails) {
-                alert('אין פרטי ליד זמינים להעתקה');
-                return;
-            }
-
-            const lead = currentLeadDetails.lead;
-            const activities = currentLeadDetails.activities;
-
-            // Parse job data for Hebrew questions
-            let jobData = {};
-            try {
-                if (lead.raw_data && typeof lead.raw_data === 'object') {
-                    jobData = lead.raw_data;
-                } else if (lead.raw_data && typeof lead.raw_data === 'string') {
-                    jobData = JSON.parse(lead.raw_data);
-                }
-            } catch (e) {
-                console.log('Could not parse raw_data:', e);
-            }
-
-            // Create formatted text for copying
-            let copyText = `📋 פרטי ליד מלאים - ${lead.name || 'ללא שם'}
-═════════════════════════════════════
-
-👤 פרטים אישיים:
-• שם: ${lead.name || 'לא צוין'}
-• אימייל: ${lead.email || 'לא צוין'}
-• טלפון: ${lead.phone || 'לא צוין'}
-• סטטוס: ${getStatusInHebrew(lead.status)}
-• עדיפות: ${lead.priority || 0}
-• מוקצה ל: ${lead.assigned_to || 'לא מוקצה'}
-
-📅 מידע זמני:
-• תאריך יצירה בפייסבוק: ${lead.created_time ? formatDateForCopy(lead.created_time) : 'לא ידוע'}
-• התקבל במערכת: ${formatDateForCopy(lead.received_at)}
-• עדכון אחרון: ${lead.updated_at ? formatDateForCopy(lead.updated_at) : 'לא עודכן'}
-• פלטפורמה: ${lead.platform === 'ig' ? 'אינסטגרם' : lead.platform || 'פייסבוק'}
-
-🎯 פרטי קמפיין:
-• שם קמפיין: ${lead.campaign_name || 'לא צוין'}
-• שם טופס: ${lead.form_name || 'לא צוין'}
-• מקור הליד: ${lead.lead_source || 'לא ידוע'}
-• מזהה חיצוני: ${lead.external_lead_id || 'לא קיים'}`;
-
-            // Add job application details if available
-            if (jobData && Object.keys(jobData).length > 0) {
-                copyText += `
-
-💼 מידע מקצועי מהטופס:`;
-                
-                Object.entries(jobData).forEach(([key, value]) => {
-                    if (key !== 'raw' && typeof value !== 'object') {
-                        copyText += `\n• ${key.replace(/_/g, ' ')}: ${value || 'לא מולא'}`;
-                    }
-                });
-
-                // Add detailed answers if available
-                if (jobData.raw) {
-                    copyText += `\n\n🔍 תשובות מפורטות:`;
-                    Object.entries(jobData.raw).forEach(([question, answer]) => {
-                        copyText += `\n\n📝 ${question}:\n${answer || 'לא נענה'}`;
-                    });
-                }
-            }
-
-            // Add manager notes if available
-            if (lead.notes) {
-                copyText += `\n\n📝 הערות מנהל:\n${lead.notes}`;
-            }
-
-            // Add activity history if available
-            if (activities && activities.length > 0) {
-                copyText += `\n\n📈 היסטוריית פעילות:`;
-                activities.forEach(activity => {
-                    copyText += `\n\n🔸 ${formatDateForCopy(activity.activity_date)} - ${activity.user_name}`;
-                    copyText += `\n   ${activity.activity_type}: ${activity.description || 'ללא תיאור'}`;
-                    if (activity.call_outcome) {
-                        copyText += `\n   תוצאה: ${activity.call_outcome}`;
-                    }
-                });
-            } else {
-                copyText += `\n\n📈 היסטוריית פעילות:\nאין פעילות עדיין`;
-            }
-
-            copyText += `\n\n═════════════════════════════════════\n📅 הפרטים הועתקו ב${formatDateForCopy(new Date().toISOString())}`;
-
-            // Copy to clipboard
-            try {
-                await navigator.clipboard.writeText(copyText);
-                showToast('פרטי הליד הועתקו ללוח! ניתן להדביק בוואטסאפ או כל מקום אחר', 'success');
-            } catch (err) {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = copyText;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    showToast('פרטי הליד הועתקו ללוח! ניתן להדביק בוואטסאפ או כל מקום אחר', 'success');
-                } catch (err) {
-                    showToast('שגיאה בהעתקת הפרטים. נסה שוב', 'error');
-                }
-                document.body.removeChild(textArea);
-            }
-        }
-
-        function formatDateForCopy(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('he-IL', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        function closeLeadDetails() {
-            document.getElementById('leadDetailsModal').style.display = 'none';
-            currentLeadDetails = null;
-        }
-
-        function deleteLead(leadId) {
-            if (confirm('האם אתה בטוח שברצונך למחוק ליד זה?')) {
-                alert('תכונה זו תמומש בקרוב');
-            }
-        }
-
-        // Load users for assignment dropdown
-        async function loadUsers() {
-            try {
-                const response = await fetch('/admin/users/api');
-                const data = await response.json();
-                if (data.users) {
-                    availableUsers = data.users.filter(user => user.active);
-                    populateAssignedUserFilter();
-                    
-                    // Restore user filter after users are loaded
-                    setTimeout(() => {
-                        const savedFilters = restoreFilterState();
-                        if (savedFilters && savedFilters.assignedUser) {
-                            document.getElementById('assignedUserFilter').value = savedFilters.assignedUser;
-                        }
-                    }, 50);
-                }
-            } catch (error) {
-                console.error('Error loading users:', error);
-            }
-        }
-
-        // Populate the assigned user filter dropdown
-        function populateAssignedUserFilter() {
-            const filter = document.getElementById('assignedUserFilter');
-            
-            // Clear existing options except the first one
-            while (filter.children.length > 1) {
-                filter.removeChild(filter.lastChild);
-            }
-            
-            // Add users to filter
-            availableUsers.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.username;
-                option.textContent = user.full_name;
-                filter.appendChild(option);
-            });
-        }
-
-        // Assign lead to user
-        async function assignLead(leadId, username) {
-            try {
-                const response = await fetch(`/admin/leads/${leadId}/assign`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ assigned_to: username })
-                });
-
-                const result = await response.json();
-                if (result.status === 'success') {
-                    showToast(`ליד הוקצה בהצלחה ל${username ? username : 'ללא הקצאה'}`, 'success');
-                    // Update the lead in memory and refresh filtered view
-                    const lead = allLeads.find(l => l.id === leadId);
-                    if (lead) {
-                        lead.assigned_to = username;
-                    }
-                    // Refresh the filtered view to reflect assignment changes
-                    filterAdminLeads();
-                } else {
-                    showToast(`שגיאה בהקצאת הליד: ${result.error}`, 'error');
-                }
-            } catch (error) {
-                console.error('Error assigning lead:', error);
-                showToast('שגיאה בהקצאת הליד', 'error');
-            }
-        }
 
         // Toast notification function
         function showToast(message, type = 'success') {
@@ -1169,14 +393,10 @@
 
         // Load data when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            loadUsers();
-            loadAllLeads();
+            loadSystemStats();
             loadCustomers();
             loadSelectedCustomer();
         });
-
-        // Auto refresh every 2 minutes
-        setInterval(loadAllLeads, 2 * 60 * 1000);
     </script>
 </body>
 </html>

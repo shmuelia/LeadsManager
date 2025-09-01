@@ -575,6 +575,26 @@
                 <button class="campaign-btn secondary" onclick="downloadReport()">📊 הורד דוח Excel</button>
                 <button class="campaign-btn secondary" onclick="showBulkActions()">📋 פעולות המוניות</button>
             </div>
+            
+            <div class="control-card">
+                <h3>👥 ניהול עובדים</h3>
+                <button class="campaign-btn" onclick="showUserManagement()">👤 נהל עובדים</button>
+                <button class="campaign-btn secondary" onclick="showAddUserModal()">➕ הוסף עובד חדש</button>
+            </div>
+        </div>
+
+        <!-- User Management Table -->
+        <div id="userManagementTable" class="leads-table" style="display: none;">
+            <div class="table-header">
+                <div class="table-title">👥 ניהול עובדים</div>
+                <div class="filters">
+                    <button class="campaign-btn" onclick="hideUserManagement()">🔙 חזרה ללידים</button>
+                </div>
+            </div>
+            
+            <div class="leads-grid" id="usersContainer">
+                <div class="loading">טוען עובדים...</div>
+            </div>
         </div>
 
         <!-- Leads Management Table -->
@@ -635,11 +655,53 @@
         </div>
     </div>
 
+    <!-- Add/Edit User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeUserModal()">&times;</span>
+                <h2 id="userModalTitle">הוסף עובד חדש</h2>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <div class="detail-item" style="margin-bottom: 15px;">
+                        <div class="detail-label">שם משתמש:</div>
+                        <input type="text" id="userUsername" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
+                    </div>
+                    <div class="detail-item" style="margin-bottom: 15px;">
+                        <div class="detail-label">שם מלא:</div>
+                        <input type="text" id="userFullName" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
+                    </div>
+                    <div class="detail-item" style="margin-bottom: 15px;">
+                        <div class="detail-label">סיסמה:</div>
+                        <input type="text" id="userPassword" required style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
+                        <small style="color: #6b7280;">הסיסמה תהיה נראית לכל המנהלים</small>
+                    </div>
+                    <div class="detail-item" style="margin-bottom: 15px;">
+                        <div class="detail-label">תפקיד:</div>
+                        <select id="userRole" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; direction: rtl;">
+                            <option value="user">עובד</option>
+                        </select>
+                    </div>
+                    <div class="detail-item" style="margin-bottom: 15px;">
+                        <div class="detail-label">פעיל:</div>
+                        <input type="checkbox" id="userActive" checked style="transform: scale(1.2);">
+                    </div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button type="button" class="campaign-btn" onclick="saveUser()">💾 שמור</button>
+                        <button type="button" class="campaign-btn secondary" onclick="closeUserModal()">❌ ביטול</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         let selectedLeads = new Set();
         let allLeads = [];
         let availableUsers = [];
         let currentLeadDetails = null;
+        let currentEditingUser = null;
 
         // Filter state management
         function saveFilterState(filters) {
@@ -996,11 +1058,206 @@
             }, 3000);
         }
 
+        // User Management Functions
+        function showUserManagement() {
+            document.getElementById('userManagementTable').style.display = 'block';
+            document.querySelector('.leads-table:not(#userManagementTable)').style.display = 'none';
+            loadUsers();
+        }
+
+        function hideUserManagement() {
+            document.getElementById('userManagementTable').style.display = 'none';
+            document.querySelector('.leads-table:not(#userManagementTable)').style.display = 'block';
+        }
+
+        async function loadUsers() {
+            try {
+                document.getElementById('usersContainer').innerHTML = '<div class="loading">טוען עובדים...</div>';
+                
+                const response = await fetch('/admin/users/api');
+                const data = await response.json();
+                
+                if (data.users) {
+                    availableUsers = data.users;
+                    renderUsersTable(availableUsers);
+                } else {
+                    document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בטעינת העובדים</div>';
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersContainer').innerHTML = '<div class="loading">שגיאה בחיבור לשרת</div>';
+            }
+        }
+
+        function renderUsersTable(users) {
+            const container = document.getElementById('usersContainer');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="loading">אין עובדים להצגה</div>';
+                return;
+            }
+
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>פעולות</th>
+                            <th>סטטוס</th>
+                            <th>תפקיד</th>
+                            <th>שם מלא</th>
+                            <th>שם משתמש</th>
+                            <th>סיסמה נוכחית</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>
+                                    <button class="action-btn primary" onclick="editUser(${user.id})">✏️ עריכה</button>
+                                    <button class="action-btn" onclick="toggleUserStatus(${user.id}, ${!user.active})" 
+                                            style="background: ${user.active ? '#dc2626' : '#059669'}; color: white;">
+                                        ${user.active ? '❌ השבת' : '✅ הפעל'}
+                                    </button>
+                                </td>
+                                <td>
+                                    <span class="status-badge ${user.active ? 'status-qualified' : 'status-closed'}">
+                                        ${user.active ? 'פעיל' : 'לא פעיל'}
+                                    </span>
+                                </td>
+                                <td>${getRoleLabel(user.role)}</td>
+                                <td><strong>${user.full_name || 'לא צוין'}</strong></td>
+                                <td>${user.username}</td>
+                                <td style="font-family: monospace; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                                    ${user.plain_password || 'לא זמין'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = table;
+        }
+
+        function getRoleLabel(role) {
+            const labels = {
+                'admin': 'מנהל מערכת',
+                'campaign_manager': 'מנהל קמפיין',
+                'user': 'עובד'
+            };
+            return labels[role] || role;
+        }
+
+        function showAddUserModal() {
+            currentEditingUser = null;
+            document.getElementById('userModalTitle').textContent = 'הוסף עובד חדש';
+            document.getElementById('userUsername').value = '';
+            document.getElementById('userFullName').value = '';
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userRole').value = 'user';
+            document.getElementById('userActive').checked = true;
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        function editUser(userId) {
+            const user = availableUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            currentEditingUser = user;
+            document.getElementById('userModalTitle').textContent = 'עריכת עובד';
+            document.getElementById('userUsername').value = user.username;
+            document.getElementById('userFullName').value = user.full_name || '';
+            document.getElementById('userPassword').value = user.plain_password || '';
+            document.getElementById('userRole').value = user.role;
+            document.getElementById('userActive').checked = user.active;
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        async function saveUser() {
+            const username = document.getElementById('userUsername').value.trim();
+            const fullName = document.getElementById('userFullName').value.trim();
+            const password = document.getElementById('userPassword').value.trim();
+            const role = document.getElementById('userRole').value;
+            const active = document.getElementById('userActive').checked;
+
+            if (!username || !fullName || !password) {
+                showToast('אנא מלא את כל השדות הנדרשים', 'error');
+                return;
+            }
+
+            try {
+                const url = currentEditingUser 
+                    ? `/admin/users/${currentEditingUser.id}` 
+                    : '/admin/users';
+                const method = currentEditingUser ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        full_name: fullName,
+                        plain_password: password,
+                        role: role,
+                        active: active
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(currentEditingUser ? 'עובד עודכן בהצלחה' : 'עובד נוסף בהצלחה', 'success');
+                    closeUserModal();
+                    loadUsers();
+                } else {
+                    showToast(result.error || 'שגיאה בשמירת העובד', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving user:', error);
+                showToast('שגיאה בחיבור לשרת', 'error');
+            }
+        }
+
+        async function toggleUserStatus(userId, newStatus) {
+            try {
+                const response = await fetch(`/admin/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        active: newStatus
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(`עובד ${newStatus ? 'הופעל' : 'הושבת'} בהצלחה`, 'success');
+                    loadUsers();
+                } else {
+                    showToast(result.error || 'שגיאה בעדכון סטטוס העובד', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                showToast('שגיאה בחיבור לשרת', 'error');
+            }
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').style.display = 'none';
+            currentEditingUser = null;
+        }
+
         // Load user info
         function loadUserInfo() {
             // Load user information from template variables
             const userInfo = document.getElementById('userInfo');
-            userInfo.textContent = '{{ user_name }} - לקוח: {{ customer_name }}';
+            const userName = '{{ user_name|safe }}';
+            const customerName = '{{ customer_name|safe }}';
+            
+            console.log('User info:', userName, 'Customer:', customerName); // Debug log
+            userInfo.textContent = `${userName} - לקוח: ${customerName}`;
         }
 
         // Load data when page loads
@@ -1014,9 +1271,13 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('leadModal');
-            if (event.target === modal) {
+            const leadModal = document.getElementById('leadModal');
+            const userModal = document.getElementById('userModal');
+            
+            if (event.target === leadModal) {
                 closeLeadModal();
+            } else if (event.target === userModal) {
+                closeUserModal();
             }
         }
     </script>

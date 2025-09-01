@@ -1087,22 +1087,52 @@ def manage_users():
     return render_template('user_management.html')
 
 @app.route('/admin/users/api')
-@admin_required
+@login_required
 def get_users_api():
-    """Admin: Get all users (API)"""
+    """Get users based on user role - Admin sees all, Campaign Manager sees only their customer"""
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
-                   u.customer_id, c.name as customer_name
-            FROM users u
-            LEFT JOIN customers c ON u.customer_id = c.id
-            ORDER BY u.created_at DESC
-        """)
+        
+        # Get user role and customer from session
+        user_role = session.get('role')
+        user_customer_id = session.get('customer_id')
+        
+        # Admin query - include plain_password for admins
+        if user_role == 'admin':
+            customer_filter = request.args.get('customer_id')
+            if customer_filter:
+                cur.execute("""
+                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
+                           u.customer_id, c.name as customer_name, u.plain_password
+                    FROM users u
+                    LEFT JOIN customers c ON u.customer_id = c.id
+                    WHERE u.customer_id = %s
+                    ORDER BY u.created_at DESC
+                """, (customer_filter,))
+            else:
+                cur.execute("""
+                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
+                           u.customer_id, c.name as customer_name, u.plain_password
+                    FROM users u
+                    LEFT JOIN customers c ON u.customer_id = c.id
+                    ORDER BY u.created_at DESC
+                """)
+        # Campaign Manager query - only their customer's users
+        elif user_role == 'campaign_manager':
+            cur.execute("""
+                SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
+                       u.customer_id, c.name as customer_name, u.plain_password
+                FROM users u
+                LEFT JOIN customers c ON u.customer_id = c.id
+                WHERE u.customer_id = %s
+                ORDER BY u.created_at DESC
+            """, (user_customer_id,))
+        else:
+            return jsonify({'error': 'Access denied'}), 403
         
         users = cur.fetchall()
         
@@ -1186,17 +1216,39 @@ def fix_lead_dates():
         logger.error(f"Error fixing dates: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/admin/users/create', methods=['POST'])
-@admin_required
+@app.route('/admin/users', methods=['POST'])
+@login_required
 def create_user():
-    """Admin: Create new user"""
+    """Admin/Campaign Manager: Create new user"""
     try:
         data = request.get_json()
+        user_role = session.get('role')
+        user_customer_id = session.get('customer_id')
         
-        required_fields = ['username', 'password', 'full_name', 'role', 'customer_id']
+        # Check permissions
+        if user_role not in ['admin', 'campaign_manager']:
+            return jsonify({'error': 'Access denied'}), 403
+        
+        # Use plain_password if provided, otherwise password
+        password = data.get('plain_password', data.get('password'))
+        required_fields = ['username', 'full_name']
+        if not password:
+            required_fields.append('password')
+        
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Set customer_id based on user role
+        if user_role == 'campaign_manager':
+            # Campaign managers can only create users for their own customer
+            target_customer_id = user_customer_id
+            # Force role to be 'user' for campaign managers
+            target_role = 'user'
+        else:
+            # Admins can specify customer_id and role
+            target_customer_id = data.get('customer_id', user_customer_id)
+            target_role = data.get('role', 'user')
         
         conn = get_db_connection()
         if not conn:
@@ -1216,13 +1268,13 @@ def create_user():
             RETURNING id;
         """, (
             data['username'],
-            hash_password(data['password']),
-            data['password'],  # Store plain password for admin reference
+            hash_password(password),
+            password,  # Store plain password for admin reference
             data['full_name'],
             data.get('email'),
-            data['role'],
+            target_role,
             data.get('department'),
-            data.get('customer_id'),
+            target_customer_id,
             data.get('active', True)
         ))
         
@@ -1243,12 +1295,18 @@ def create_user():
         logger.error(f"Error creating user: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/admin/users/update/<int:user_id>', methods=['PUT'])
-@admin_required
+@app.route('/admin/users/<int:user_id>', methods=['PUT'])
+@login_required
 def update_user(user_id):
-    """Admin: Update existing user"""
+    """Admin/Campaign Manager: Update existing user"""
     try:
         data = request.get_json()
+        user_role = session.get('role')
+        user_customer_id = session.get('customer_id')
+        
+        # Check permissions
+        if user_role not in ['admin', 'campaign_manager']:
+            return jsonify({'error': 'Access denied'}), 403
         
         conn = get_db_connection()
         if not conn:
@@ -1256,10 +1314,14 @@ def update_user(user_id):
             
         cur = conn.cursor()
         
-        # Check if user exists
-        cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        # Check if user exists and if campaign manager has access
+        if user_role == 'campaign_manager':
+            cur.execute("SELECT id FROM users WHERE id = %s AND customer_id = %s", (user_id, user_customer_id))
+        else:
+            cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+            
         if not cur.fetchone():
-            return jsonify({'error': 'User not found'}), 404
+            return jsonify({'error': 'User not found or access denied'}), 404
         
         # Build update query dynamically based on provided fields
         update_fields = []
@@ -1273,11 +1335,13 @@ def update_user(user_id):
             update_fields.append("username = %s")
             update_values.append(data['username'])
         
-        if 'password' in data and data['password']:
+        # Handle password update (support both 'password' and 'plain_password' fields)
+        password = data.get('plain_password', data.get('password'))
+        if password:
             update_fields.append("password_hash = %s")
-            update_values.append(hash_password(data['password']))
+            update_values.append(hash_password(password))
             update_fields.append("plain_password = %s")
-            update_values.append(data['password'])
+            update_values.append(password)
         
         if 'full_name' in data:
             update_fields.append("full_name = %s")
@@ -1287,17 +1351,19 @@ def update_user(user_id):
             update_fields.append("email = %s")
             update_values.append(data['email'])
         
-        if 'role' in data:
-            update_fields.append("role = %s")
-            update_values.append(data['role'])
+        # Role and customer changes only for admins
+        if user_role == 'admin':
+            if 'role' in data:
+                update_fields.append("role = %s")
+                update_values.append(data['role'])
+            
+            if 'customer_id' in data:
+                update_fields.append("customer_id = %s")
+                update_values.append(data['customer_id'])
         
         if 'department' in data:
             update_fields.append("department = %s")
             update_values.append(data['department'])
-        
-        if 'customer_id' in data:
-            update_fields.append("customer_id = %s")
-            update_values.append(data['customer_id'])
         
         if 'active' in data:
             update_fields.append("active = %s")
