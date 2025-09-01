@@ -360,8 +360,14 @@
                 
                 <div class="form-group">
                     <label for="password">סיסמה:</label>
-                    <input type="password" id="password" name="password">
+                    <input type="text" id="password" name="password">
                     <small style="color: #7f8c8d;">השאר ריק כדי לא לשנות סיסמה (רק בעדכון)</small>
+                </div>
+                
+                <div class="form-group" id="currentPasswordGroup" style="display: none;">
+                    <label for="currentPassword">סיסמה נוכחית:</label>
+                    <input type="text" id="currentPassword" readonly style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                    <small style="color: #059669;">זוהי הסיסמה הנוכחית של המשתמש</small>
                 </div>
                 
                 <div class="form-group">
@@ -526,6 +532,7 @@
             document.getElementById('modalTitle').textContent = 'הוספת משתמש חדש';
             document.getElementById('userForm').reset();
             document.getElementById('password').required = true;
+            document.getElementById('currentPasswordGroup').style.display = 'none';
             document.getElementById('userModal').style.display = 'block';
         }
         
@@ -549,6 +556,12 @@
                     document.getElementById('department').value = user.department || '';
                     document.getElementById('customer_id').value = user.customer_id || '';
                     document.getElementById('active').value = user.active.toString();
+                    
+                    // Show current password for admin reference
+                    if (user.plain_password) {
+                        document.getElementById('currentPassword').value = user.plain_password;
+                        document.getElementById('currentPasswordGroup').style.display = 'block';
+                    }
                     
                     document.getElementById('userModal').style.display = 'block';
                 } else {

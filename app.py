@@ -1211,12 +1211,13 @@ def create_user():
         
         # Create user
         cur.execute("""
-            INSERT INTO users (username, password_hash, full_name, email, role, department, customer_id, active)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (username, password_hash, plain_password, full_name, email, role, department, customer_id, active)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
         """, (
             data['username'],
             hash_password(data['password']),
+            data['password'],  # Store plain password for admin reference
             data['full_name'],
             data.get('email'),
             data['role'],
@@ -1275,6 +1276,8 @@ def update_user(user_id):
         if 'password' in data and data['password']:
             update_fields.append("password_hash = %s")
             update_values.append(hash_password(data['password']))
+            update_fields.append("plain_password = %s")
+            update_values.append(data['password'])
         
         if 'full_name' in data:
             update_fields.append("full_name = %s")
@@ -1381,7 +1384,7 @@ def get_user(user_id):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
             SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.customer_id, 
-                   u.active, u.created_at, u.updated_at, c.name as customer_name
+                   u.active, u.created_at, u.updated_at, u.plain_password, c.name as customer_name
             FROM users u
             LEFT JOIN customers c ON u.customer_id = c.id
             WHERE u.id = %s
