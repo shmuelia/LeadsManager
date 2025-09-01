@@ -874,6 +874,12 @@
         }
 
         function showLeadModal(lead, activities) {
+            // Update modal title to include lead ID
+            const modalTitle = document.getElementById('leadModalTitle');
+            if (modalTitle) {
+                modalTitle.textContent = `📋 פרטי ליד מלאים - ליד #${lead.id}`;
+            }
+            
             const modalBody = document.getElementById('leadModalBody');
             
             // Parse raw lead data for additional insights
@@ -940,6 +946,10 @@
                 </div>
 
                 <div class="lead-details" style="margin-bottom: 25px;">
+                    <div class="detail-item">
+                        <div class="detail-label">מספר ליד (ID)</div>
+                        <div class="detail-value"><strong style="font-size: 1.1em; color: #059669; font-family: monospace;">#${lead.id}</strong></div>
+                    </div>
                     <div class="detail-item">
                         <div class="detail-label">שם</div>
                         <div class="detail-value"><strong style="font-size: 1.1em; color: #1e293b;">${lead.name || 'לא צוין'}</strong></div>
