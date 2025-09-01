@@ -31,7 +31,47 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-main {
             text-align: center;
+            flex-grow: 1;
+        }
+        
+        .header-user {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .user-info {
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 1em;
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
         .header h1 {
@@ -435,6 +475,17 @@
             .actions {
                 flex-direction: column;
             }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .header-user {
+                align-items: center;
+                flex-direction: row;
+                gap: 15px;
+            }
         }
         
         /* Toast notification styles */
@@ -473,8 +524,16 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🍞 לוח בקרה לניהול לידים</h1>
-            <p>אלחנן מאפיית לחם - מערכת ניהול מועמדים</p>
+            <div class="header-content">
+                <div class="header-main">
+                    <h1>🍞 לוח בקרה לניהול לידים</h1>
+                    <p>אלחנן מאפיית לחם - מערכת ניהול מועמדים</p>
+                </div>
+                <div class="header-user">
+                    <span class="user-info">👤 {{ session.get('full_name', 'משתמש') }}</span>
+                    <a href="/logout" class="logout-btn">🚪 יציאה</a>
+                </div>
+            </div>
         </div>
         
         <!-- Statistics -->

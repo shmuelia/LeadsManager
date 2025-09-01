@@ -31,7 +31,47 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-main {
             text-align: center;
+            flex-grow: 1;
+        }
+        
+        .header-user {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .user-info {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 1em;
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
         .header h1 {
@@ -189,8 +229,16 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🔧 לוח בקרה מנהל</h1>
-            <p>ניהול מתקדם של מערכת הלידים - אלחנן מאפיית לחם</p>
+            <div class="header-content">
+                <div class="header-main">
+                    <h1>🔧 לוח בקרה מנהל</h1>
+                    <p>ניהול מתקדם של מערכת הלידים - אלחנן מאפיית לחם</p>
+                </div>
+                <div class="header-user">
+                    <span class="user-info">👤 {{ session.get('full_name', 'מנהל') }}</span>
+                    <a href="/logout" class="logout-btn">🚪 יציאה</a>
+                </div>
+            </div>
         </div>
         
         <!-- Admin Controls -->
