@@ -91,6 +91,36 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #ecf0f1;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .filters-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filter-select {
+            padding: 8px 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.9em;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+            direction: rtl;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .filter-select:hover {
+            border-color: #bdc3c7;
         }
         
         .leads-title {
@@ -352,6 +382,22 @@
             line-height: 1.6;
         }
         
+        .campaign-section {
+            margin: 15px 0;
+        }
+        
+        .campaign-badge {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: inline-block;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+        }
+        
         .source-info {
             font-size: 0.9em;
             color: #7f8c8d;
@@ -420,7 +466,29 @@
         <div class="leads-container">
             <div class="leads-header">
                 <h2 class="leads-title">רשימת לידים</h2>
-                <div>
+                <div class="filters-container">
+                    <select id="campaignFilter" onchange="filterLeads()" class="filter-select">
+                        <option value="">כל הקמפיינים</option>
+                    </select>
+                    <select id="statusFilter" onchange="filterLeads()" class="filter-select">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="new">חדש</option>
+                        <option value="contacted">נוצר קשר</option>
+                        <option value="qualified">מוכשר</option>
+                        <option value="interested">מעוניין</option>
+                        <option value="not_interested">לא מעוניין</option>
+                        <option value="callback">להתקשר חזרה</option>
+                        <option value="interview_scheduled">נקבע ראיון</option>
+                        <option value="hired">התקבל</option>
+                        <option value="rejected">נדחה</option>
+                        <option value="closed">סגור</option>
+                    </select>
+                    <select id="sortBy" onchange="filterLeads()" class="filter-select">
+                        <option value="received_at">מיון לפי תאריך</option>
+                        <option value="name">מיון לפי שם</option>
+                        <option value="campaign_name">מיון לפי קמפיין</option>
+                        <option value="status">מיון לפי סטטוס</option>
+                    </select>
                     <button class="refresh-btn" onclick="loadLeads()">🔄 רענן</button>
                 </div>
             </div>
@@ -495,6 +563,7 @@
 
     <script>
         const API_BASE = '';
+        let allLeads = []; // Store all leads for filtering
         
         async function loadLeads() {
             try {
@@ -504,8 +573,10 @@
                 const data = await response.json();
                 
                 if (data.leads && data.leads.length > 0) {
-                    displayLeads(data.leads);
-                    updateStats(data.leads);
+                    allLeads = data.leads;
+                    populateCampaignFilter(allLeads);
+                    filterLeads(); // Apply current filters
+                    updateStats(allLeads);
                 } else {
                     document.getElementById('leadsContainer').innerHTML = 
                         '<div class="no-leads">אין לידים להצגה</div>';
@@ -515,6 +586,51 @@
                 document.getElementById('leadsContainer').innerHTML = 
                     '<div class="no-leads">שגיאה בטעינת הלידים</div>';
             }
+        }
+        
+        function populateCampaignFilter(leads) {
+            const campaignSelect = document.getElementById('campaignFilter');
+            const campaigns = [...new Set(leads.map(lead => lead.campaign_name).filter(Boolean))];
+            
+            // Clear existing options (except "כל הקמפיינים")
+            campaignSelect.innerHTML = '<option value="">כל הקמפיינים</option>';
+            
+            // Add campaign options
+            campaigns.sort().forEach(campaign => {
+                const option = document.createElement('option');
+                option.value = campaign;
+                option.textContent = campaign;
+                campaignSelect.appendChild(option);
+            });
+        }
+        
+        function filterLeads() {
+            const campaignFilter = document.getElementById('campaignFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            let filteredLeads = allLeads.filter(lead => {
+                const campaignMatch = !campaignFilter || lead.campaign_name === campaignFilter;
+                const statusMatch = !statusFilter || lead.status === statusFilter;
+                return campaignMatch && statusMatch;
+            });
+            
+            // Sort leads
+            filteredLeads.sort((a, b) => {
+                switch (sortBy) {
+                    case 'name':
+                        return (a.name || '').localeCompare(b.name || '', 'he');
+                    case 'campaign_name':
+                        return (a.campaign_name || '').localeCompare(b.campaign_name || '', 'he');
+                    case 'status':
+                        return (a.status || '').localeCompare(b.status || '');
+                    case 'received_at':
+                    default:
+                        return new Date(b.received_at) - new Date(a.received_at);
+                }
+            });
+            
+            displayLeads(filteredLeads);
         }
         
         function displayLeads(leads) {
@@ -592,10 +708,15 @@
                 </div>
                 ` : ''}
                 
+                <div class="campaign-section">
+                    <div class="campaign-badge">
+                        🎯 ${lead.campaign_name || 'ללא קמפיין'}
+                    </div>
+                </div>
+                
                 <div class="source-info">
                     🌐 ${lead.platform === 'ig' ? 'אינסטגרם' : lead.platform} • 
-                    📅 ${formatDate(lead.received_at)} • 
-                    🎯 ${lead.campaign_name || 'ללא קמפיין'}
+                    📅 ${formatDate(lead.received_at)}
                 </div>
             `;
             

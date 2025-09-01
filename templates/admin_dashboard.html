@@ -234,9 +234,25 @@
         
         <!-- Leads Management Table -->
         <div class="leads-table">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
                 <h2>📋 ניהול כל הלידים</h2>
-                <div>
+                <div class="admin-filters" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <select id="adminCampaignFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
+                        <option value="">כל הקמפיינים</option>
+                    </select>
+                    <select id="adminStatusFilter" onchange="filterAdminLeads()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #bdc3c7;">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="new">חדש</option>
+                        <option value="contacted">נוצר קשר</option>
+                        <option value="qualified">מוכשר</option>
+                        <option value="interested">מעוניין</option>
+                        <option value="not_interested">לא מעוניין</option>
+                        <option value="callback">להתקשר חזרה</option>
+                        <option value="interview_scheduled">נקבע ראיון</option>
+                        <option value="hired">התקבל</option>
+                        <option value="rejected">נדחה</option>
+                        <option value="closed">סגור</option>
+                    </select>
                     <button class="admin-btn success" onclick="loadAllLeads()">🔄 רענן רשימה</button>
                     <button class="admin-btn" onclick="selectAll()">☑️ בחר הכל</button>
                     <button class="admin-btn secondary" onclick="clearSelection()">☐ נקה בחירה</button>
@@ -288,7 +304,8 @@
                 const data = await response.json();
                 allLeads = data.leads || [];
                 
-                displayLeadsTable(allLeads);
+                populateAdminCampaignFilter(allLeads);
+                filterAdminLeads();
                 loadStats();
                 
             } catch (error) {
@@ -296,6 +313,38 @@
                 document.getElementById('leadsTableContainer').innerHTML = 
                     '<div class="loading">שגיאה בטעינת הלידים</div>';
             }
+        }
+
+        function populateAdminCampaignFilter(leads) {
+            const campaignSelect = document.getElementById('adminCampaignFilter');
+            const campaigns = [...new Set(leads.map(lead => lead.campaign_name).filter(Boolean))];
+            
+            // Clear existing options (except "כל הקמפיינים")
+            campaignSelect.innerHTML = '<option value="">כל הקמפיינים</option>';
+            
+            // Add campaign options
+            campaigns.sort().forEach(campaign => {
+                const option = document.createElement('option');
+                option.value = campaign;
+                option.textContent = campaign;
+                campaignSelect.appendChild(option);
+            });
+        }
+
+        function filterAdminLeads() {
+            const campaignFilter = document.getElementById('adminCampaignFilter').value;
+            const statusFilter = document.getElementById('adminStatusFilter').value;
+            
+            let filteredLeads = allLeads.filter(lead => {
+                const campaignMatch = !campaignFilter || lead.campaign_name === campaignFilter;
+                const statusMatch = !statusFilter || lead.status === statusFilter;
+                return campaignMatch && statusMatch;
+            });
+            
+            // Sort by received_at (newest first)
+            filteredLeads.sort((a, b) => new Date(b.received_at) - new Date(a.received_at));
+            
+            displayLeadsTable(filteredLeads);
         }
 
         function displayLeadsTable(leads) {
