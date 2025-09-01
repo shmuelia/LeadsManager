@@ -1404,10 +1404,32 @@
 
         // Load data when page loads
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== CAMPAIGN MANAGER: DOM Content Loaded ===');
             loadUserInfo();
             
+            // Check if LeadManager class is available
+            if (typeof LeadManager === 'undefined') {
+                console.error('ERROR: LeadManager class not found!');
+                // Fallback: try to load leads manually
+                setTimeout(() => {
+                    console.log('Attempting manual lead loading...');
+                    loadAllLeads();
+                }, 1000);
+                return;
+            }
+            
             // Initialize unified lead management component
-            window.leadManager = new LeadManager('campaign_manager', true, true);
+            console.log('Initializing LeadManager for campaign_manager...');
+            try {
+                window.leadManager = new LeadManager('campaign_manager', true, true);
+                console.log('LeadManager initialized successfully');
+            } catch (error) {
+                console.error('Error initializing LeadManager:', error);
+                // Fallback: try manual loading
+                setTimeout(() => {
+                    loadAllLeads();
+                }, 1000);
+            }
         });
 
         // Auto refresh every 2 minutes
