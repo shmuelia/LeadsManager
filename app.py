@@ -1068,9 +1068,11 @@ def get_users_api():
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            SELECT id, username, full_name, email, role, department, active, created_at
-            FROM users
-            ORDER BY created_at DESC
+            SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
+                   u.customer_id, c.name as customer_name
+            FROM users u
+            LEFT JOIN customers c ON u.customer_id = c.id
+            ORDER BY u.created_at DESC
         """)
         
         users = cur.fetchall()
@@ -1162,7 +1164,7 @@ def create_user():
     try:
         data = request.get_json()
         
-        required_fields = ['username', 'password', 'full_name', 'role']
+        required_fields = ['username', 'password', 'full_name', 'role', 'customer_id']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Missing required field: {field}'}), 400
@@ -1180,8 +1182,8 @@ def create_user():
         
         # Create user
         cur.execute("""
-            INSERT INTO users (username, password_hash, full_name, email, role, department, active)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (username, password_hash, full_name, email, role, department, customer_id, active)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
         """, (
             data['username'],
@@ -1190,6 +1192,7 @@ def create_user():
             data.get('email'),
             data['role'],
             data.get('department'),
+            data.get('customer_id'),
             data.get('active', True)
         ))
         
@@ -1259,6 +1262,10 @@ def update_user(user_id):
         if 'department' in data:
             update_fields.append("department = %s")
             update_values.append(data['department'])
+        
+        if 'customer_id' in data:
+            update_fields.append("customer_id = %s")
+            update_values.append(data['customer_id'])
         
         if 'active' in data:
             update_fields.append("active = %s")
@@ -1344,8 +1351,11 @@ def get_user(user_id):
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            SELECT id, username, full_name, email, role, department, active, created_at, updated_at
-            FROM users WHERE id = %s
+            SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.customer_id, 
+                   u.active, u.created_at, u.updated_at, c.name as customer_name
+            FROM users u
+            LEFT JOIN customers c ON u.customer_id = c.id
+            WHERE u.id = %s
         """, (user_id,))
         
         user = cur.fetchone()

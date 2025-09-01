@@ -389,6 +389,13 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="customer_id">לקוח:</label>
+                    <select id="customer_id" name="customer_id" required>
+                        <option value="">בחר לקוח</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label for="active">סטטוס:</label>
                     <select id="active" name="active">
                         <option value="true">פעיל</option>
@@ -409,7 +416,10 @@
         let isEditMode = false;
         
         // Load users when page loads
-        document.addEventListener('DOMContentLoaded', loadUsers);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+            loadCustomers();
+        });
         
         async function loadUsers() {
             try {
@@ -444,6 +454,7 @@
                             <th>דואר אלקטרוני</th>
                             <th>תפקיד</th>
                             <th>מחלקה</th>
+                            <th>לקוח</th>
                             <th>סטטוס</th>
                             <th>נוצר</th>
                             <th>פעולות</th>
@@ -461,6 +472,7 @@
                         <td>${user.email || '-'}</td>
                         <td><span class="role-badge role-${user.role}">${getRoleLabel(user.role)}</span></td>
                         <td>${user.department || '-'}</td>
+                        <td>${user.customer_name || 'לא משויך'}</td>
                         <td><span class="status-badge status-${user.active ? 'active' : 'inactive'}">${user.active ? 'פעיל' : 'לא פעיל'}</span></td>
                         <td>${createdDate}</td>
                         <td>
@@ -483,6 +495,27 @@
                 'user': 'משתמש רגיל'
             };
             return roles[role] || role;
+        }
+
+        async function loadCustomers() {
+            try {
+                const response = await fetch('/admin/customers/api');
+                const customers = await response.json();
+                
+                const select = document.getElementById('customer_id');
+                select.innerHTML = '<option value="">בחר לקוח</option>';
+                
+                customers.forEach(customer => {
+                    if (customer.active) {
+                        const option = document.createElement('option');
+                        option.value = customer.id;
+                        option.textContent = customer.name;
+                        select.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading customers:', error);
+            }
         }
         
         function showCreateModal() {
@@ -512,6 +545,7 @@
                     document.getElementById('email').value = user.email || '';
                     document.getElementById('role').value = user.role;
                     document.getElementById('department').value = user.department || '';
+                    document.getElementById('customer_id').value = user.customer_id || '';
                     document.getElementById('active').value = user.active.toString();
                     
                     document.getElementById('userModal').style.display = 'block';
@@ -559,6 +593,7 @@
                 email: formData.get('email'),
                 role: formData.get('role'),
                 department: formData.get('department'),
+                customer_id: parseInt(formData.get('customer_id')),
                 active: formData.get('active') === 'true'
             };
             
