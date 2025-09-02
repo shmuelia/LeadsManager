@@ -1170,47 +1170,22 @@ class UnifiedLeadManagerClass {
         const lead = this.leads.find(l => l.id === leadId);
         if (!lead) return;
         
-        const statusOptions = [
-            { value: 'new', label: 'חדש' },
-            { value: 'contacted', label: 'נוצר קשר' },
-            { value: 'qualified', label: 'מוכשר' },
-            { value: 'interested', label: 'מתעניין' },
-            { value: 'hired', label: 'התקבל' },
-            { value: 'rejected', label: 'נדחה' },
-            { value: 'closed', label: 'סגור' }
-        ];
+        // Define status progression flow
+        const statusFlow = {
+            'new': 'contacted',
+            'contacted': 'qualified', 
+            'qualified': 'interested',
+            'interested': 'hired',
+            'hired': 'closed',
+            'rejected': 'closed',
+            'closed': 'new'
+        };
         
-        // Create status change modal
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `
-            <div class="modal-content" style="max-width: 450px;">
-                <div class="modal-header">
-                    <h3>שינוי סטטוס ליד: ${lead.name || 'לא צוין'}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 15px;">בחר סטטוס חדש לליד:</p>
-                    <select id="statusSelect" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;">
-                        ${statusOptions.map(option => `
-                            <option value="${option.value}" ${lead.status === option.value ? 'selected' : ''}>
-                                ${option.label}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, document.getElementById('statusSelect').value, this.closest('.modal-overlay'))">
-                        עדכן סטטוס
-                    </button>
-                    <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
-                        ביטול
-                    </button>
-                </div>
-            </div>
-        `;
+        // Get next status
+        const nextStatus = statusFlow[lead.status] || 'contacted';
         
-        document.body.appendChild(modal);
+        // Update status directly
+        await this.performStatusChange(leadId, nextStatus, null);
     }
     
     async performStatusChange(leadId, newStatus, modal) {
@@ -1229,7 +1204,7 @@ class UnifiedLeadManagerClass {
             if (response.ok) {
                 this.showToast(result.message || 'סטטוס הליד עודכן בהצלחה', 'success');
                 await this.loadLeads();
-                modal.remove();
+                if (modal) modal.remove();
             } else {
                 this.showToast(result.error || 'שגיאה בעדכון סטטוס הליד', 'error');
             }
