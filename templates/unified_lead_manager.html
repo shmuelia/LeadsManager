@@ -1019,9 +1019,10 @@ class UnifiedLeadManagerClass {
             console.error('Error parsing raw data:', e);
         }
         
-        // Extract Facebook/Instagram profile info
-        const facebookId = rawData.facebook_id || rawData.fb_id || rawData.user_id;
-        const instagramHandle = rawData.instagram_username || rawData.ig_username;
+        // Extract Facebook lead form info
+        const leadFormId = rawData['מזהה טופס לידים'] || rawData.lead_form_id || rawData.form_id;
+        const facebookPageId = rawData.page_id || rawData.facebook_page_id;
+        const leadId = lead.external_lead_id;
         
         modalBody.innerHTML = `
             <!-- Basic Lead Information -->
@@ -1034,33 +1035,43 @@ class UnifiedLeadManagerClass {
                             <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
                             <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
                             
-                            <!-- Social Media Links -->
+                            <!-- Facebook Lead Management Links -->
                             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1);">
-                                <div style="margin-bottom: 8px;"><strong>קישורים חברתיים:</strong></div>
-                                ${facebookId ? `
-                                    <div><a href="https://facebook.com/${facebookId}" target="_blank" style="color: #1877f2; margin-left: 15px;">
-                                        📘 פרופיל Facebook
-                                    </a></div>
-                                ` : lead.name ? `
-                                    <div><a href="https://www.facebook.com/search/people/?q=${encodeURIComponent(lead.name)}" target="_blank" style="color: #1877f2; margin-left: 15px;">
-                                        🔍 חפש בפייסבוק
-                                    </a></div>
+                                <div style="margin-bottom: 8px;"><strong>ניהול הליד בפייסבוק:</strong></div>
+                                
+                                ${leadFormId ? `
+                                    <div style="margin-bottom: 8px;">
+                                        <a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" target="_blank" style="color: #1877f2;">
+                                            📋 טופס לידים: ${leadFormId}
+                                        </a>
+                                    </div>
                                 ` : ''}
                                 
-                                ${instagramHandle ? `
-                                    <div><a href="https://instagram.com/${instagramHandle}" target="_blank" style="color: #E4405F; margin-left: 15px;">
-                                        📷 פרופיל Instagram
-                                    </a></div>
-                                ` : lead.name ? `
-                                    <div><a href="https://www.instagram.com/explore/tags/${encodeURIComponent(lead.name.replace(/\s+/g, ''))}" target="_blank" style="color: #E4405F; margin-left: 15px;">
-                                        🔍 חפש באינסטגרם
-                                    </a></div>
+                                ${facebookPageId && leadId ? `
+                                    <div style="margin-bottom: 8px;">
+                                        <a href="https://business.facebook.com/latest/lead_access/leads?page_id=${facebookPageId}&lead_id=${leadId}" target="_blank" style="color: #1877f2;">
+                                            🎯 הליד הספציפי בפייסבוק
+                                        </a>
+                                    </div>
                                 ` : ''}
                                 
                                 ${lead.platform === 'fb' || lead.platform === 'ig' ? `
-                                    <div><a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2; margin-left: 15px;">
-                                        💬 פתח Meta Business Suite
-                                    </a></div>
+                                    <div style="margin-bottom: 8px;">
+                                        <a href="https://business.facebook.com/latest/lead_access/leads" target="_blank" style="color: #4267B2;">
+                                            📊 כל הלידים ב-Meta Business
+                                        </a>
+                                    </div>
+                                    <div style="margin-bottom: 8px;">
+                                        <a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2;">
+                                            💬 הודעות Meta Business Suite
+                                        </a>
+                                    </div>
+                                ` : ''}
+                                
+                                ${lead.external_lead_id ? `
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>מזהה ליד:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${lead.external_lead_id}</code>
+                                    </div>
                                 ` : ''}
                             </div>
                         </div>
