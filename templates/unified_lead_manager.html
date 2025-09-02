@@ -577,7 +577,7 @@
         </div>
         
         <!-- Action Buttons -->
-        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.exportLeads()" 
+        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.exportLeads()" 
                 title="ייצא את הלידים המפולטרים לקובץ אקסל">
             📥 ייצא לאקסל
         </button>
@@ -598,7 +598,7 @@
     <div class="modal-content" style="width: 95%; max-width: 1000px; height: 95vh;">
         <div class="modal-header">
             <h2 id="leadModalTitle">פרטי ליד</h2>
-            <span class="close" onclick="UnifiedLeadManager.closeModal()">&times;</span>
+            <span class="close" onclick="window.UnifiedLeadManager.closeModal()">&times;</span>
         </div>
         <div class="modal-body" id="leadModalBody">
             <!-- Lead details will be populated here -->
@@ -823,7 +823,7 @@ class UnifiedLeadManagerClass {
                                title="בחר את הליד ${lead.name || 'זה'} לביצוע פעולות קבוצתיות">
                     </td>
                     <td>
-                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" 
+                        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.viewLead(${lead.id})" 
                                 title="הצג פרטים מלאים ופעילויות של ${lead.name || 'הליד'}">👁️</button>
                         ${lead.phone ? `
                             <a href="tel:${lead.phone}" class="action-btn btn-call" 
@@ -837,13 +837,13 @@ class UnifiedLeadManagerClass {
                                title="שלח אימייל ל-${lead.name || 'ליד'} בכתובת ${lead.email}">✉️</a>
                         ` : ''}
                         ${this.canAssign() ? `
-                            <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
+                            <button class="action-btn btn-assign" onclick="window.UnifiedLeadManager.quickAssign(${lead.id})" 
                                     title="הקצה את הליד ${lead.name || 'זה'} למשתמש אחר">👤</button>
                         ` : ''}
                     </td>
                     <td>
                         <span class="status-badge status-${lead.status}" 
-                              onclick="UnifiedLeadManager.quickStatusChange(${lead.id})">
+                              onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})">
                             ${this.getStatusLabel(lead.status)}
                         </span>
                     </td>
@@ -869,7 +869,7 @@ class UnifiedLeadManagerClass {
                         </div>
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}"
-                                  onclick="UnifiedLeadManager.quickStatusChange(${lead.id})">
+                                  onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})">
                                 ${this.getStatusLabel(lead.status)}
                             </span>
                         </div>
@@ -884,7 +884,7 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="lead-card-actions">
-                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" 
+                        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.viewLead(${lead.id})" 
                                 title="צפה בפרטים המלאים של ${lead.name || 'הליד'}">👁️</button>
                         ${lead.phone ? `
                             <a href="tel:${lead.phone}" class="action-btn btn-call" 
@@ -898,7 +898,7 @@ class UnifiedLeadManagerClass {
                                title="שלח אימייל ל-${lead.name || 'ליד'}: ${lead.email}">✉️</a>
                         ` : ''}
                         ${this.canAssign() ? `
-                            <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
+                            <button class="action-btn btn-assign" onclick="window.UnifiedLeadManager.quickAssign(${lead.id})" 
                                     title="הקצה את ${lead.name || 'הליד'} למשתמש אחר">👤</button>
                         ` : ''}
                     </div>
@@ -1125,7 +1125,7 @@ class UnifiedLeadManagerClass {
                         </select>
                     </div>
                     <div class="modal-footer">
-                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.performAssignment(${leadId}, document.getElementById('assignUserSelect').value, this.closest('.modal-overlay'))">
+                        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.performAssignment(${leadId}, document.getElementById('assignUserSelect').value, this.closest('.modal-overlay'))">
                             הקצה
                         </button>
                         <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
@@ -1200,7 +1200,7 @@ class UnifiedLeadManagerClass {
                     </select>
                 </div>
                 <div class="modal-footer">
-                    <button class="action-btn btn-primary" onclick="UnifiedLeadManager.performStatusChange(${leadId}, document.getElementById('statusSelect').value, this.closest('.modal-overlay'))">
+                    <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, document.getElementById('statusSelect').value, this.closest('.modal-overlay'))">
                         עדכן סטטוס
                     </button>
                     <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
@@ -1329,10 +1329,10 @@ let UnifiedLeadManager;
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-        UnifiedLeadManager = new UnifiedLeadManagerClass();
+        window.UnifiedLeadManager = new UnifiedLeadManagerClass();
     });
 } else {
-    UnifiedLeadManager = new UnifiedLeadManagerClass();
+    window.UnifiedLeadManager = new UnifiedLeadManagerClass();
 }
 
 // Add animations
