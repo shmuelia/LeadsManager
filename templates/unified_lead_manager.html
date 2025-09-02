@@ -422,7 +422,7 @@
 <div class="lead-manager-container">
     <!-- Debug Info (temporary) -->
     <div id="debugInfo" style="background: #f0f0f0; padding: 5px; margin: 5px 0; font-size: 12px; border-radius: 5px; text-align: center;">
-        Loading... (Screen: <span id="screenWidth"></span>px)
+        Loading... (Screen: <span id="screenWidth"></span>px) | Cache Buster: v77-${Date.now()}
     </div>
     
     <!-- Leads Display (Cards + Table) -->
@@ -595,7 +595,9 @@ class UnifiedLeadManagerClass {
         document.getElementById('debugInfo').innerHTML = `
             Screen: ${window.innerWidth}px | 
             Mobile: ${isMobile ? 'YES' : 'NO'} | 
-            Should show: ${isMobile ? 'CARDS' : 'TABLE'}
+            Should show: ${isMobile ? 'CARDS' : 'TABLE'} | 
+            JS Version: v77 | 
+            Time: ${new Date().getTime()}
         `;
         
         // Setup role-based features
@@ -607,6 +609,10 @@ class UnifiedLeadManagerClass {
         // Load initial data
         await this.loadUsers();
         await this.loadLeads();
+        
+        // Debug: Show expected table headers
+        const expectedHeaders = document.querySelectorAll('.lead-table th').length;
+        document.getElementById('debugInfo').innerHTML += ` | Headers: ${expectedHeaders} (should be 7)`;
         
         // Setup auto-refresh
         setInterval(() => this.refreshLeads(), 60000); // Refresh every minute
