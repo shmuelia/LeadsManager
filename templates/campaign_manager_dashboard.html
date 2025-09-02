@@ -339,6 +339,42 @@
             background: #047857;
         }
         
+        .call-btn {
+            background: #27ae60 !important;
+            color: white !important;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .call-btn:hover {
+            background: #229954 !important;
+            color: white !important;
+        }
+        
+        .whatsapp-btn {
+            background: #25d366 !important;
+            color: white !important;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #128c7e !important;
+            color: white !important;
+        }
+        
+        .email-btn {
+            background: #3498db !important;
+            color: white !important;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .email-btn:hover {
+            background: #2980b9 !important;
+            color: white !important;
+        }
+        
         .loading {
             text-align: center;
             padding: 40px;
@@ -781,6 +817,9 @@
                                 <td><input type="checkbox" class="lead-checkbox" value="${lead.id}" onchange="toggleLead(${lead.id}, this.checked)" title="בחר ליד לפעולה המונית"></td>
                                 <td>
                                     <button class="action-btn primary" onclick="viewLead(${lead.id})" title="הצג פרטים מלאים והיסטוריית פעילות">👁️ פרטים</button>
+                                    ${lead.phone ? `<a href="tel:${lead.phone}" class="action-btn call-btn" title="התקשר ל-${lead.name}">📞 חייג</a>` : ''}
+                                    ${lead.phone ? `<a href="https://wa.me/972${lead.phone.replace(/^0/, '').replace(/[^0-9]/g, '')}" target="_blank" class="action-btn whatsapp-btn" title="שלח WhatsApp ל-${lead.name}">📱 WhatsApp</a>` : ''}
+                                    ${lead.email ? `<a href="mailto:${lead.email}" class="action-btn email-btn" title="שלח אימייל ל-${lead.name}">📧 מייל</a>` : ''}
                                     <button class="action-btn" onclick="showQuickAssignModal(${lead.id})" title="הקצה ליד למשתמש מתאים">👤 הקצה</button>
                                 </td>
                                 <td><span class="status-badge status-${lead.status}" title="סטטוס נוכחי: ${getStatusLabel(lead.status)}">${getStatusLabel(lead.status)}</span></td>
