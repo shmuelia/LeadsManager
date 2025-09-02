@@ -1,0 +1,958 @@
+<!-- Unified Lead Management Component - Works for all roles -->
+<!-- Admin, Campaign Manager, and Employee - Same powerful interface -->
+
+<style>
+    /* Modern Lead Manager Styles */
+    .lead-manager-container {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        margin: 20px 0;
+    }
+    
+    /* Header Section */
+    .lead-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .lead-title {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .lead-stats {
+        display: flex;
+        gap: 20px;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding: 10px 20px;
+        border-radius: 10px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #059669;
+    }
+    
+    .stat-label {
+        font-size: 0.9em;
+        color: #6b7280;
+    }
+    
+    /* Control Panel */
+    .control-panel {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: center;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .filter-label {
+        font-size: 0.85em;
+        color: #6b7280;
+        font-weight: 600;
+    }
+    
+    .filter-select, .filter-input {
+        padding: 10px 15px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        background: white;
+        font-size: 14px;
+        min-width: 150px;
+        transition: all 0.2s;
+    }
+    
+    .filter-select:focus, .filter-input:focus {
+        border-color: #059669;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+    
+    /* Customer Selector for Admin */
+    .customer-selector {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .customer-selector select {
+        background: white;
+        color: #1e293b;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    
+    /* Action Buttons */
+    .action-btn {
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-call {
+        background: #10b981;
+        color: white;
+    }
+    
+    .btn-call:hover {
+        background: #059669;
+        transform: translateY(-1px);
+    }
+    
+    .btn-whatsapp {
+        background: #25d366;
+        color: white;
+    }
+    
+    .btn-whatsapp:hover {
+        background: #128c7e;
+        transform: translateY(-1px);
+    }
+    
+    .btn-email {
+        background: #8b5cf6;
+        color: white;
+    }
+    
+    .btn-email:hover {
+        background: #7c3aed;
+        transform: translateY(-1px);
+    }
+    
+    .btn-assign {
+        background: #f59e0b;
+        color: white;
+    }
+    
+    .btn-assign:hover {
+        background: #d97706;
+        transform: translateY(-1px);
+    }
+    
+    /* Lead Table */
+    .lead-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    .lead-table thead {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+    }
+    
+    .lead-table th {
+        padding: 15px;
+        text-align: right;
+        font-weight: 600;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+    
+    .lead-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: all 0.2s;
+    }
+    
+    .lead-table tbody tr:hover {
+        background: #f8fafc;
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .lead-table td {
+        padding: 12px 15px;
+        font-size: 14px;
+    }
+    
+    /* Status Badges */
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .status-new { background: #dbeafe; color: #1e40af; }
+    .status-contacted { background: #fed7aa; color: #92400e; }
+    .status-qualified { background: #d1fae5; color: #065f46; }
+    .status-interested { background: #e9d5ff; color: #6b21a8; }
+    .status-hired { background: #a7f3d0; color: #047857; }
+    .status-rejected { background: #fecaca; color: #991b1b; }
+    .status-closed { background: #e5e7eb; color: #374151; }
+    
+    /* Priority Indicators */
+    .priority-high {
+        color: #dc2626;
+        font-weight: bold;
+    }
+    
+    .priority-medium {
+        color: #f59e0b;
+        font-weight: 600;
+    }
+    
+    .priority-low {
+        color: #6b7280;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px;
+        color: #6b7280;
+    }
+    
+    .empty-state-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    
+    /* Loading State */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+    
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e2e8f0;
+        border-top-color: #059669;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .lead-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-panel {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .lead-table {
+            font-size: 12px;
+        }
+        
+        .action-btn {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+    }
+</style>
+
+<div class="lead-manager-container">
+    <!-- Header with Stats -->
+    <div class="lead-header">
+        <div class="lead-title">
+            <span>📊</span>
+            <span>ניהול לידים</span>
+            <span id="customerName" style="font-size: 0.7em; color: #6b7280;"></span>
+        </div>
+        <div class="lead-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalLeads">0</div>
+                <div class="stat-label">סה"כ לידים</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="newLeads">0</div>
+                <div class="stat-label">לידים חדשים</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="assignedLeads">0</div>
+                <div class="stat-label">מוקצים</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <!-- Customer Selector (Admin Only) -->
+        <div id="customerSelectorDiv" class="customer-selector" style="display: none;">
+            <span>🏢 לקוח:</span>
+            <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)">
+                <option value="">בחר לקוח</option>
+            </select>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filter-group">
+            <label class="filter-label">🔍 חיפוש</label>
+            <input type="text" id="searchFilter" class="filter-input" placeholder="חפש שם, טלפון, אימייל..." onkeyup="UnifiedLeadManager.applyFilters()">
+        </div>
+        
+        <div class="filter-group">
+            <label class="filter-label">📌 סטטוס</label>
+            <select id="statusFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+                <option value="">כל הסטטוסים</option>
+                <option value="new">חדש</option>
+                <option value="contacted">נוצר קשר</option>
+                <option value="qualified">מוכשר</option>
+                <option value="interested">מתעניין</option>
+                <option value="hired">התקבל</option>
+                <option value="rejected">נדחה</option>
+                <option value="closed">סגור</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label class="filter-label">👤 הקצאה</label>
+            <select id="assignmentFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+                <option value="">כל ההקצאות</option>
+                <option value="unassigned">לא מוקצה</option>
+                <option value="assigned">מוקצה</option>
+                <option value="mine">שלי</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label class="filter-label">📅 תקופה</label>
+            <select id="dateFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+                <option value="">כל הזמן</option>
+                <option value="today">היום</option>
+                <option value="week">השבוע</option>
+                <option value="month">החודש</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label class="filter-label">🎯 קמפיין</label>
+            <select id="campaignFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+                <option value="">כל הקמפיינים</option>
+            </select>
+        </div>
+        
+        <!-- Action Buttons -->
+        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.refreshLeads()">
+            🔄 רענן
+        </button>
+        
+        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.exportLeads()">
+            📥 ייצא לאקסל
+        </button>
+    </div>
+    
+    <!-- Lead Table -->
+    <div style="position: relative; overflow-x: auto;">
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+        </div>
+        
+        <table class="lead-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)">
+                    </th>
+                    <th>פעולות</th>
+                    <th>סטטוס</th>
+                    <th>עדיפות</th>
+                    <th>שם</th>
+                    <th>טלפון</th>
+                    <th>אימייל</th>
+                    <th>קמפיין</th>
+                    <th>מוקצה ל</th>
+                    <th>תאריך</th>
+                </tr>
+            </thead>
+            <tbody id="leadsTableBody">
+                <!-- Leads will be populated here -->
+            </tbody>
+        </table>
+        
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📭</div>
+            <h3>אין לידים להצגה</h3>
+            <p>נסה לשנות את הפילטרים או לרענן את הרשימה</p>
+        </div>
+    </div>
+</div>
+
+<!-- Lead Details Modal -->
+<div id="leadModal" class="modal" style="display: none;">
+    <div class="modal-content" style="width: 95%; max-width: 1000px; height: 95vh;">
+        <div class="modal-header">
+            <h2 id="leadModalTitle">פרטי ליד</h2>
+            <span class="close" onclick="UnifiedLeadManager.closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="leadModalBody">
+            <!-- Lead details will be populated here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Unified Lead Manager - State of the Art Component
+class UnifiedLeadManager {
+    constructor() {
+        this.leads = [];
+        this.filteredLeads = [];
+        this.selectedLeads = new Set();
+        this.currentCustomer = null;
+        this.userRole = '{{ session.get("role") }}';
+        this.username = '{{ session.get("username") }}';
+        this.users = [];
+        this.customers = [];
+        this.campaigns = new Set();
+        
+        this.init();
+    }
+    
+    async init() {
+        console.log('Initializing Unified Lead Manager for role:', this.userRole);
+        
+        // Setup role-based features
+        if (this.userRole === 'admin') {
+            document.getElementById('customerSelectorDiv').style.display = 'flex';
+            await this.loadCustomers();
+        }
+        
+        // Load initial data
+        await this.loadUsers();
+        await this.loadLeads();
+        
+        // Setup auto-refresh
+        setInterval(() => this.refreshLeads(), 60000); // Refresh every minute
+    }
+    
+    async loadCustomers() {
+        try {
+            const response = await fetch('/admin/customers/api');
+            const customers = await response.json();
+            this.customers = customers;
+            
+            const selector = document.getElementById('customerSelector');
+            selector.innerHTML = '<option value="">כל הלקוחות</option>';
+            customers.forEach(customer => {
+                if (customer.active) {
+                    const option = document.createElement('option');
+                    option.value = customer.id;
+                    option.textContent = customer.name;
+                    selector.appendChild(option);
+                }
+            });
+            
+            // Set current customer
+            this.currentCustomer = '{{ session.get("selected_customer_id") }}' || null;
+            if (this.currentCustomer) {
+                selector.value = this.currentCustomer;
+                const customer = customers.find(c => c.id == this.currentCustomer);
+                if (customer) {
+                    document.getElementById('customerName').textContent = `- ${customer.name}`;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading customers:', error);
+        }
+    }
+    
+    async loadUsers() {
+        try {
+            const response = await fetch('/admin/users/api');
+            const data = await response.json();
+            this.users = data.users || [];
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+    }
+    
+    async loadLeads() {
+        try {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            const response = await fetch('/leads');
+            const data = await response.json();
+            this.leads = data.leads || [];
+            
+            // Extract campaigns for filter
+            this.campaigns.clear();
+            this.leads.forEach(lead => {
+                if (lead.campaign_name) {
+                    this.campaigns.add(lead.campaign_name);
+                }
+            });
+            
+            // Update campaign filter
+            const campaignFilter = document.getElementById('campaignFilter');
+            campaignFilter.innerHTML = '<option value="">כל הקמפיינים</option>';
+            Array.from(this.campaigns).sort().forEach(campaign => {
+                const option = document.createElement('option');
+                option.value = campaign;
+                option.textContent = campaign.substring(0, 30) + (campaign.length > 30 ? '...' : '');
+                campaignFilter.appendChild(option);
+            });
+            
+            this.applyFilters();
+            this.updateStats();
+            
+        } catch (error) {
+            console.error('Error loading leads:', error);
+            this.showToast('שגיאה בטעינת הלידים', 'error');
+        } finally {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    }
+    
+    applyFilters() {
+        const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+        const assignmentFilter = document.getElementById('assignmentFilter').value;
+        const dateFilter = document.getElementById('dateFilter').value;
+        const campaignFilter = document.getElementById('campaignFilter').value;
+        
+        this.filteredLeads = this.leads.filter(lead => {
+            // Search filter
+            if (searchTerm) {
+                const searchableText = `${lead.name} ${lead.phone} ${lead.email} ${lead.campaign_name}`.toLowerCase();
+                if (!searchableText.includes(searchTerm)) return false;
+            }
+            
+            // Status filter
+            if (statusFilter && lead.status !== statusFilter) return false;
+            
+            // Assignment filter
+            if (assignmentFilter) {
+                if (assignmentFilter === 'unassigned' && lead.assigned_to) return false;
+                if (assignmentFilter === 'assigned' && !lead.assigned_to) return false;
+                if (assignmentFilter === 'mine' && lead.assigned_to !== this.username) return false;
+            }
+            
+            // Date filter
+            if (dateFilter) {
+                const leadDate = new Date(lead.created_time || lead.received_at);
+                const now = new Date();
+                
+                if (dateFilter === 'today') {
+                    if (leadDate.toDateString() !== now.toDateString()) return false;
+                } else if (dateFilter === 'week') {
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    if (leadDate < weekAgo) return false;
+                } else if (dateFilter === 'month') {
+                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    if (leadDate < monthAgo) return false;
+                }
+            }
+            
+            // Campaign filter
+            if (campaignFilter && lead.campaign_name !== campaignFilter) return false;
+            
+            return true;
+        });
+        
+        this.renderLeads();
+    }
+    
+    renderLeads() {
+        const tbody = document.getElementById('leadsTableBody');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (this.filteredLeads.length === 0) {
+            tbody.innerHTML = '';
+            emptyState.style.display = 'block';
+            return;
+        }
+        
+        emptyState.style.display = 'none';
+        
+        tbody.innerHTML = this.filteredLeads.map(lead => {
+            const priority = this.calculatePriority(lead);
+            const priorityClass = priority >= 70 ? 'priority-high' : priority >= 40 ? 'priority-medium' : 'priority-low';
+            const priorityIcon = priority >= 70 ? '🔥' : priority >= 40 ? '⚡' : '🔵';
+            
+            return `
+                <tr data-lead-id="${lead.id}">
+                    <td>
+                        <input type="checkbox" class="lead-checkbox" value="${lead.id}" 
+                               onchange="UnifiedLeadManager.toggleLead(${lead.id}, this.checked)">
+                    </td>
+                    <td>
+                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" 
+                                title="הצג פרטים מלאים">👁️</button>
+                        ${lead.phone ? `
+                            <a href="tel:${lead.phone}" class="action-btn btn-call" 
+                               title="התקשר">📞</a>
+                            <a href="https://wa.me/972${lead.phone.replace(/^0/, '').replace(/[^0-9]/g, '')}" 
+                               target="_blank" class="action-btn btn-whatsapp" 
+                               title="WhatsApp">💬</a>
+                        ` : ''}
+                        ${lead.email ? `
+                            <a href="mailto:${lead.email}" class="action-btn btn-email" 
+                               title="שלח מייל">📧</a>
+                        ` : ''}
+                        ${this.canAssign() ? `
+                            <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
+                                    title="הקצה">👤</button>
+                        ` : ''}
+                    </td>
+                    <td>
+                        <span class="status-badge status-${lead.status}">
+                            ${this.getStatusLabel(lead.status)}
+                        </span>
+                    </td>
+                    <td class="${priorityClass}">
+                        ${priorityIcon} ${priority}%
+                    </td>
+                    <td><strong>${lead.name || 'לא צוין'}</strong></td>
+                    <td dir="ltr">${lead.phone || '-'}</td>
+                    <td dir="ltr">${lead.email || '-'}</td>
+                    <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 20)}</td>
+                    <td>${lead.assigned_to || 'לא מוקצה'}</td>
+                    <td>${this.formatDate(lead.created_time || lead.received_at)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    calculatePriority(lead) {
+        let score = 0;
+        
+        // New lead bonus
+        if (lead.status === 'new') score += 30;
+        
+        // Contact info completeness
+        if (lead.phone) score += 20;
+        if (lead.email) score += 10;
+        
+        // Time decay (newer = higher priority)
+        const ageInDays = (Date.now() - new Date(lead.created_time || lead.received_at)) / (1000 * 60 * 60 * 24);
+        if (ageInDays <= 1) score += 30;
+        else if (ageInDays <= 3) score += 20;
+        else if (ageInDays <= 7) score += 10;
+        
+        // Not assigned bonus
+        if (!lead.assigned_to) score += 10;
+        
+        return Math.min(100, score);
+    }
+    
+    canAssign() {
+        return this.userRole === 'admin' || this.userRole === 'campaign_manager';
+    }
+    
+    getStatusLabel(status) {
+        const labels = {
+            'new': 'חדש',
+            'contacted': 'נוצר קשר',
+            'qualified': 'מוכשר',
+            'interested': 'מתעניין',
+            'not_interested': 'לא מתעניין',
+            'callback': 'חזרה',
+            'interview_scheduled': 'מתואם ראיון',
+            'hired': 'התקבל',
+            'rejected': 'נדחה',
+            'closed': 'סגור'
+        };
+        return labels[status] || status;
+    }
+    
+    formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('he-IL');
+    }
+    
+    updateStats() {
+        document.getElementById('totalLeads').textContent = this.filteredLeads.length;
+        document.getElementById('newLeads').textContent = this.filteredLeads.filter(l => l.status === 'new').length;
+        document.getElementById('assignedLeads').textContent = this.filteredLeads.filter(l => l.assigned_to).length;
+    }
+    
+    async viewLead(leadId) {
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead) return;
+        
+        try {
+            const response = await fetch(`/leads/${leadId}`);
+            const data = await response.json();
+            
+            if (data.lead) {
+                this.showLeadModal(data.lead, data.activities || []);
+            }
+        } catch (error) {
+            console.error('Error loading lead details:', error);
+        }
+    }
+    
+    showLeadModal(lead, activities) {
+        const modal = document.getElementById('leadModal');
+        const modalBody = document.getElementById('leadModalBody');
+        const modalTitle = document.getElementById('leadModalTitle');
+        
+        modalTitle.textContent = `פרטי ליד - ${lead.name || 'לא צוין'}`;
+        
+        // Parse raw data for Zapier information
+        let rawData = {};
+        try {
+            rawData = lead.raw_data ? (typeof lead.raw_data === 'string' ? JSON.parse(lead.raw_data) : lead.raw_data) : {};
+        } catch (e) {
+            console.error('Error parsing raw data:', e);
+        }
+        
+        modalBody.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Contact Information -->
+                <div style="background: #f8fafc; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px; color: #1e293b;">📞 פרטי התקשרות</h3>
+                    <div style="display: grid; gap: 10px;">
+                        <div><strong>שם:</strong> ${lead.name || 'לא צוין'}</div>
+                        <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}">${lead.phone}</a>` : 'לא צוין'}</div>
+                        <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}">${lead.email}</a>` : 'לא צוין'}</div>
+                        <div><strong>פלטפורמה:</strong> ${lead.platform || 'לא צוין'}</div>
+                    </div>
+                </div>
+                
+                <!-- Campaign Information -->
+                <div style="background: #f8fafc; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px; color: #1e293b;">🎯 מידע קמפיין</h3>
+                    <div style="display: grid; gap: 10px;">
+                        <div><strong>קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</div>
+                        <div><strong>טופס:</strong> ${lead.form_name || 'לא צוין'}</div>
+                        <div><strong>סטטוס:</strong> <span class="status-badge status-${lead.status}">${this.getStatusLabel(lead.status)}</span></div>
+                        <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zapier/Form Data -->
+            ${Object.keys(rawData).length > 0 ? `
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #1e293b;">📋 נתונים מהטופס</h3>
+                    <div style="display: grid; gap: 10px;">
+                        ${Object.entries(rawData).map(([key, value]) => `
+                            <div style="padding: 10px; background: white; border-radius: 6px;">
+                                <strong>${key}:</strong> ${value || 'לא צוין'}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            
+            <!-- Activity History -->
+            <div style="margin-top: 20px;">
+                <h3 style="margin-bottom: 15px; color: #1e293b;">📈 היסטוריית פעילות</h3>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    ${activities.length > 0 ? activities.map(activity => `
+                        <div style="padding: 15px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong>${this.getActivityLabel(activity.activity_type)}</strong>
+                                <span style="color: #6b7280; font-size: 0.9em;">${this.formatDate(activity.created_at)}</span>
+                            </div>
+                            <div>${activity.description || ''}</div>
+                        </div>
+                    `).join('') : '<p style="text-align: center; color: #6b7280;">אין פעילויות רשומות</p>'}
+                </div>
+            </div>
+        `;
+        
+        modal.style.display = 'block';
+    }
+    
+    getActivityLabel(type) {
+        const labels = {
+            'lead_received': 'ליד התקבל',
+            'status_change': 'שינוי סטטוס',
+            'assignment': 'הקצאה',
+            'call': 'שיחה',
+            'note_added': 'הערה'
+        };
+        return labels[type] || type;
+    }
+    
+    closeModal() {
+        document.getElementById('leadModal').style.display = 'none';
+    }
+    
+    async quickAssign(leadId) {
+        // Implementation for quick assignment
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead) return;
+        
+        // Show assignment dialog
+        const user = prompt('הקלד שם משתמש להקצאה:');
+        if (user) {
+            try {
+                const response = await fetch(`/leads/${leadId}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assigned_to: user })
+                });
+                
+                if (response.ok) {
+                    this.showToast('הליד הוקצה בהצלחה', 'success');
+                    await this.loadLeads();
+                }
+            } catch (error) {
+                this.showToast('שגיאה בהקצאת הליד', 'error');
+            }
+        }
+    }
+    
+    async changeCustomer(customerId) {
+        // Admin only - change selected customer
+        try {
+            const response = await fetch('/admin/select-customer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customer_id: customerId })
+            });
+            
+            if (response.ok) {
+                this.currentCustomer = customerId;
+                await this.loadLeads();
+                
+                const customer = this.customers.find(c => c.id == customerId);
+                document.getElementById('customerName').textContent = customer ? `- ${customer.name}` : '';
+            }
+        } catch (error) {
+            console.error('Error changing customer:', error);
+        }
+    }
+    
+    toggleSelectAll(checked) {
+        const checkboxes = document.querySelectorAll('.lead-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+            const leadId = parseInt(cb.value);
+            if (checked) {
+                this.selectedLeads.add(leadId);
+            } else {
+                this.selectedLeads.delete(leadId);
+            }
+        });
+    }
+    
+    toggleLead(leadId, checked) {
+        if (checked) {
+            this.selectedLeads.add(leadId);
+        } else {
+            this.selectedLeads.delete(leadId);
+        }
+    }
+    
+    async refreshLeads() {
+        await this.loadLeads();
+        this.showToast('הרשימה עודכנה', 'success');
+    }
+    
+    exportLeads() {
+        // Implementation for export to Excel
+        this.showToast('הייצוא לאקסל יתחיל בקרוב', 'info');
+    }
+    
+    showToast(message, type = 'success') {
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        `;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+}
+
+// Initialize on page load
+const UnifiedLeadManager = new UnifiedLeadManager();
+
+// Add animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+</script>
