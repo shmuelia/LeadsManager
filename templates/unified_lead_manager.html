@@ -798,7 +798,7 @@ class UnifiedLeadManagerClass {
                     </td>
                     <td><strong>${lead.name || 'לא צוין'}</strong></td>
                     <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 30)}</td>
-                    <td>${lead.assigned_to || 'לא מוקצה'}</td>
+                    <td>${lead.assigned_full_name || lead.assigned_to || 'לא מוקצה'}</td>
                     <td>${this.formatDate(lead.created_time || lead.received_at)}</td>
                 </tr>
             `;

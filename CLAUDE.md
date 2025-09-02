@@ -136,12 +136,15 @@ elif session.get('role') == 'admin':
 
 ### Unified Component Architecture
 **Template Structure:**
-- **`lead_management_component.html`** - Reusable lead table with role-based features (assignment, editing, filtering)
+- **`unified_lead_manager.html`** - Single powerful component serving all user roles with responsive design:
+  - **Desktop (>768px)**: Clean table layout with essential columns (no phone/email/priority columns)
+  - **Mobile (≤768px)**: Card-based layout optimized for touch interaction
+  - **Auto-adapts** based on screen size and user role capabilities
 - **`user_management_component.html`** - Unified user management for admin and campaign manager dashboards
-- **Dashboard templates** include components with role-specific parameters:
+- **Dashboard templates** include the unified component:
   ```html
-  {% include 'lead_management_component.html' %}
-  <!-- Component automatically adapts based on user session role -->
+  {% include 'unified_lead_manager.html' %}
+  <!-- Component automatically adapts based on user session role and screen size -->
   ```
 
 ### Lead Collection Workflow
@@ -152,22 +155,27 @@ elif session.get('role') == 'admin':
 5. **Assignment Ready**: Leads appear in appropriate customer dashboards for assignment
 
 ### Frontend Architecture  
-- **Hebrew RTL Design**: All templates use `direction: rtl` with Inter font
+- **Hebrew RTL Design**: All templates use `direction: rtl` with Inter font and comprehensive Hebrew tooltips
+- **Responsive Design**: Mobile-first approach with CSS flexbox ordering:
+  - **Mobile (≤768px)**: Leads appear first, filters below, headers at bottom
+  - **Desktop (>768px)**: Traditional layout with headers moved to bottom for consistency
+- **Dual Rendering System**: Same JavaScript renders both table (desktop) and cards (mobile) from identical data
 - **Progressive Enhancement**: Core functionality works without JavaScript, enhanced with async features
 - **State Persistence**: Filter selections stored in localStorage per user role
-- **Modal System**: Unified lead details and user management modals across dashboards
-- **Responsive Design**: Mobile-first CSS Grid/Flexbox with horizontal scrolling tables
+- **Modal System**: Unified lead details modals with proper sizing (95% width, 95vh height)
+- **WhatsApp Integration**: Proper Israeli phone number formatting (972 country code handling)
 
 ## Key Features & Business Logic
 
 ### Lead Priority Scoring Algorithm
 ```javascript
-// Automatic priority calculation for assignment recommendations
+// Automatic priority calculation for assignment recommendations (no longer displayed in main UI)
 let priorityScore = 0;
 if (leadAge <= 1) priorityScore += 30;        // Fresh leads priority
 if (hasPhone && hasEmail) priorityScore += 20; // Complete contact info
 if (activityCount === 0) priorityScore += 15; // Untouched leads priority  
 if (platform === 'ig') priorityScore += 5;    // Instagram slight priority
+// Priority info available in detailed view modal only
 ```
 
 ### Customer Configuration System
@@ -262,14 +270,14 @@ def campaign_leads():
 
 ### Unified Component Usage
 ```html
-<!-- Admin dashboard - can assign leads, edit users -->
-{% include 'lead_management_component.html' with canAssign=true, canEdit=true %}
+<!-- All dashboards use the same unified component -->
+{% include 'unified_lead_manager.html' %}
 
-<!-- Campaign manager - can assign leads, limited user editing -->  
-{% include 'user_management_component.html' with canAssign=true, canEdit=false %}
-
-<!-- User dashboard - view only assigned leads -->
-{% include 'lead_management_component.html' with canAssign=false, canEdit=false %}
+<!-- Component automatically adapts based on session role:
+- Admin: Full access with customer switching, lead assignment, user management
+- Campaign Manager: Customer-scoped access with lead assignment capabilities  
+- User: View assigned leads only with status update capabilities
+-->
 ```
 
 ### Multi-Tenant Session Management
@@ -282,3 +290,46 @@ if session.get('role') == 'admin':
 elif session.get('role') == 'campaign_manager':  
     customer_id = session.get('customer_id')  # Read-only
 ```
+
+## Current UI/UX State (Post-Optimization)
+
+### Interface Cleanup (January 2025)
+**Desktop Table Columns (>768px):**
+- ☑️ **Checkbox** (selection)
+- 🔧 **Actions** (call, WhatsApp, email ✉️, view, assign buttons)  
+- 📌 **Status** (current stage with Hebrew labels)
+- 👤 **Name** (lead identifier)
+- 🎯 **Campaign** (source - expanded to 30 chars)
+- 👥 **Assigned To** (ownership)
+- 📅 **Date** (timing)
+
+**Mobile Cards (≤768px):**
+- **Header**: Lead name + Status badge
+- **Campaign**: Enlarged (16px font) + expanded (40 chars)
+- **Date**: Separate line  
+- **Assignment**: Separate line below with margin-top spacing
+- **Actions**: Touch-friendly buttons (44px min height)
+
+**Removed Fields (Both Platforms):**
+- ❌ Phone number display (accessible via 📞 call button)
+- ❌ Email display (accessible via ✉️ email button)  
+- ❌ Priority scores (available in detailed modal view)
+
+### Hebrew Tooltips System
+All interface elements include comprehensive Hebrew tooltips with:
+- Dynamic lead names in tooltips
+- Contact info shown on hover
+- Action-specific guidance
+- Priority level explanations
+- Role-based contextual help
+
+### WhatsApp Integration
+- **Phone Formatting**: `formatPhoneForWhatsApp()` function handles Israeli numbers
+- **Supported Formats**: 050-1234567, 0501234567, 972501234567, 501234567
+- **Auto Country Code**: Adds/maintains 972 prefix correctly
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

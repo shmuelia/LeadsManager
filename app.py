@@ -483,23 +483,25 @@ def get_leads():
         if session.get('role') in ['admin', 'campaign_manager']:
             # Admin and Campaign Manager see all leads for the selected customer
             cur.execute("""
-                SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
-                       lead_source, created_time, received_at, status, assigned_to, priority, 
-                       raw_data, notes, updated_at
-                FROM leads 
-                WHERE customer_id = %s OR customer_id IS NULL
-                ORDER BY COALESCE(created_time, received_at) DESC
+                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, l.campaign_name, l.form_name, 
+                       l.lead_source, l.created_time, l.received_at, l.status, l.assigned_to, l.priority, 
+                       l.raw_data, l.notes, l.updated_at, u.full_name as assigned_full_name
+                FROM leads l
+                LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
+                WHERE l.customer_id = %s OR l.customer_id IS NULL
+                ORDER BY COALESCE(l.created_time, l.received_at) DESC
             """, (selected_customer_id,))
         else:
             # Regular users see only leads assigned to them for the selected customer
             username = session.get('username')
             cur.execute("""
-                SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
-                       lead_source, created_time, received_at, status, assigned_to, priority, 
-                       raw_data, notes, updated_at
-                FROM leads 
-                WHERE assigned_to = %s AND (customer_id = %s OR customer_id IS NULL)
-                ORDER BY COALESCE(created_time, received_at) DESC
+                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, l.campaign_name, l.form_name, 
+                       l.lead_source, l.created_time, l.received_at, l.status, l.assigned_to, l.priority, 
+                       l.raw_data, l.notes, l.updated_at, u.full_name as assigned_full_name
+                FROM leads l
+                LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
+                WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
+                ORDER BY COALESCE(l.created_time, l.received_at) DESC
             """, (username, selected_customer_id))
         
         leads = cur.fetchall()
