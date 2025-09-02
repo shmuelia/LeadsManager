@@ -437,7 +437,8 @@
                 <thead>
                     <tr>
                         <th style="width: 40px;">
-                            <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)">
+                            <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)"
+                                   title="בחר/בטל בחירה של כל הלידים המוצגים">
                         </th>
                         <th>פעולות</th>
                         <th>סטטוס</th>
@@ -466,9 +467,11 @@
     <!-- Control Panel (Filters) -->
     <div class="control-panel">
         <!-- Customer Selector (Admin Only) -->
-        <div id="customerSelectorDiv" class="customer-selector" style="display: none;">
+        <div id="customerSelectorDiv" class="customer-selector" style="display: none;" 
+             title="בחר לקוח לצפייה בלידים שלו בלבד">
             <span>🏢 לקוח:</span>
-            <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)">
+            <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)"
+                    title="החלף בין לקוחות שונים לניהול הלידים שלהם">
                 <option value="">בחר לקוח</option>
             </select>
         </div>
@@ -476,12 +479,16 @@
         <!-- Filters -->
         <div class="filter-group">
             <label class="filter-label">🔍 חיפוש</label>
-            <input type="text" id="searchFilter" class="filter-input" placeholder="חפש שם, טלפון, אימייל..." onkeyup="UnifiedLeadManager.applyFilters()">
+            <input type="text" id="searchFilter" class="filter-input" 
+                   placeholder="חפש שם, טלפון, אימייל..." 
+                   onkeyup="UnifiedLeadManager.applyFilters()"
+                   title="חפש לידים לפי שם, מספר טלפון או כתובת אימייל">
         </div>
         
         <div class="filter-group">
             <label class="filter-label">📌 סטטוס</label>
-            <select id="statusFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+            <select id="statusFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()"
+                    title="סנן לידים לפי סטטוס הטיפול הנוכחי">
                 <option value="">כל הסטטוסים</option>
                 <option value="new">חדש</option>
                 <option value="contacted">נוצר קשר</option>
@@ -495,7 +502,8 @@
         
         <div class="filter-group">
             <label class="filter-label">👤 הקצאה</label>
-            <select id="assignmentFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+            <select id="assignmentFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()"
+                    title="סנן לידים לפי מצב ההקצאה למשתמשים">
                 <option value="">כל ההקצאות</option>
                 <option value="unassigned">לא מוקצה</option>
                 <option value="assigned">מוקצה</option>
@@ -505,7 +513,8 @@
         
         <div class="filter-group">
             <label class="filter-label">📅 תקופה</label>
-            <select id="dateFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+            <select id="dateFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()"
+                    title="סנן לידים לפי תקופת הגעתם למערכת">
                 <option value="">כל הזמן</option>
                 <option value="today">היום</option>
                 <option value="week">השבוע</option>
@@ -515,17 +524,20 @@
         
         <div class="filter-group">
             <label class="filter-label">🎯 קמפיין</label>
-            <select id="campaignFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()">
+            <select id="campaignFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()"
+                    title="סנן לידים לפי הקמפיין שמהם הם הגיעו">
                 <option value="">כל הקמפיינים</option>
             </select>
         </div>
         
         <!-- Action Buttons -->
-        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.refreshLeads()">
+        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.refreshLeads()" 
+                title="רענן רשימת לידים מהשרת">
             🔄 רענן
         </button>
         
-        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.exportLeads()">
+        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.exportLeads()" 
+                title="ייצא את הלידים המפולטרים לקובץ אקסל">
             📥 ייצא לאקסל
         </button>
     </div>
@@ -759,33 +771,36 @@ class UnifiedLeadManagerClass {
                 <tr data-lead-id="${lead.id}">
                     <td>
                         <input type="checkbox" class="lead-checkbox" value="${lead.id}" 
-                               onchange="UnifiedLeadManager.toggleLead(${lead.id}, this.checked)">
+                               onchange="UnifiedLeadManager.toggleLead(${lead.id}, this.checked)"
+                               title="בחר את הליד ${lead.name || 'זה'} לביצוע פעולות קבוצתיות">
                     </td>
                     <td>
                         <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" 
-                                title="הצג פרטים מלאים">👁️</button>
+                                title="הצג פרטים מלאים ופעילויות של ${lead.name || 'הליד'}">👁️</button>
                         ${lead.phone ? `
                             <a href="tel:${lead.phone}" class="action-btn btn-call" 
-                               title="התקשר">📞</a>
+                               title="התקשר ל-${lead.name || 'ליד'} בטלפון ${lead.phone}">📞</a>
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}" 
                                target="_blank" class="action-btn btn-whatsapp" 
-                               title="WhatsApp">💬</a>
+                               title="שלח הודעת WhatsApp ל-${lead.name || 'ליד'} (${lead.phone})">💬</a>
                         ` : ''}
                         ${lead.email ? `
                             <a href="mailto:${lead.email}" class="action-btn btn-email" 
-                               title="שלח מייל">📧</a>
+                               title="שלח אימייל ל-${lead.name || 'ליד'} בכתובת ${lead.email}">📧</a>
                         ` : ''}
                         ${this.canAssign() ? `
                             <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
-                                    title="הקצה">👤</button>
+                                    title="הקצה את הליד ${lead.name || 'זה'} למשתמש אחר">👤</button>
                         ` : ''}
                     </td>
                     <td>
-                        <span class="status-badge status-${lead.status}">
+                        <span class="status-badge status-${lead.status}" 
+                              title="סטטוס הליד: ${this.getStatusLabel(lead.status)} - לחץ לשינוי">
                             ${this.getStatusLabel(lead.status)}
                         </span>
                     </td>
-                    <td class="${priorityClass}">
+                    <td class="${priorityClass}" 
+                        title="עדיפות טיפול: ${priority}% (${priority >= 70 ? 'גבוהה - דרוש טיפול מיידי' : priority >= 40 ? 'בינונית - טיפול בימים הקרובים' : 'נמוכה - ללא דחיפות'})">
                         ${priorityIcon} ${priority}%
                     </td>
                     <td><strong>${lead.name || 'לא צוין'}</strong></td>
@@ -826,17 +841,22 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="lead-card-actions">
-                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" title="פרטים">👁️</button>
+                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" 
+                                title="צפה בפרטים המלאים של ${lead.name || 'הליד'}">👁️</button>
                         ${lead.phone ? `
-                            <a href="tel:${lead.phone}" class="action-btn btn-call" title="התקשר">📞</a>
+                            <a href="tel:${lead.phone}" class="action-btn btn-call" 
+                               title="התקשר ל-${lead.name || 'ליד'}: ${lead.phone}">📞</a>
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}" 
-                               target="_blank" class="action-btn btn-whatsapp" title="WhatsApp">💬</a>
+                               target="_blank" class="action-btn btn-whatsapp" 
+                               title="פתח WhatsApp עם ${lead.name || 'ליד'}: ${lead.phone}">💬</a>
                         ` : ''}
                         ${lead.email ? `
-                            <a href="mailto:${lead.email}" class="action-btn btn-email" title="מייל">📧</a>
+                            <a href="mailto:${lead.email}" class="action-btn btn-email" 
+                               title="שלח אימייל ל-${lead.name || 'ליד'}: ${lead.email}">📧</a>
                         ` : ''}
                         ${this.canAssign() ? `
-                            <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" title="הקצה">👤</button>
+                            <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
+                                    title="הקצה את ${lead.name || 'הליד'} למשתמש אחר">👤</button>
                         ` : ''}
                     </div>
                 </div>
