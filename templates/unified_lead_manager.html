@@ -537,13 +537,13 @@
             <label class="filter-label">🔍 חיפוש</label>
             <input type="text" id="searchFilter" class="filter-input" 
                    placeholder="חפש שם, טלפון, אימייל..." 
-                   onkeyup="UnifiedLeadManager.applyFilters()"
+                   onkeyup="window.UnifiedLeadManager.applyFilters()"
                    title="חפש לידים לפי שם, מספר טלפון או כתובת אימייל">
         </div>
         
         <div class="filter-group">
             <label class="filter-label">📌 סטטוס</label>
-            <select id="statusFilter" class="filter-select" onchange="UnifiedLeadManager.refreshAndApplyFilters()"
+            <select id="statusFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
                     title="סנן לידים לפי סטטוס הטיפול הנוכחי">
                 <option value="">כל הסטטוסים</option>
                 <option value="not_closed" selected>לא סגור</option>
@@ -559,7 +559,7 @@
         
         <div class="filter-group">
             <label class="filter-label">👤 הקצאה</label>
-            <select id="assignmentFilter" class="filter-select" onchange="UnifiedLeadManager.refreshAndApplyFilters()"
+            <select id="assignmentFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
                     title="סנן לידים לפי מצב ההקצאה למשתמשים">
                 <option value="">כל ההקצאות</option>
                 <option value="unassigned">לא מוקצה</option>
@@ -570,7 +570,7 @@
         
         <div class="filter-group">
             <label class="filter-label">📅 תקופה</label>
-            <select id="dateFilter" class="filter-select" onchange="UnifiedLeadManager.refreshAndApplyFilters()"
+            <select id="dateFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
                     title="סנן לידים לפי תקופת הגעתם למערכת">
                 <option value="">כל הזמן</option>
                 <option value="today">היום</option>
@@ -581,7 +581,7 @@
         
         <div class="filter-group">
             <label class="filter-label">🎯 קמפיין</label>
-            <select id="campaignFilter" class="filter-select" onchange="UnifiedLeadManager.refreshAndApplyFilters()"
+            <select id="campaignFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
                     title="סנן לידים לפי הקמפיין שמהם הם הגיעו">
                 <option value="">כל הקמפיינים</option>
             </select>

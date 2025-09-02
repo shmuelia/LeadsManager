@@ -535,7 +535,7 @@ def webhook():
 @app.route('/leads')
 @login_required
 def get_leads():
-    """View all received leads (filtered by assignment for non-admin users)"""
+    """View leads with optimized pagination (filtered by assignment for non-admin users)"""
     try:
         conn = get_db_connection()
         if not conn:
@@ -543,52 +543,94 @@ def get_leads():
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
+        # Get pagination parameters
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 100))  # Default 100 leads per page
+        offset = (page - 1) * per_page
+        
         # Get selected customer ID (default to 1 if none selected)
         selected_customer_id = session.get('selected_customer_id', 1)
         
+        # Optimize query - select only essential fields for main view, exclude heavy raw_data
+        base_fields = """
+            l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
+            l.campaign_name, l.form_name, l.lead_source, l.created_time, 
+            l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
+            u.full_name as assigned_full_name
+        """
+        
         # Filter leads based on user role and selected customer
         if session.get('role') in ['admin', 'campaign_manager']:
-            # Admin and Campaign Manager see all leads for the selected customer
+            # Count total for pagination
             cur.execute("""
-                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, l.campaign_name, l.form_name, 
-                       l.lead_source, l.created_time, l.received_at, l.status, l.assigned_to, l.priority, 
-                       l.raw_data, l.notes, l.updated_at, u.full_name as assigned_full_name
+                SELECT COUNT(*) 
+                FROM leads l 
+                WHERE l.customer_id = %s OR l.customer_id IS NULL
+            """, (selected_customer_id,))
+            total_count = cur.fetchone()[0]
+            
+            # Get paginated results with optimized query
+            cur.execute(f"""
+                SELECT {base_fields}
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
                 ORDER BY COALESCE(l.created_time, l.received_at) DESC
-            """, (selected_customer_id,))
+                LIMIT %s OFFSET %s
+            """, (selected_customer_id, per_page, offset))
         else:
-            # Regular users see only leads assigned to them for the selected customer
+            # Regular users see only leads assigned to them
             username = session.get('username')
+            
+            # Count total for pagination
             cur.execute("""
-                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, l.campaign_name, l.form_name, 
-                       l.lead_source, l.created_time, l.received_at, l.status, l.assigned_to, l.priority, 
-                       l.raw_data, l.notes, l.updated_at, u.full_name as assigned_full_name
+                SELECT COUNT(*)
+                FROM leads l
+                WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
+            """, (username, selected_customer_id))
+            total_count = cur.fetchone()[0]
+            
+            # Get paginated results
+            cur.execute(f"""
+                SELECT {base_fields}
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
                 ORDER BY COALESCE(l.created_time, l.received_at) DESC
-            """, (username, selected_customer_id))
+                LIMIT %s OFFSET %s
+            """, (username, selected_customer_id, per_page, offset))
         
         leads = cur.fetchall()
         
-        # Convert to JSON-serializable format
+        # Convert to JSON-serializable format (optimized)
         leads_list = []
         for lead in leads:
             lead_dict = dict(lead)
-            # Convert datetime objects to ISO format
+            # Only convert datetime objects that exist
             for key in ['created_time', 'received_at', 'updated_at']:
-                if lead_dict[key]:
+                if lead_dict.get(key):
                     lead_dict[key] = lead_dict[key].isoformat()
             leads_list.append(lead_dict)
         
         cur.close()
         conn.close()
         
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page
+        has_next = page < total_pages
+        has_prev = page > 1
+        
         return jsonify({
-            'total_leads': len(leads_list),
-            'leads': leads_list
+            'total_leads': total_count,
+            'leads': leads_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages,
+                'has_next': has_next,
+                'has_prev': has_prev,
+                'total_count': total_count
+            }
         })
         
     except Exception as e:
