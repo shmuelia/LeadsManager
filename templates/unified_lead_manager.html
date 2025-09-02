@@ -1119,11 +1119,6 @@ class UnifiedLeadManagerClass {
                         </div>
                     </div>
                     
-                    <!-- Debug: Show all raw data -->
-                    <div style="margin-bottom: 15px; padding: 10px; background: #fff3cd; border-radius: 6px; font-size: 11px; max-height: 200px; overflow-y: auto;">
-                        <strong>DEBUG - Complete Raw Data:</strong><br>
-                        <pre style="white-space: pre-wrap; margin: 5px 0;">${JSON.stringify(rawData, null, 2)}</pre>
-                    </div>
                     
                     <div style="display: grid; gap: 18px;">
                         ${Object.entries(rawData)
@@ -1142,8 +1137,9 @@ class UnifiedLeadManagerClass {
                                     displayValue = JSON.stringify(value, null, 2);
                                 }
                                 
-                                // Common Zapier field mappings for Hebrew forms
+                                // Common Zapier/Meta field mappings for Hebrew forms
                                 const fieldMappings = {
+                                    // English variations
                                     'whatIsTheDesiredDateForHoldingTheEvent': 'מה התאריך הרצוי לקיום האירוע?',
                                     'howManyPeopleAreExpectedToAttend': 'כמות האנשים שצפויה להגיע?',
                                     'eventType': 'סוג האירוע',
@@ -1151,7 +1147,20 @@ class UnifiedLeadManagerClass {
                                     'specialRequests': 'בקשות מיוחדות',
                                     'contactTime': 'זמן מועדף לקשר',
                                     'location': 'מיקום האירוע',
-                                    'details': 'פרטים נוספים'
+                                    'details': 'פרטים נוספים',
+                                    'event_date': 'תאריך האירוע',
+                                    'guest_count': 'מספר אורחים',
+                                    'additional_details': 'פרטים נוספים',
+                                    
+                                    // Hebrew variations (keys might come in Hebrew)
+                                    'מה התאריך הרצוי לקיום האירוע': 'מה התאריך הרצוי לקיום האירוע?',
+                                    'כמות האנשים שצפויה להגיע': 'כמות האנשים שצפויה להגיע?',
+                                    'תאריך האירוע': 'תאריך האירוע',
+                                    'מספר אורחים': 'מספר אורחים',
+                                    'סוג האירוע': 'סוג האירוע',
+                                    'בקשות מיוחדות': 'בקשות מיוחדות',
+                                    'הערות': 'הערות',
+                                    'פרטים נוספים': 'פרטים נוספים'
                                 };
                                 
                                 // Try to find Hebrew mapping
@@ -1160,8 +1169,15 @@ class UnifiedLeadManagerClass {
                                 }
                                 
                                 // Handle potential direct Hebrew keys or question format
-                                if (key.includes('?') || key.includes('מה') || key.includes('כמה') || key.includes('איך')) {
-                                    displayKey = key; // Already a question
+                                else if (key.includes('?') || key.includes('מה') || key.includes('כמה') || key.includes('איך') || key.includes('האירוע') || key.includes('אנשים')) {
+                                    displayKey = key; // Already a question or contains Hebrew keywords
+                                }
+                                
+                                // Handle camelCase fields by adding spaces and question mark
+                                else if (/^[a-z]+[A-Z]/.test(key)) {
+                                    // Convert camelCase to spaced format if no mapping found
+                                    const spaced = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+                                    displayKey = spaced.charAt(0).toUpperCase() + spaced.slice(1) + '?';
                                 }
                                 
                                 return `
