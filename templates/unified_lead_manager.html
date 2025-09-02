@@ -815,7 +815,6 @@ class UnifiedLeadManagerClass {
                     <div class="lead-card-header">
                         <div>
                             <div class="lead-card-name">${lead.name || 'לא צוין'}</div>
-                            <div class="lead-card-phone">${lead.phone || 'אין טלפון'}</div>
                         </div>
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}">
@@ -825,8 +824,7 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="lead-card-info">
-                        <div><strong>אימייל:</strong> ${lead.email || 'לא צוין'}</div>
-                        <div><strong>עדיפות:</strong> <span class="${priorityClass}">${priorityIcon} ${priority}%</span></div>
+                        <div><strong>קמפיין:</strong> ${(lead.campaign_name || 'לא צוין').substring(0, 30)}</div>
                         <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
                         <div><strong>תאריך:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                     </div>
