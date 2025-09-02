@@ -2199,6 +2199,56 @@ def debug_search_lead(search_term):
             'error': str(e)
         }), 500
 
+@app.route('/admin/clear-leads', methods=['POST'])
+@admin_required
+def clear_leads():
+    """Clear all leads from the database - ADMIN ONLY"""
+    try:
+        # Safety check - require confirmation
+        confirm = request.get_json()
+        if not confirm or confirm.get('confirm') != 'DELETE_ALL_LEADS':
+            return jsonify({
+                'error': 'Safety confirmation required',
+                'message': 'Send {"confirm": "DELETE_ALL_LEADS"} to proceed'
+            }), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # First, delete all lead activities
+        cur.execute("DELETE FROM lead_activities")
+        activities_deleted = cur.rowcount
+        
+        # Then delete all leads
+        cur.execute("DELETE FROM leads")
+        leads_deleted = cur.rowcount
+        
+        # Reset the ID sequence to start from 1 again
+        cur.execute("ALTER SEQUENCE leads_id_seq RESTART WITH 1")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"Cleared {leads_deleted} leads and {activities_deleted} activities from database")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Successfully deleted {leads_deleted} leads and {activities_deleted} activities',
+            'leads_deleted': leads_deleted,
+            'activities_deleted': activities_deleted
+        })
+        
+    except Exception as e:
+        logger.error(f"Error clearing leads: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""

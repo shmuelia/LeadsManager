@@ -15,7 +15,8 @@
       "Bash(heroku run:*)",
       "Bash(where heroku)",
       "Bash(heroku pg:psql:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []
