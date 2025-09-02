@@ -606,10 +606,16 @@ def get_leads():
         leads_list = []
         for lead in leads:
             lead_dict = dict(lead)
-            # Only convert datetime objects that exist
+            # Safely convert datetime objects that exist
             for key in ['created_time', 'received_at', 'updated_at']:
                 if lead_dict.get(key):
-                    lead_dict[key] = lead_dict[key].isoformat()
+                    try:
+                        if hasattr(lead_dict[key], 'isoformat'):
+                            lead_dict[key] = lead_dict[key].isoformat()
+                    except Exception as e:
+                        logger.warning(f"Failed to convert datetime {key} for lead {lead_dict.get('id', 'unknown')}: {e}")
+                        # Keep original value if conversion fails
+                        pass
             leads_list.append(lead_dict)
         
         cur.close()
