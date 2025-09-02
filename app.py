@@ -2077,6 +2077,59 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
+@app.route('/debug/raw-data')
+def debug_raw_data():
+    """Debug endpoint to check raw_data structure"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Get a few leads with non-empty raw_data
+        cur.execute("""
+            SELECT id, name, raw_data 
+            FROM leads 
+            WHERE raw_data IS NOT NULL 
+            AND raw_data != '{}' 
+            AND raw_data != '' 
+            ORDER BY created_time DESC 
+            LIMIT 5
+        """)
+        
+        leads = cur.fetchall()
+        
+        result = []
+        for lead in leads:
+            raw_data = lead['raw_data']
+            if isinstance(raw_data, str):
+                try:
+                    raw_data = json.loads(raw_data)
+                except:
+                    pass
+            
+            result.append({
+                'lead_id': lead['id'],
+                'lead_name': lead['name'],
+                'raw_data': raw_data,
+                'raw_data_keys': list(raw_data.keys()) if isinstance(raw_data, dict) else 'Not a dict'
+            })
+        
+        conn.close()
+        return jsonify({
+            'status': 'success',
+            'total_leads_found': len(leads),
+            'leads_with_raw_data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug raw data error: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 # Initialize database on startup (but don't fail if it doesn't work)
 try:
     init_database()
