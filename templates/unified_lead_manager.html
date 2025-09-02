@@ -1127,17 +1127,47 @@ class UnifiedLeadManagerClass {
                     
                     <div style="display: grid; gap: 18px;">
                         ${Object.entries(rawData)
-                            .filter(([key, value]) => value != null && value !== '' && value !== 'null')
+                            .filter(([key, value]) => {
+                                // Filter out system fields and empty values
+                                const systemFields = ['מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id', 
+                                                    'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at'];
+                                return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
+                            })
                             .map(([key, value]) => {
                                 // Handle different data types
                                 let displayValue = value;
+                                let displayKey = key;
+                                
                                 if (typeof value === 'object') {
                                     displayValue = JSON.stringify(value, null, 2);
                                 }
+                                
+                                // Common Zapier field mappings for Hebrew forms
+                                const fieldMappings = {
+                                    'whatIsTheDesiredDateForHoldingTheEvent': 'מה התאריך הרצוי לקיום האירוע?',
+                                    'howManyPeopleAreExpectedToAttend': 'כמות האנשים שצפויה להגיע?',
+                                    'eventType': 'סוג האירוע',
+                                    'budget': 'תקציב',
+                                    'specialRequests': 'בקשות מיוחדות',
+                                    'contactTime': 'זמן מועדף לקשר',
+                                    'location': 'מיקום האירוע',
+                                    'details': 'פרטים נוספים'
+                                };
+                                
+                                // Try to find Hebrew mapping
+                                if (fieldMappings[key]) {
+                                    displayKey = fieldMappings[key];
+                                }
+                                
+                                // Handle potential direct Hebrew keys or question format
+                                if (key.includes('?') || key.includes('מה') || key.includes('כמה') || key.includes('איך')) {
+                                    displayKey = key; // Already a question
+                                }
+                                
                                 return `
                                     <div style="border-bottom: 1px solid #dadde1; padding-bottom: 12px;">
                                         <div style="font-weight: 600; color: #1c1e21; margin-bottom: 6px; font-size: 15px;">
-                                            ${key}
+                                            ${displayKey}
                                         </div>
                                         <div style="color: #65676b; font-size: 14px; line-height: 1.4; white-space: pre-wrap;">
                                             ${displayValue}
@@ -1146,8 +1176,11 @@ class UnifiedLeadManagerClass {
                                 `;
                             }).join('')}
                         
-                        ${Object.entries(rawData).filter(([key, value]) => value != null && value !== '' && 
-                            !['מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id'].includes(key)).length === 0 ? 
+                        ${Object.entries(rawData).filter(([key, value]) => {
+                            const systemFields = ['מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id', 
+                                                'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at'];
+                            return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
+                        }).length === 0 ? 
                             '<div style="text-align: center; color: #65676b; font-style: italic; padding: 20px;">אין תשובות טופס זמינות</div>' : ''}
                     </div>
                     
