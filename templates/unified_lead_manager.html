@@ -322,20 +322,6 @@
             <span>ניהול לידים</span>
             <span id="customerName" style="font-size: 0.7em; color: #6b7280;"></span>
         </div>
-        <div class="lead-stats">
-            <div class="stat-card">
-                <div class="stat-value" id="totalLeads">0</div>
-                <div class="stat-label">סה"כ לידים</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="newLeads">0</div>
-                <div class="stat-label">לידים חדשים</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="assignedLeads">0</div>
-                <div class="stat-label">מוקצים</div>
-            </div>
-        </div>
     </div>
     
     <!-- Control Panel -->
@@ -456,7 +442,7 @@
 
 <script>
 // Unified Lead Manager - State of the Art Component
-class UnifiedLeadManager {
+class UnifiedLeadManagerClass {
     constructor() {
         this.leads = [];
         this.filteredLeads = [];
@@ -468,6 +454,7 @@ class UnifiedLeadManager {
         this.customers = [];
         this.campaigns = new Set();
         
+        console.log('UnifiedLeadManager: Initializing for role:', this.userRole);
         this.init();
     }
     
@@ -531,11 +518,30 @@ class UnifiedLeadManager {
     
     async loadLeads() {
         try {
+            console.log('Loading leads...');
             document.getElementById('loadingOverlay').style.display = 'flex';
             
             const response = await fetch('/leads');
+            console.log('Leads API response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
-            this.leads = data.leads || [];
+            console.log('Leads data received:', data);
+            
+            // Handle different response formats
+            if (data.leads && Array.isArray(data.leads)) {
+                this.leads = data.leads;
+            } else if (Array.isArray(data)) {
+                this.leads = data;
+            } else {
+                console.warn('Unexpected leads data format:', data);
+                this.leads = [];
+            }
+            
+            console.log('Loaded', this.leads.length, 'leads');
             
             // Extract campaigns for filter
             this.campaigns.clear();
@@ -556,11 +562,12 @@ class UnifiedLeadManager {
             });
             
             this.applyFilters();
-            this.updateStats();
             
         } catch (error) {
             console.error('Error loading leads:', error);
-            this.showToast('שגיאה בטעינת הלידים', 'error');
+            this.showToast(`שגיאה בטעינת הלידים: ${error.message}`, 'error');
+            this.leads = [];
+            this.applyFilters();
         } finally {
             document.getElementById('loadingOverlay').style.display = 'none';
         }
@@ -725,9 +732,7 @@ class UnifiedLeadManager {
     }
     
     updateStats() {
-        document.getElementById('totalLeads').textContent = this.filteredLeads.length;
-        document.getElementById('newLeads').textContent = this.filteredLeads.filter(l => l.status === 'new').length;
-        document.getElementById('assignedLeads').textContent = this.filteredLeads.filter(l => l.assigned_to).length;
+        // Stats removed from UI - no longer needed
     }
     
     async viewLead(leadId) {
@@ -940,7 +945,16 @@ class UnifiedLeadManager {
 }
 
 // Initialize on page load
-const UnifiedLeadManager = new UnifiedLeadManager();
+let UnifiedLeadManager;
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        UnifiedLeadManager = new UnifiedLeadManagerClass();
+    });
+} else {
+    UnifiedLeadManager = new UnifiedLeadManagerClass();
+}
 
 // Add animations
 const style = document.createElement('style');
