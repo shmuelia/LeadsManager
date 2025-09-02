@@ -824,9 +824,11 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="lead-card-info">
-                        <div><strong>קמפיין:</strong> ${(lead.campaign_name || 'לא צוין').substring(0, 30)}</div>
-                        <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
-                        <div><strong>תאריך:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                        <div style="font-size: 16px; margin-bottom: 8px;"><strong>קמפיין:</strong> ${(lead.campaign_name || 'לא צוין').substring(0, 40)}</div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <div><strong>תאריך:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                        </div>
+                        <div style="margin-top: 8px;"><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
                     </div>
                     
                     <div class="lead-card-actions">
