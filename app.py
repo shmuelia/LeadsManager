@@ -2389,6 +2389,63 @@ def delete_lead(lead_id):
             'error': str(e)
         }), 500
 
+@app.route('/admin/optimize-database', methods=['POST'])
+@admin_required
+def optimize_database():
+    """Admin-only database optimization - create indexes and improve performance"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Database indexes for performance
+        indexes_created = 0
+        indexes_to_create = [
+            ("idx_leads_customer_id", "CREATE INDEX IF NOT EXISTS idx_leads_customer_id ON leads (customer_id)"),
+            ("idx_leads_status", "CREATE INDEX IF NOT EXISTS idx_leads_status ON leads (status)"),
+            ("idx_leads_assigned_to", "CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads (assigned_to)"),
+            ("idx_leads_created_time", "CREATE INDEX IF NOT EXISTS idx_leads_created_time ON leads (created_time DESC)"),
+            ("idx_leads_received_at", "CREATE INDEX IF NOT EXISTS idx_leads_received_at ON leads (received_at DESC)"),
+            ("idx_leads_customer_time", "CREATE INDEX IF NOT EXISTS idx_leads_customer_time ON leads (customer_id, COALESCE(created_time, received_at) DESC)"),
+            ("idx_users_username", "CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)"),
+            ("idx_users_active", "CREATE INDEX IF NOT EXISTS idx_users_active ON users (active)"),
+            ("idx_activities_lead_id", "CREATE INDEX IF NOT EXISTS idx_activities_lead_id ON lead_activities (lead_id)"),
+        ]
+        
+        for index_name, create_sql in indexes_to_create:
+            try:
+                cur.execute(create_sql)
+                indexes_created += 1
+                logger.info(f"Created index: {index_name}")
+            except Exception as e:
+                logger.warning(f"Index {index_name} creation failed: {e}")
+        
+        # Update table statistics
+        cur.execute("ANALYZE leads")
+        cur.execute("ANALYZE users") 
+        cur.execute("ANALYZE lead_activities")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"Database optimization completed: {indexes_created} indexes created")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Database optimized successfully - {indexes_created} indexes created',
+            'indexes_created': indexes_created
+        })
+        
+    except Exception as e:
+        logger.error(f"Error optimizing database: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
