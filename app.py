@@ -365,14 +365,32 @@ def debug_session():
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    """Receive Facebook leads from Zapier"""
+    """Receive Facebook leads from Zapier or Meta directly"""
     if request.method == 'GET':
+        # Handle Meta webhook verification
+        verify_token = "leadmanager2024"  # Set your verify token here
+        
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        
+        # Meta webhook verification
+        if mode and token:
+            if mode == 'subscribe' and token == verify_token:
+                logger.info('Meta webhook verified successfully')
+                return challenge, 200
+            else:
+                logger.warning('Meta webhook verification failed - token mismatch')
+                return 'Forbidden', 403
+        
+        # Regular GET request (not Meta verification)
         return jsonify({
             'message': 'Webhook endpoint ready',
             'method': 'POST requests only',
             'content_type': 'application/json',
             'status': 'ready',
-            'database_available': bool(DATABASE_URL)
+            'database_available': bool(DATABASE_URL),
+            'meta_webhook_ready': True
         })
     
     try:
@@ -381,6 +399,36 @@ def webhook():
         if not lead_data:
             logger.warning("No JSON data received")
             return jsonify({'error': 'No data received'}), 400
+        
+        # Handle Meta's direct webhook format
+        if 'entry' in lead_data and isinstance(lead_data.get('entry'), list):
+            # This is a direct Meta webhook
+            logger.info("Received direct Meta webhook")
+            processed_leads = 0
+            
+            for entry in lead_data.get('entry', []):
+                for change in entry.get('changes', []):
+                    if change.get('field') == 'leadgen':
+                        value = change.get('value', {})
+                        lead_id = value.get('leadgen_id')
+                        form_id = value.get('form_id')
+                        created_time = value.get('created_time')
+                        
+                        # Meta sends minimal data, we'd need to fetch full lead details
+                        # For now, log it
+                        logger.info(f"Meta lead received: ID={lead_id}, Form={form_id}")
+                        processed_leads += 1
+                        
+                        # TODO: Use Graph API to fetch full lead details
+                        # This requires Facebook app access token
+            
+            return jsonify({
+                'status': 'success',
+                'message': f'Received {processed_leads} leads from Meta',
+                'note': 'Full lead fetch requires Graph API access'
+            }), 200
+        
+        # Otherwise, process as Zapier format (existing code continues...)
         
         # Log ALL fields received from Zapier for debugging
         logger.info(f"=== WEBHOOK DATA RECEIVED ===")
