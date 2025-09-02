@@ -382,9 +382,28 @@ def webhook():
             logger.warning("No JSON data received")
             return jsonify({'error': 'No data received'}), 400
         
-        # Extract data
-        name = lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name')
-        phone = lead_data.get('phone') or lead_data.get('phone_number')
+        # Log ALL fields received from Zapier for debugging
+        logger.info(f"=== WEBHOOK DATA RECEIVED ===")
+        logger.info(f"Total fields: {len(lead_data)}")
+        logger.info(f"Field names: {list(lead_data.keys())}")
+        
+        # Log any potential form response fields
+        form_fields = {}
+        for key, value in lead_data.items():
+            # Skip known system fields
+            if key not in ['id', 'name', 'email', 'phone', 'platform', 'campaign_name', 
+                          'form_name', 'lead_source', 'created_time', 'full_name', 
+                          'phone_number', 'נוצר', 'שם', 'דוא"ל', 'טלפון']:
+                if value and str(value).strip():
+                    form_fields[key] = value
+                    logger.info(f"Potential form field: {key} = {value}")
+        
+        if form_fields:
+            logger.info(f"Found {len(form_fields)} potential form response fields")
+        
+        # Extract data with multiple fallbacks
+        name = lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name') or lead_data.get('שם')
+        phone = lead_data.get('phone') or lead_data.get('phone_number') or lead_data.get('טלפון')
         
         # Try to save to database, but don't fail if database is unavailable
         lead_id = None
@@ -1003,11 +1022,73 @@ def debug_csv():
             'message': f'Debug failed: {str(e)}'
         }), 500
 
+@app.route('/webhook-test', methods=['POST'])
+def webhook_test():
+    """Test webhook endpoint that shows exactly what Zapier sends"""
+    try:
+        # Get raw data in different formats
+        json_data = request.get_json(force=True, silent=True)
+        form_data = request.form.to_dict() if request.form else {}
+        args_data = request.args.to_dict() if request.args else {}
+        
+        # Get headers
+        headers = dict(request.headers)
+        
+        # Build comprehensive response
+        response = {
+            'status': 'success',
+            'message': 'Test webhook received data',
+            'data_received': {
+                'json_body': json_data,
+                'form_data': form_data,
+                'query_params': args_data,
+                'total_json_fields': len(json_data) if json_data else 0,
+                'json_field_names': list(json_data.keys()) if json_data else [],
+            },
+            'request_info': {
+                'method': request.method,
+                'content_type': request.content_type,
+                'content_length': request.content_length
+            }
+        }
+        
+        # Log for debugging
+        logger.info("=== TEST WEBHOOK DATA ===")
+        logger.info(f"JSON Data: {json_data}")
+        logger.info(f"Form Data: {form_data}")
+        logger.info(f"Query Params: {args_data}")
+        
+        # If we have JSON data, analyze it for form fields
+        if json_data:
+            form_responses = {}
+            standard_fields = ['id', 'name', 'email', 'phone', 'platform', 'campaign_name', 
+                             'form_name', 'lead_source', 'created_time', 'full_name', 
+                             'phone_number', 'נוצר', 'שם', 'דוא"ל', 'טלפון', 'טופס', 
+                             'מקור', 'ערוץ', 'בעלים', 'שלב']
+            
+            for key, value in json_data.items():
+                if key not in standard_fields and value:
+                    form_responses[key] = value
+            
+            response['form_responses_detected'] = form_responses
+            response['form_responses_count'] = len(form_responses)
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Test webhook error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'message': 'Error processing test webhook'
+        }), 500
+
 @app.route('/test')
 def test():
     return jsonify({
         'test': 'success',
         'webhook_ready': True,
+        'webhook_test_endpoint': '/webhook-test',
         'database_url_present': bool(DATABASE_URL)
     })
 
