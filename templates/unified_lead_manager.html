@@ -1019,6 +1019,10 @@ class UnifiedLeadManagerClass {
             console.error('Error parsing raw data:', e);
         }
         
+        // Extract Facebook/Instagram profile info
+        const facebookId = rawData.facebook_id || rawData.fb_id || rawData.user_id;
+        const instagramHandle = rawData.instagram_username || rawData.ig_username;
+        
         modalBody.innerHTML = `
             <!-- Basic Lead Information -->
             <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
@@ -1029,6 +1033,36 @@ class UnifiedLeadManagerClass {
                             <div><strong>שם מלא:</strong> ${lead.name || 'לא צוין'}</div>
                             <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
                             <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
+                            
+                            <!-- Social Media Links -->
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1);">
+                                <div style="margin-bottom: 8px;"><strong>קישורים חברתיים:</strong></div>
+                                ${facebookId ? `
+                                    <div><a href="https://facebook.com/${facebookId}" target="_blank" style="color: #1877f2; margin-left: 15px;">
+                                        📘 פרופיל Facebook
+                                    </a></div>
+                                ` : lead.name ? `
+                                    <div><a href="https://www.facebook.com/search/people/?q=${encodeURIComponent(lead.name)}" target="_blank" style="color: #1877f2; margin-left: 15px;">
+                                        🔍 חפש בפייסבוק
+                                    </a></div>
+                                ` : ''}
+                                
+                                ${instagramHandle ? `
+                                    <div><a href="https://instagram.com/${instagramHandle}" target="_blank" style="color: #E4405F; margin-left: 15px;">
+                                        📷 פרופיל Instagram
+                                    </a></div>
+                                ` : lead.name ? `
+                                    <div><a href="https://www.instagram.com/explore/tags/${encodeURIComponent(lead.name.replace(/\s+/g, ''))}" target="_blank" style="color: #E4405F; margin-left: 15px;">
+                                        🔍 חפש באינסטגרם
+                                    </a></div>
+                                ` : ''}
+                                
+                                ${lead.platform === 'fb' || lead.platform === 'ig' ? `
+                                    <div><a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2; margin-left: 15px;">
+                                        💬 פתח Meta Business Suite
+                                    </a></div>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                     <div>
