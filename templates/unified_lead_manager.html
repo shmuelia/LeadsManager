@@ -179,6 +179,17 @@
         transform: translateY(-1px);
     }
     
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+    
+    .btn-delete:hover {
+        background: #dc2626;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
     /* Lead Cards for Mobile */
     .lead-cards-container {
         display: none; /* Hidden by default, shown on mobile */
@@ -840,6 +851,10 @@ class UnifiedLeadManagerClass {
                             <button class="action-btn btn-assign" onclick="window.UnifiedLeadManager.quickAssign(${lead.id})" 
                                     title="הקצה את הליד ${lead.name || 'זה'} למשתמש אחר">👤</button>
                         ` : ''}
+                        ${this.userRole === 'admin' ? `
+                            <button class="action-btn btn-delete" onclick="window.UnifiedLeadManager.deleteLead(${lead.id})" 
+                                    title="מחק את הליד ${lead.name || 'זה'} לצמיתות (מנהל בלבד)">🗑️</button>
+                        ` : ''}
                     </td>
                     <td>
                         <span class="status-badge status-${lead.status}" 
@@ -904,6 +919,10 @@ class UnifiedLeadManagerClass {
                         ${this.canAssign() ? `
                             <button class="action-btn btn-assign" onclick="window.UnifiedLeadManager.quickAssign(${lead.id})" 
                                     title="הקצה את ${lead.name || 'הליד'} למשתמש אחר">👤</button>
+                        ` : ''}
+                        ${this.userRole === 'admin' ? `
+                            <button class="action-btn btn-delete" onclick="window.UnifiedLeadManager.deleteLead(${lead.id})" 
+                                    title="מחק את ${lead.name || 'הליד'} לצמיתות (מנהל בלבד)">🗑️</button>
                         ` : ''}
                     </div>
                 </div>
@@ -1487,6 +1506,41 @@ class UnifiedLeadManagerClass {
     exportLeads() {
         // Implementation for export to Excel
         this.showToast('הייצוא לאקסל יתחיל בקרוב', 'info');
+    }
+    
+    async deleteLead(leadId) {
+        // Admin only - delete lead permanently
+        if (this.userRole !== 'admin') {
+            this.showToast('אין לך הרשאה למחוק לידים', 'error');
+            return;
+        }
+        
+        const lead = this.leads.find(l => l.id === leadId);
+        const leadName = lead ? (lead.name || `ליד ${leadId}`) : `ליד ${leadId}`;
+        
+        // Confirmation dialog
+        if (!confirm(`האם אתה בטוח שברצונך למחוק את הליד "${leadName}" לצמיתות?\n\nפעולה זו לא ניתנת לביטול!`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/admin/leads/delete/${leadId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast(`ליד "${leadName}" נמחק בהצלחה`, 'success');
+                await this.loadLeads(); // Refresh the leads list
+            } else {
+                this.showToast(result.error || 'שגיאה במחיקת הליד', 'error');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            this.showToast('שגיאה במחיקת הליד', 'error');
+        }
     }
     
     showToast(message, type = 'success') {

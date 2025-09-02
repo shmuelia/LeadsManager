@@ -2297,6 +2297,56 @@ def clear_leads():
             'error': str(e)
         }), 500
 
+@app.route('/admin/leads/delete/<int:lead_id>', methods=['DELETE'])
+@admin_required
+def delete_lead(lead_id):
+    """Delete a specific lead - ADMIN ONLY"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # First check if lead exists
+        cur.execute("SELECT id, name FROM leads WHERE id = %s", (lead_id,))
+        lead = cur.fetchone()
+        
+        if not lead:
+            return jsonify({'error': f'Lead {lead_id} not found'}), 404
+        
+        lead_name = lead[1] if lead[1] else f"Lead {lead_id}"
+        
+        # Delete lead activities first (foreign key constraint)
+        cur.execute("DELETE FROM lead_activities WHERE lead_id = %s", (lead_id,))
+        activities_deleted = cur.rowcount
+        
+        # Delete the lead
+        cur.execute("DELETE FROM leads WHERE id = %s", (lead_id,))
+        lead_deleted = cur.rowcount
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        if lead_deleted > 0:
+            logger.info(f"Admin deleted lead {lead_id} ({lead_name}) and {activities_deleted} activities")
+            return jsonify({
+                'status': 'success',
+                'message': f'Successfully deleted lead: {lead_name}',
+                'lead_id': lead_id,
+                'activities_deleted': activities_deleted
+            })
+        else:
+            return jsonify({'error': 'Failed to delete lead'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error deleting lead {lead_id}: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
@@ -2438,6 +2488,121 @@ def debug_raw_data():
             'status': 'error',
             'error': str(e),
             'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/upload-facebook-csv', methods=['GET', 'POST'])
+def upload_facebook_csv():
+    """Upload Facebook CSV export with form data"""
+    if request.method == 'GET':
+        return render_template('upload_facebook_csv.html')
+    
+    try:
+        if 'csv_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+            
+        file = request.files['csv_file']
+        update_existing = request.form.get('update_existing') == '1'
+        
+        import csv
+        import io
+        
+        # Read CSV
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_reader = csv.DictReader(stream)
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+            
+        cur = conn.cursor()
+        
+        imported = 0
+        updated = 0
+        
+        for row in csv_reader:
+            # Build raw_data with ALL fields including form responses
+            raw_data = {}
+            custom_fields = {}
+            field_index = 0
+            
+            # Process all columns - Facebook might have Hebrew headers
+            for key, value in row.items():
+                if value and value.strip():  # Only include non-empty values
+                    raw_data[key] = value
+                    
+                    # Identify potential form response fields
+                    standard_fields = ['full_name', 'name', 'email', 'phone', 'phone_number', 
+                                     'created_time', 'id', 'campaign_name', 'form_name',
+                                     'platform', 'ad_id', 'ad_name', 'adset_id', 'adset_name',
+                                     'שם מלא', 'אימייל', 'דוא"ל', 'טלפון', 'תאריך יצירה',
+                                     'שם', 'מזהה', 'קמפיין', 'טופס']
+                    
+                    # If not a standard field, treat as custom question
+                    if key not in standard_fields and not any(std in key.lower() for std in ['id', 'time', 'date']):
+                        custom_fields[f'custom_question_{field_index}'] = key
+                        custom_fields[f'custom_answer_{field_index}'] = value
+                        field_index += 1
+            
+            # Add custom fields to raw_data
+            raw_data.update(custom_fields)
+            
+            # Extract basic fields with multiple fallbacks
+            name = row.get('full_name') or row.get('שם מלא') or row.get('name') or row.get('שם')
+            email = row.get('email') or row.get('אימייל') or row.get('דוא"ל')
+            phone = row.get('phone_number') or row.get('טלפון') or row.get('phone')
+            
+            # Clean phone number
+            if phone:
+                phone = phone.replace(' ', '').replace('-', '')
+                if not phone.startswith('+'):
+                    phone = '+972' + phone.lstrip('0')
+            
+            # Check if lead exists
+            if email or phone:
+                if email and phone:
+                    cur.execute("SELECT id FROM leads WHERE email = %s OR phone = %s LIMIT 1", (email, phone))
+                elif email:
+                    cur.execute("SELECT id FROM leads WHERE email = %s LIMIT 1", (email,))
+                else:
+                    cur.execute("SELECT id FROM leads WHERE phone = %s LIMIT 1", (phone,))
+                
+                existing = cur.fetchone()
+                
+                if existing and update_existing:
+                    # Update existing lead with form data
+                    cur.execute("""
+                        UPDATE leads 
+                        SET raw_data = %s, updated_at = NOW()
+                        WHERE id = %s
+                    """, (json.dumps(raw_data, ensure_ascii=False), existing[0]))
+                    updated += 1
+                elif not existing:
+                    # Create new lead
+                    cur.execute("""
+                        INSERT INTO leads (name, email, phone, raw_data, customer_id, status, platform)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (name, email, phone, json.dumps(raw_data, ensure_ascii=False), 1, 'new', 'facebook'))
+                    imported += 1
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Import completed successfully',
+            'new_leads': imported,
+            'updated_leads': updated,
+            'redirect': '/campaign-manager'
+        })
+        
+    except Exception as e:
+        logger.error(f"Facebook CSV upload error: {str(e)}")
+        import traceback
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'details': traceback.format_exc()
         }), 500
 
 # Initialize database on startup (but don't fail if it doesn't work)
