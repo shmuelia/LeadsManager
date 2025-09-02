@@ -317,7 +317,7 @@
     }
     
     .status-badge::after {
-        content: "⚡ לחץ לשינוי";
+        content: "שמאל: הבא | ימין: סגור";
         position: absolute;
         bottom: -25px;
         left: 50%;
@@ -843,7 +843,9 @@ class UnifiedLeadManagerClass {
                     </td>
                     <td>
                         <span class="status-badge status-${lead.status}" 
-                              onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})">
+                              onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})"
+                              oncontextmenu="window.UnifiedLeadManager.closeLeadDirectly(${lead.id}); return false;"
+                              title="לחיצה שמאל: סטטוס הבא | לחיצה ימין: סגירה">
                             ${this.getStatusLabel(lead.status)}
                         </span>
                     </td>
@@ -869,7 +871,9 @@ class UnifiedLeadManagerClass {
                         </div>
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}"
-                                  onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})">
+                                  onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})"
+                                  oncontextmenu="window.UnifiedLeadManager.closeLeadDirectly(${lead.id}); return false;"
+                                  title="לחיצה שמאל: סטטוס הבא | לחיצה ימין: סגירה">
                                 ${this.getStatusLabel(lead.status)}
                             </span>
                         </div>
@@ -1186,6 +1190,11 @@ class UnifiedLeadManagerClass {
         
         // Update status directly
         await this.performStatusChange(leadId, nextStatus, null);
+    }
+    
+    async closeLeadDirectly(leadId) {
+        // Direct close without progression
+        await this.performStatusChange(leadId, 'closed', null);
     }
     
     async performStatusChange(leadId, newStatus, modal) {
