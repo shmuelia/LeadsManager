@@ -2087,15 +2087,17 @@ def debug_raw_data():
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        # Get a few leads with non-empty raw_data
+        # Get total count of leads
+        cur.execute("SELECT COUNT(*) as total FROM leads")
+        total_count = cur.fetchone()['total']
+        
+        # Get leads with any raw_data
         cur.execute("""
-            SELECT id, name, raw_data 
+            SELECT id, name, raw_data, created_time
             FROM leads 
             WHERE raw_data IS NOT NULL 
-            AND raw_data != '{}' 
-            AND raw_data != '' 
             ORDER BY created_time DESC 
-            LIMIT 5
+            LIMIT 10
         """)
         
         leads = cur.fetchall()
@@ -2103,31 +2105,42 @@ def debug_raw_data():
         result = []
         for lead in leads:
             raw_data = lead['raw_data']
-            if isinstance(raw_data, str):
+            raw_data_type = type(raw_data).__name__
+            
+            # Try to parse if it's a string
+            parsed_data = raw_data
+            if isinstance(raw_data, str) and raw_data.strip():
                 try:
-                    raw_data = json.loads(raw_data)
+                    parsed_data = json.loads(raw_data)
                 except:
-                    pass
+                    parsed_data = raw_data
             
             result.append({
                 'lead_id': lead['id'],
                 'lead_name': lead['name'],
-                'raw_data': raw_data,
-                'raw_data_keys': list(raw_data.keys()) if isinstance(raw_data, dict) else 'Not a dict'
+                'created_time': lead['created_time'].isoformat() if lead['created_time'] else 'None',
+                'raw_data_type': raw_data_type,
+                'raw_data_length': len(str(raw_data)) if raw_data else 0,
+                'raw_data': parsed_data,
+                'raw_data_keys': list(parsed_data.keys()) if isinstance(parsed_data, dict) else 'Not a dict',
+                'contains_hebrew_event_question': str(raw_data).find('התאריך הרצוי') != -1 if raw_data else False
             })
         
         conn.close()
         return jsonify({
             'status': 'success',
-            'total_leads_found': len(leads),
-            'leads_with_raw_data': result
+            'total_leads_in_db': total_count,
+            'leads_with_raw_data': len(leads),
+            'leads': result
         })
         
     except Exception as e:
         logger.error(f"Debug raw data error: {e}")
+        import traceback
         return jsonify({
             'status': 'error',
-            'error': str(e)
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }), 500
 
 # Initialize database on startup (but don't fail if it doesn't work)
