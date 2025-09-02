@@ -487,6 +487,7 @@
             <select id="statusFilter" class="filter-select" onchange="UnifiedLeadManager.applyFilters()"
                     title="סנן לידים לפי סטטוס הטיפול הנוכחי">
                 <option value="">כל הסטטוסים</option>
+                <option value="not_closed">לא סגור</option>
                 <option value="new">חדש</option>
                 <option value="contacted">נוצר קשר</option>
                 <option value="qualified">מוכשר</option>
@@ -710,7 +711,14 @@ class UnifiedLeadManagerClass {
             }
             
             // Status filter
-            if (statusFilter && lead.status !== statusFilter) return false;
+            if (statusFilter) {
+                if (statusFilter === 'not_closed') {
+                    // לא סגור - exclude only 'closed' status
+                    if (lead.status === 'closed') return false;
+                } else if (lead.status !== statusFilter) {
+                    return false;
+                }
+            }
             
             // Assignment filter
             if (assignmentFilter) {
