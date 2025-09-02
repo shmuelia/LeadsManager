@@ -795,6 +795,8 @@ class UnifiedLeadManagerClass {
                     </td>
                     <td>
                         <span class="status-badge status-${lead.status}" 
+                              onclick="UnifiedLeadManager.quickStatusChange(${lead.id})"
+                              style="cursor: pointer;"
                               title="סטטוס הליד: ${this.getStatusLabel(lead.status)} - לחץ לשינוי">
                             ${this.getStatusLabel(lead.status)}
                         </span>
@@ -820,7 +822,10 @@ class UnifiedLeadManagerClass {
                             <div class="lead-card-name">${lead.name || 'לא צוין'}</div>
                         </div>
                         <div class="lead-card-status">
-                            <span class="status-badge status-${lead.status}">
+                            <span class="status-badge status-${lead.status}"
+                                  onclick="UnifiedLeadManager.quickStatusChange(${lead.id})"
+                                  style="cursor: pointer;"
+                                  title="סטטוס הליד: ${this.getStatusLabel(lead.status)} - לחץ לשינוי">
                                 ${this.getStatusLabel(lead.status)}
                             </span>
                         </div>
@@ -1045,23 +1050,148 @@ class UnifiedLeadManagerClass {
         const lead = this.leads.find(l => l.id === leadId);
         if (!lead) return;
         
-        // Show assignment dialog
-        const user = prompt('הקלד שם משתמש להקצאה:');
-        if (user) {
-            try {
-                const response = await fetch(`/leads/${leadId}/assign`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ assigned_to: user })
-                });
-                
-                if (response.ok) {
-                    this.showToast('הליד הוקצה בהצלחה', 'success');
-                    await this.loadLeads();
-                }
-            } catch (error) {
-                this.showToast('שגיאה בהקצאת הליד', 'error');
+        try {
+            // Load available users for assignment
+            const response = await fetch('/admin/users/api');
+            if (!response.ok) {
+                throw new Error('Failed to load users');
             }
+            
+            const users = await response.json();
+            
+            // Create assignment modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>הקצאת ליד: ${lead.name || 'לא צוין'}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 15px;">בחר משתמש להקצאת הליד:</p>
+                        <select id="assignUserSelect" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;">
+                            <option value="">בחר משתמש...</option>
+                            <option value="">ביטול הקצאה (לא מוקצה)</option>
+                            ${users.map(user => `
+                                <option value="${user.username}" ${lead.assigned_to === user.username ? 'selected' : ''}>
+                                    ${user.full_name} (${user.username})
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.performAssignment(${leadId}, document.getElementById('assignUserSelect').value, this.closest('.modal-overlay'))">
+                            הקצה
+                        </button>
+                        <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            ביטול
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+        } catch (error) {
+            console.error('Error loading users for assignment:', error);
+            this.showToast('שגיאה בטעינת רשימת המשתמשים', 'error');
+        }
+    }
+    
+    async performAssignment(leadId, assignedTo, modal) {
+        try {
+            const response = await fetch(`/leads/${leadId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assigned_to: assignedTo })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast(result.message || 'הליד הוקצה בהצלחה', 'success');
+                await this.loadLeads();
+                modal.remove();
+            } else {
+                this.showToast(result.error || 'שגיאה בהקצאת הליד', 'error');
+            }
+        } catch (error) {
+            console.error('Assignment error:', error);
+            this.showToast('שגיאה בהקצאת הליד', 'error');
+        }
+    }
+    
+    async quickStatusChange(leadId) {
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead) return;
+        
+        const statusOptions = [
+            { value: 'new', label: 'חדש' },
+            { value: 'contacted', label: 'נוצר קשר' },
+            { value: 'qualified', label: 'מוכשר' },
+            { value: 'interested', label: 'מתעניין' },
+            { value: 'hired', label: 'התקבל' },
+            { value: 'rejected', label: 'נדחה' },
+            { value: 'closed', label: 'סגור' }
+        ];
+        
+        // Create status change modal
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 450px;">
+                <div class="modal-header">
+                    <h3>שינוי סטטוס ליד: ${lead.name || 'לא צוין'}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 15px;">בחר סטטוס חדש לליד:</p>
+                    <select id="statusSelect" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;">
+                        ${statusOptions.map(option => `
+                            <option value="${option.value}" ${lead.status === option.value ? 'selected' : ''}>
+                                ${option.label}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-primary" onclick="UnifiedLeadManager.performStatusChange(${leadId}, document.getElementById('statusSelect').value, this.closest('.modal-overlay'))">
+                        עדכן סטטוס
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        ביטול
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+    
+    async performStatusChange(leadId, newStatus, modal) {
+        try {
+            const response = await fetch(`/leads/${leadId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    status: newStatus,
+                    user_name: this.fullName || this.username || 'משתמש'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast(result.message || 'סטטוס הליד עודכן בהצלחה', 'success');
+                await this.loadLeads();
+                modal.remove();
+            } else {
+                this.showToast(result.error || 'שגיאה בעדכון סטטוס הליד', 'error');
+            }
+        } catch (error) {
+            console.error('Status change error:', error);
+            this.showToast('שגיאה בעדכון סטטוס הליד', 'error');
         }
     }
     

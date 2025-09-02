@@ -1647,6 +1647,92 @@ def assign_lead(lead_id):
         logger.error(f"Error assigning lead: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/leads/<int:lead_id>/assign', methods=['POST'])
+@campaign_manager_required
+def assign_lead_campaign_manager(lead_id):
+    """Campaign Manager & Admin: Assign lead to user"""
+    try:
+        data = request.get_json()
+        assigned_to = data.get('assigned_to', '').strip()
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Get user's customer context
+        user_role = session.get('role')
+        if user_role == 'admin':
+            selected_customer_id = session.get('selected_customer_id', 1)
+        else:  # campaign_manager
+            selected_customer_id = session.get('customer_id')
+        
+        # Check if lead exists and belongs to user's customer scope
+        cur.execute("SELECT id, name, customer_id FROM leads WHERE id = %s", (lead_id,))
+        lead = cur.fetchone()
+        if not lead:
+            return jsonify({'error': 'Lead not found'}), 404
+        
+        # Verify lead belongs to user's customer scope
+        lead_customer_id = lead[2] or selected_customer_id
+        if user_role == 'campaign_manager' and lead_customer_id != selected_customer_id:
+            return jsonify({'error': 'Access denied'}), 403
+            
+        lead_name = lead[1]
+        
+        # If assigning to a user, validate user exists and belongs to same customer
+        if assigned_to:
+            if user_role == 'admin':
+                cur.execute("""
+                    SELECT full_name FROM users 
+                    WHERE username = %s AND active = true AND customer_id = %s
+                """, (assigned_to, selected_customer_id))
+            else:  # campaign_manager
+                cur.execute("""
+                    SELECT full_name FROM users 
+                    WHERE username = %s AND active = true AND customer_id = %s
+                """, (assigned_to, selected_customer_id))
+                
+            user = cur.fetchone()
+            if not user:
+                return jsonify({'error': 'User not found or not accessible'}), 400
+            user_full_name = user[0]
+        else:
+            user_full_name = None
+        
+        # Update lead assignment
+        cur.execute("""
+            UPDATE leads SET assigned_to = %s, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s
+        """, (assigned_to if assigned_to else None, lead_id))
+        
+        # Log assignment activity
+        cur.execute("""
+            INSERT INTO lead_activities 
+            (lead_id, user_name, activity_type, description, customer_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            lead_id, 
+            session.get('username', 'מנהל'),
+            'assignment',
+            f'ליד הוקצה ל{user_full_name}' if assigned_to else 'הקצאת הליד בוטלה',
+            selected_customer_id
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'ליד {lead_name} הוקצה בהצלחה' if assigned_to else f'הקצאת ליד {lead_name} בוטלה'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error assigning lead: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/customers')
 @admin_required
 def customer_management():
