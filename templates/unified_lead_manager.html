@@ -1104,13 +1104,25 @@ class UnifiedLeadManagerClass {
                 </div>
             </div>
             
-            <!-- Complete Zapier/Meta Form Data -->
+            <!-- Meta Form Responses (Meta Style Format) -->
             ${Object.keys(rawData).length > 0 ? `
-                <div style="background: linear-gradient(135deg, #ecfccb 0%, #d9f99d 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 15px; color: #1e293b;">📋 כל הנתונים מהטופס (Zapier/Meta)</h3>
-                    <div style="display: grid; gap: 12px; max-height: 400px; overflow-y: auto;">
+                <div style="background: #ffffff; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #1877f2; box-shadow: 0 4px 12px rgba(24,119,242,0.15);">
+                    <div style="border-bottom: 2px solid #1877f2; padding-bottom: 15px; margin-bottom: 20px;">
+                        <h3 style="color: #1877f2; margin: 0; font-size: 1.4em;">📋 התשובות של הטופס</h3>
+                        <div style="margin-top: 10px; color: #65676b; font-size: 0.9em;">
+                            ${leadFormId ? `
+                                <div style="margin-bottom: 5px;">
+                                    <strong>מזהה טופס לידים:</strong> <code style="background: #f0f2f5; padding: 2px 6px; border-radius: 4px;">${leadFormId}</code>
+                                </div>
+                            ` : ''}
+                            <div><strong>נשלח ב-</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; gap: 18px;">
                         ${Object.entries(rawData)
-                            .filter(([key, value]) => value != null && value !== '')
+                            .filter(([key, value]) => value != null && value !== '' && 
+                                !['מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id'].includes(key))
                             .map(([key, value]) => {
                                 // Handle different data types
                                 let displayValue = value;
@@ -1118,17 +1130,33 @@ class UnifiedLeadManagerClass {
                                     displayValue = JSON.stringify(value, null, 2);
                                 }
                                 return `
-                                    <div style="padding: 12px; background: rgba(255,255,255,0.8); border-radius: 8px; border-left: 4px solid #059669;">
-                                        <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">${key}</div>
-                                        <div style="color: #6b7280; word-break: break-word;">${displayValue}</div>
+                                    <div style="border-bottom: 1px solid #dadde1; padding-bottom: 12px;">
+                                        <div style="font-weight: 600; color: #1c1e21; margin-bottom: 6px; font-size: 15px;">
+                                            ${key}
+                                        </div>
+                                        <div style="color: #65676b; font-size: 14px; line-height: 1.4; white-space: pre-wrap;">
+                                            ${displayValue}
+                                        </div>
                                     </div>
                                 `;
                             }).join('')}
-                        ${Object.keys(rawData).filter(([key, value]) => value != null && value !== '').length === 0 ? 
-                            '<div style="text-align: center; color: #6b7280; font-style: italic;">כל הנתונים מהטופס ריקים</div>' : ''}
+                        
+                        ${Object.entries(rawData).filter(([key, value]) => value != null && value !== '' && 
+                            !['מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id'].includes(key)).length === 0 ? 
+                            '<div style="text-align: center; color: #65676b; font-style: italic; padding: 20px;">אין תשובות טופס זמינות</div>' : ''}
                     </div>
+                    
+                    ${leadFormId ? `
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dadde1;">
+                            <a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" 
+                               target="_blank" 
+                               style="display: inline-block; background: #1877f2; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                                🔍 להצגת הטופס במטא
+                            </a>
+                        </div>
+                    ` : ''}
                 </div>
-            ` : '<div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; color: #6b7280;">אין נתונים נוספים מהטופס</div>'}
+            ` : '<div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; color: #6b7280;">אין נתונים מהטופס</div>'}
 
             <!-- Notes Section -->
             ${lead.notes ? `
