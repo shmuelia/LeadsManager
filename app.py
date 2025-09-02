@@ -2069,6 +2069,55 @@ def run_customer_migration():
         logger.error(f"Migration error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/debug/search/<search_term>')
+def debug_search_lead(search_term):
+    """Search for leads by name or phone to debug"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Search by name or phone
+        cur.execute("""
+            SELECT id, name, phone, email, external_lead_id, created_time
+            FROM leads 
+            WHERE name ILIKE %s OR phone LIKE %s OR email ILIKE %s
+            ORDER BY created_time DESC
+            LIMIT 10
+        """, (f'%{search_term}%', f'%{search_term}%', f'%{search_term}%'))
+        
+        leads = cur.fetchall()
+        
+        results = []
+        for lead in leads:
+            results.append({
+                'id': lead['id'],
+                'name': lead['name'],
+                'phone': lead['phone'],
+                'email': lead['email'],
+                'external_lead_id': lead['external_lead_id'],
+                'created_time': lead['created_time'].isoformat() if lead['created_time'] else None,
+                'debug_url': f'/debug/lead/{lead["id"]}'
+            })
+        
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'search_term': search_term,
+            'found': len(leads),
+            'leads': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug search error: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
@@ -2076,6 +2125,75 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+
+@app.route('/debug/lead/<int:lead_id>')
+def debug_specific_lead(lead_id):
+    """Debug endpoint to check a specific lead's raw data"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Get the specific lead
+        cur.execute("""
+            SELECT id, name, email, phone, raw_data, created_time, external_lead_id
+            FROM leads 
+            WHERE id = %s
+        """, (lead_id,))
+        
+        lead = cur.fetchone()
+        
+        if not lead:
+            return jsonify({'error': f'Lead {lead_id} not found'}), 404
+        
+        raw_data = lead['raw_data']
+        parsed_data = raw_data
+        
+        # Try to parse if it's a string
+        if isinstance(raw_data, str) and raw_data.strip():
+            try:
+                parsed_data = json.loads(raw_data)
+            except:
+                parsed_data = raw_data
+        
+        # Look for form-related fields
+        form_fields = {}
+        if isinstance(parsed_data, dict):
+            for key, value in parsed_data.items():
+                # Look for any field that might be a form question
+                if (value and value != '' and 
+                    key not in ['id', 'name', 'email', 'phone', 'platform', 'created_time', 
+                               'campaign_name', 'form_name', 'lead_source']):
+                    form_fields[key] = value
+        
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'lead': {
+                'id': lead['id'],
+                'name': lead['name'],
+                'email': lead['email'],
+                'phone': lead['phone'],
+                'external_lead_id': lead['external_lead_id'],
+                'created_time': lead['created_time'].isoformat() if lead['created_time'] else None
+            },
+            'raw_data_type': type(raw_data).__name__,
+            'raw_data': parsed_data,
+            'potential_form_fields': form_fields,
+            'all_keys': list(parsed_data.keys()) if isinstance(parsed_data, dict) else None
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug lead error: {e}")
+        import traceback
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 @app.route('/debug/raw-data')
 def debug_raw_data():
