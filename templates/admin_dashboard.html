@@ -77,7 +77,10 @@
 </head>
 <body>
     <div class="container">
-        <!-- Admin Header with Navigation -->
+        <!-- Include Unified Lead Manager Component -->
+        {% include 'unified_lead_manager.html' %}
+        
+        <!-- Admin Header moved to bottom for mobile optimization -->
         <div class="header">
             <h1>🛠️ לוח בקרה מנהל מערכת</h1>
             <div class="admin-nav">
@@ -95,9 +98,6 @@
                 </button>
             </div>
         </div>
-        
-        <!-- Include Unified Lead Manager Component -->
-        {% include 'unified_lead_manager.html' %}
     </div>
 </body>
 </html>
