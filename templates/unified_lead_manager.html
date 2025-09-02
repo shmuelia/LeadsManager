@@ -179,7 +179,75 @@
         transform: translateY(-1px);
     }
     
-    /* Lead Table */
+    /* Lead Cards for Mobile */
+    .lead-cards-container {
+        display: none; /* Hidden by default, shown on mobile */
+    }
+    
+    .lead-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+    }
+    
+    .lead-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+    
+    .lead-card-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+    
+    .lead-card-phone {
+        font-size: 14px;
+        color: #6b7280;
+        direction: ltr;
+        text-align: right;
+    }
+    
+    .lead-card-status {
+        flex-shrink: 0;
+    }
+    
+    .lead-card-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+    
+    .lead-card-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .lead-card-actions .action-btn {
+        flex: 1;
+        max-width: 60px;
+        padding: 10px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Lead Table for Desktop */
+    .lead-table-container {
+        display: block; /* Shown by default, hidden on mobile */
+    }
+    
     .lead-table {
         width: 100%;
         border-collapse: separate;
@@ -291,63 +359,111 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Mobile-first: Move control panel after table */
+    /* Mobile-first: Leads at top, filters at bottom */
     .lead-manager-container {
         display: flex;
         flex-direction: column;
     }
     
+    .leads-display {
+        order: 1; /* Leads always first */
+    }
+    
     .control-panel {
-        order: 2; /* Show after table on mobile */
+        order: 2; /* Filters always second */
     }
     
-    .table-container {
-        order: 1; /* Show first on mobile */
-    }
-    
-    /* Responsive Design */
+    /* Mobile Design */
     @media (max-width: 768px) {
-        .lead-header {
-            flex-direction: column;
-            gap: 15px;
+        .lead-cards-container {
+            display: block; /* Show cards on mobile */
+        }
+        
+        .lead-table-container {
+            display: none; /* Hide table on mobile */
         }
         
         .control-panel {
             flex-direction: column;
             align-items: stretch;
-            order: 2; /* Ensure filters are below table on mobile */
             margin-top: 20px;
             margin-bottom: 0;
         }
         
-        .table-container {
-            order: 1; /* Table appears first on mobile */
-        }
-        
-        .lead-table {
-            font-size: 12px;
-        }
-        
         .action-btn {
-            padding: 8px 12px;
-            font-size: 12px;
+            padding: 10px 12px;
+            font-size: 14px;
+            min-height: 44px; /* Touch-friendly */
+        }
+        
+        .lead-header {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .lead-title {
+            justify-content: center;
         }
     }
     
-    /* Desktop: Normal order */
+    /* Desktop Design */
     @media (min-width: 769px) {
-        .control-panel {
-            order: 1; /* Filters on top for desktop */
+        .lead-cards-container {
+            display: none; /* Hide cards on desktop */
         }
         
-        .table-container {
-            order: 2; /* Table below filters on desktop */
+        .lead-table-container {
+            display: block; /* Show table on desktop */
         }
     }
 </style>
 
 <div class="lead-manager-container">
-    <!-- Control Panel -->
+    <!-- Leads Display (Cards + Table) -->
+    <div class="leads-display" style="position: relative;">
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+        </div>
+        
+        <!-- Mobile Cards -->
+        <div class="lead-cards-container" id="leadCardsContainer">
+            <!-- Lead cards will be populated here -->
+        </div>
+        
+        <!-- Desktop Table -->
+        <div class="lead-table-container" style="overflow-x: auto;">
+            <table class="lead-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)">
+                        </th>
+                        <th>פעולות</th>
+                        <th>סטטוס</th>
+                        <th>עדיפות</th>
+                        <th>שם</th>
+                        <th>טלפון</th>
+                        <th>אימייל</th>
+                        <th>קמפיין</th>
+                        <th>מוקצה ל</th>
+                        <th>תאריך</th>
+                    </tr>
+                </thead>
+                <tbody id="leadsTableBody">
+                    <!-- Leads will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📭</div>
+            <h3>אין לידים להצגה</h3>
+            <p>נסה לשנות את הפילטרים או לרענן את הרשימה</p>
+        </div>
+    </div>
+    
+    <!-- Control Panel (Filters) -->
     <div class="control-panel">
         <!-- Customer Selector (Admin Only) -->
         <div id="customerSelectorDiv" class="customer-selector" style="display: none;">
@@ -412,41 +528,6 @@
         <button class="action-btn btn-primary" onclick="UnifiedLeadManager.exportLeads()">
             📥 ייצא לאקסל
         </button>
-    </div>
-    
-    <!-- Lead Table -->
-    <div class="table-container" style="position: relative; overflow-x: auto;">
-        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-            <div class="loading-spinner"></div>
-        </div>
-        
-        <table class="lead-table">
-            <thead>
-                <tr>
-                    <th style="width: 40px;">
-                        <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)">
-                    </th>
-                    <th>פעולות</th>
-                    <th>סטטוס</th>
-                    <th>עדיפות</th>
-                    <th>שם</th>
-                    <th>טלפון</th>
-                    <th>אימייל</th>
-                    <th>קמפיין</th>
-                    <th>מוקצה ל</th>
-                    <th>תאריך</th>
-                </tr>
-            </thead>
-            <tbody id="leadsTableBody">
-                <!-- Leads will be populated here -->
-            </tbody>
-        </table>
-        
-        <div id="emptyState" class="empty-state" style="display: none;">
-            <div class="empty-state-icon">📭</div>
-            <h3>אין לידים להצגה</h3>
-            <p>נסה לשנות את הפילטרים או לרענן את הרשימה</p>
-        </div>
     </div>
     
     <!-- Header moved to bottom to save mobile space -->
@@ -656,16 +737,19 @@ class UnifiedLeadManagerClass {
     
     renderLeads() {
         const tbody = document.getElementById('leadsTableBody');
+        const cardsContainer = document.getElementById('leadCardsContainer');
         const emptyState = document.getElementById('emptyState');
         
         if (this.filteredLeads.length === 0) {
             tbody.innerHTML = '';
+            cardsContainer.innerHTML = '';
             emptyState.style.display = 'block';
             return;
         }
         
         emptyState.style.display = 'none';
         
+        // Render table for desktop
         tbody.innerHTML = this.filteredLeads.map(lead => {
             const priority = this.calculatePriority(lead);
             const priorityClass = priority >= 70 ? 'priority-high' : priority >= 40 ? 'priority-medium' : 'priority-low';
@@ -711,6 +795,51 @@ class UnifiedLeadManagerClass {
                     <td>${lead.assigned_to || 'לא מוקצה'}</td>
                     <td>${this.formatDate(lead.created_time || lead.received_at)}</td>
                 </tr>
+            `;
+        }).join('');
+        
+        // Render cards for mobile
+        cardsContainer.innerHTML = this.filteredLeads.map(lead => {
+            const priority = this.calculatePriority(lead);
+            const priorityClass = priority >= 70 ? 'priority-high' : priority >= 40 ? 'priority-medium' : 'priority-low';
+            const priorityIcon = priority >= 70 ? '🔥' : priority >= 40 ? '⚡' : '🔵';
+            
+            return `
+                <div class="lead-card" data-lead-id="${lead.id}">
+                    <div class="lead-card-header">
+                        <div>
+                            <div class="lead-card-name">${lead.name || 'לא צוין'}</div>
+                            <div class="lead-card-phone">${lead.phone || 'אין טלפון'}</div>
+                        </div>
+                        <div class="lead-card-status">
+                            <span class="status-badge status-${lead.status}">
+                                ${this.getStatusLabel(lead.status)}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="lead-card-info">
+                        <div><strong>אימייל:</strong> ${lead.email || 'לא צוין'}</div>
+                        <div><strong>עדיפות:</strong> <span class="${priorityClass}">${priorityIcon} ${priority}%</span></div>
+                        <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
+                        <div><strong>תאריך:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                    </div>
+                    
+                    <div class="lead-card-actions">
+                        <button class="action-btn btn-primary" onclick="UnifiedLeadManager.viewLead(${lead.id})" title="פרטים">👁️</button>
+                        ${lead.phone ? `
+                            <a href="tel:${lead.phone}" class="action-btn btn-call" title="התקשר">📞</a>
+                            <a href="https://wa.me/972${lead.phone.replace(/^0/, '').replace(/[^0-9]/g, '')}" 
+                               target="_blank" class="action-btn btn-whatsapp" title="WhatsApp">💬</a>
+                        ` : ''}
+                        ${lead.email ? `
+                            <a href="mailto:${lead.email}" class="action-btn btn-email" title="מייל">📧</a>
+                        ` : ''}
+                        ${this.canAssign() ? `
+                            <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" title="הקצה">👤</button>
+                        ` : ''}
+                    </div>
+                </div>
             `;
         }).join('');
     }
