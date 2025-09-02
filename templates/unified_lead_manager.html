@@ -420,11 +420,6 @@
 </style>
 
 <div class="lead-manager-container">
-    <!-- Debug Info (temporary) -->
-    <div id="debugInfo" style="background: #f0f0f0; padding: 5px; margin: 5px 0; font-size: 12px; border-radius: 5px; text-align: center;">
-        Loading... (Screen: <span id="screenWidth"></span>px) | Cache Buster: v77-${Date.now()}
-    </div>
-    
     <!-- Leads Display (Cards + Table) -->
     <div class="leads-display" style="position: relative;">
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
@@ -582,23 +577,11 @@ class UnifiedLeadManagerClass {
         this.campaigns = new Set();
         
         console.log('UnifiedLeadManager: Initializing for role:', this.userRole);
-        console.log('Screen width:', window.innerWidth, 'Should show mobile cards:', window.innerWidth <= 768);
         this.init();
     }
     
     async init() {
         console.log('Initializing Unified Lead Manager for role:', this.userRole);
-        
-        // Update debug info
-        const isMobile = window.innerWidth <= 768;
-        document.getElementById('screenWidth').textContent = window.innerWidth;
-        document.getElementById('debugInfo').innerHTML = `
-            Screen: ${window.innerWidth}px | 
-            Mobile: ${isMobile ? 'YES' : 'NO'} | 
-            Should show: ${isMobile ? 'CARDS' : 'TABLE'} | 
-            JS Version: v77 | 
-            Time: ${new Date().getTime()}
-        `;
         
         // Setup role-based features
         if (this.userRole === 'admin') {
@@ -609,12 +592,6 @@ class UnifiedLeadManagerClass {
         // Load initial data
         await this.loadUsers();
         await this.loadLeads();
-        
-        // Debug: Show expected table headers and visibility
-        const expectedHeaders = document.querySelectorAll('.lead-table th').length;
-        const cardsVisible = window.getComputedStyle(document.querySelector('.lead-cards-container')).display;
-        const tableVisible = window.getComputedStyle(document.querySelector('.lead-table-container')).display;
-        document.getElementById('debugInfo').innerHTML += ` | Headers: ${expectedHeaders} (should be 7) | Cards: ${cardsVisible} | Table: ${tableVisible}`;
         
         // Setup auto-refresh
         setInterval(() => this.refreshLeads(), 60000); // Refresh every minute
