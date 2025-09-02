@@ -442,10 +442,7 @@
                         </th>
                         <th>פעולות</th>
                         <th>סטטוס</th>
-                        <th>עדיפות</th>
                         <th>שם</th>
-                        <th>טלפון</th>
-                        <th>אימייל</th>
                         <th>קמפיין</th>
                         <th>מוקצה ל</th>
                         <th>תאריך</th>
@@ -786,7 +783,7 @@ class UnifiedLeadManagerClass {
                         ` : ''}
                         ${lead.email ? `
                             <a href="mailto:${lead.email}" class="action-btn btn-email" 
-                               title="שלח אימייל ל-${lead.name || 'ליד'} בכתובת ${lead.email}">📧</a>
+                               title="שלח אימייל ל-${lead.name || 'ליד'} בכתובת ${lead.email}">✉️</a>
                         ` : ''}
                         ${this.canAssign() ? `
                             <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
@@ -799,14 +796,8 @@ class UnifiedLeadManagerClass {
                             ${this.getStatusLabel(lead.status)}
                         </span>
                     </td>
-                    <td class="${priorityClass}" 
-                        title="עדיפות טיפול: ${priority}% (${priority >= 70 ? 'גבוהה - דרוש טיפול מיידי' : priority >= 40 ? 'בינונית - טיפול בימים הקרובים' : 'נמוכה - ללא דחיפות'})">
-                        ${priorityIcon} ${priority}%
-                    </td>
                     <td><strong>${lead.name || 'לא צוין'}</strong></td>
-                    <td dir="ltr">${lead.phone || '-'}</td>
-                    <td dir="ltr">${lead.email || '-'}</td>
-                    <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 20)}</td>
+                    <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 30)}</td>
                     <td>${lead.assigned_to || 'לא מוקצה'}</td>
                     <td>${this.formatDate(lead.created_time || lead.received_at)}</td>
                 </tr>
@@ -852,7 +843,7 @@ class UnifiedLeadManagerClass {
                         ` : ''}
                         ${lead.email ? `
                             <a href="mailto:${lead.email}" class="action-btn btn-email" 
-                               title="שלח אימייל ל-${lead.name || 'ליד'}: ${lead.email}">📧</a>
+                               title="שלח אימייל ל-${lead.name || 'ליד'}: ${lead.email}">✉️</a>
                         ` : ''}
                         ${this.canAssign() ? `
                             <button class="action-btn btn-assign" onclick="UnifiedLeadManager.quickAssign(${lead.id})" 
