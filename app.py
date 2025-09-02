@@ -2454,6 +2454,50 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
+@app.route('/debug/leads-count')
+def debug_leads_count():
+    """Debug endpoint to check leads count and customer distribution"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Total leads count
+        cur.execute("SELECT COUNT(*) as total_leads FROM leads")
+        total = cur.fetchone()['total_leads']
+        
+        # Leads by customer_id
+        cur.execute("""
+            SELECT customer_id, COUNT(*) as count 
+            FROM leads 
+            GROUP BY customer_id 
+            ORDER BY customer_id
+        """)
+        by_customer = cur.fetchall()
+        
+        # Recent leads
+        cur.execute("""
+            SELECT id, name, customer_id, created_time, received_at
+            FROM leads 
+            ORDER BY COALESCE(created_time, received_at) DESC 
+            LIMIT 5
+        """)
+        recent = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'total_leads': total,
+            'leads_by_customer': [dict(row) for row in by_customer],
+            'recent_leads': [dict(row) for row in recent]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/debug/lead/<int:lead_id>')
 def debug_specific_lead(lead_id):
     """Debug endpoint to check a specific lead's raw data"""
