@@ -291,6 +291,20 @@
         to { transform: rotate(360deg); }
     }
     
+    /* Mobile-first: Move control panel after table */
+    .lead-manager-container {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .control-panel {
+        order: 2; /* Show after table on mobile */
+    }
+    
+    .table-container {
+        order: 1; /* Show first on mobile */
+    }
+    
     /* Responsive Design */
     @media (max-width: 768px) {
         .lead-header {
@@ -301,6 +315,13 @@
         .control-panel {
             flex-direction: column;
             align-items: stretch;
+            order: 2; /* Ensure filters are below table on mobile */
+            margin-top: 20px;
+            margin-bottom: 0;
+        }
+        
+        .table-container {
+            order: 1; /* Table appears first on mobile */
         }
         
         .lead-table {
@@ -310,6 +331,17 @@
         .action-btn {
             padding: 8px 12px;
             font-size: 12px;
+        }
+    }
+    
+    /* Desktop: Normal order */
+    @media (min-width: 769px) {
+        .control-panel {
+            order: 1; /* Filters on top for desktop */
+        }
+        
+        .table-container {
+            order: 2; /* Table below filters on desktop */
         }
     }
 </style>
@@ -383,7 +415,7 @@
     </div>
     
     <!-- Lead Table -->
-    <div style="position: relative; overflow-x: auto;">
+    <div class="table-container" style="position: relative; overflow-x: auto;">
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
             <div class="loading-spinner"></div>
         </div>
