@@ -2498,6 +2498,67 @@ def debug_leads_count():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/debug/leads-api')
+def debug_leads_api():
+    """Debug the leads API response without authentication"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Simulate what the leads API does
+        selected_customer_id = 1  # Default
+        page = 1
+        per_page = 100
+        offset = 0
+        
+        # Count total
+        cur.execute("""
+            SELECT COUNT(*) 
+            FROM leads l 
+            WHERE l.customer_id = %s OR l.customer_id IS NULL
+        """, (selected_customer_id,))
+        total_count = cur.fetchone()[0]
+        
+        # Get leads
+        base_fields = """
+            l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
+            l.campaign_name, l.form_name, l.lead_source, l.created_time, 
+            l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
+            u.full_name as assigned_full_name
+        """
+        
+        cur.execute(f"""
+            SELECT {base_fields}
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
+            WHERE l.customer_id = %s OR l.customer_id IS NULL
+            ORDER BY COALESCE(l.created_time, l.received_at) DESC
+            LIMIT %s OFFSET %s
+        """, (selected_customer_id, per_page, offset))
+        
+        leads = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'debug_info': {
+                'selected_customer_id': selected_customer_id,
+                'page': page,
+                'per_page': per_page,
+                'offset': offset,
+                'total_count': total_count,
+                'leads_returned': len(leads)
+            },
+            'leads': [dict(lead) for lead in leads[:3]]  # Show first 3 leads
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/debug/lead/<int:lead_id>')
 def debug_specific_lead(lead_id):
     """Debug endpoint to check a specific lead's raw data"""
