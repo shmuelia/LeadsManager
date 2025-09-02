@@ -610,9 +610,11 @@ class UnifiedLeadManagerClass {
         await this.loadUsers();
         await this.loadLeads();
         
-        // Debug: Show expected table headers
+        // Debug: Show expected table headers and visibility
         const expectedHeaders = document.querySelectorAll('.lead-table th').length;
-        document.getElementById('debugInfo').innerHTML += ` | Headers: ${expectedHeaders} (should be 7)`;
+        const cardsVisible = window.getComputedStyle(document.querySelector('.lead-cards-container')).display;
+        const tableVisible = window.getComputedStyle(document.querySelector('.lead-table-container')).display;
+        document.getElementById('debugInfo').innerHTML += ` | Headers: ${expectedHeaders} (should be 7) | Cards: ${cardsVisible} | Table: ${tableVisible}`;
         
         // Setup auto-refresh
         setInterval(() => this.refreshLeads(), 60000); // Refresh every minute
