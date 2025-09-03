@@ -555,6 +555,10 @@ def get_leads():
         if not selected_customer_id:
             selected_customer_id = 1
         
+        # DEBUG: Log what we're using for the query
+        logger.info(f"DEBUG: selected_customer_id = {selected_customer_id} (type: {type(selected_customer_id)})")
+        logger.info(f"DEBUG: session data = {dict(session)}")
+        
         # Optimize query - select only essential fields for main view, exclude heavy raw_data
         
         # Filter leads based on user role and selected customer
@@ -567,7 +571,12 @@ def get_leads():
                 FROM leads l 
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
             """, (selected_customer_id,))
-            total_count = cur.fetchone()[0]
+            count_result = cur.fetchone()
+            if count_result is None:
+                logger.error(f"COUNT query returned None for customer_id: {selected_customer_id}")
+                total_count = 0
+            else:
+                total_count = count_result[0]
             
             # Get paginated results with optimized query
             cur.execute("""
@@ -591,7 +600,12 @@ def get_leads():
                 FROM leads l
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
             """, (username, selected_customer_id))
-            total_count = cur.fetchone()[0]
+            count_result = cur.fetchone()
+            if count_result is None:
+                logger.error(f"COUNT query returned None for username: {username}, customer_id: {selected_customer_id}")
+                total_count = 0
+            else:
+                total_count = count_result[0]
             
             # Get paginated results
             cur.execute("""
