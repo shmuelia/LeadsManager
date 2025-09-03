@@ -695,30 +695,39 @@ class UnifiedLeadManagerClass {
     
     async loadLeads() {
         try {
-            console.log('Loading leads...');
+            console.log('🔍 DEBUGGING: Starting loadLeads function...');
             document.getElementById('loadingOverlay').style.display = 'flex';
             
+            console.log('🔍 DEBUGGING: Fetching /leads endpoint...');
             const response = await fetch('/leads');
-            console.log('Leads API response status:', response.status);
+            console.log('🔍 DEBUGGING: Response status:', response.status);
+            console.log('🔍 DEBUGGING: Response headers:', Object.fromEntries(response.headers.entries()));
             
             if (!response.ok) {
+                console.error('🔍 DEBUGGING: Response not OK, status:', response.status);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
+            console.log('🔍 DEBUGGING: Parsing JSON response...');
             const data = await response.json();
-            console.log('Leads data received:', data);
+            console.log('🔍 DEBUGGING: Raw API response:', JSON.stringify(data, null, 2));
             
             // Handle different response formats
             if (data.leads && Array.isArray(data.leads)) {
                 this.leads = data.leads;
+                console.log('🔍 DEBUGGING: Using data.leads array, length:', data.leads.length);
             } else if (Array.isArray(data)) {
                 this.leads = data;
+                console.log('🔍 DEBUGGING: Using data as array, length:', data.length);
             } else {
-                console.warn('Unexpected leads data format:', data);
+                console.warn('🔍 DEBUGGING: Unexpected data format:', data);
+                console.warn('🔍 DEBUGGING: data.leads exists:', !!data.leads);
+                console.warn('🔍 DEBUGGING: data is array:', Array.isArray(data));
                 this.leads = [];
             }
             
-            console.log('Loaded', this.leads.length, 'leads');
+            console.log('🔍 DEBUGGING: Final leads array length:', this.leads.length);
+            console.log('🔍 DEBUGGING: First lead sample:', this.leads[0] || 'No leads');
             
             // Extract campaigns for filter
             this.campaigns.clear();
@@ -751,11 +760,18 @@ class UnifiedLeadManagerClass {
     }
     
     applyFilters() {
+        console.log('🔍 DEBUGGING: applyFilters called');
+        console.log('🔍 DEBUGGING: Total leads before filtering:', this.leads.length);
+        
         const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
         const assignmentFilter = document.getElementById('assignmentFilter').value;
         const dateFilter = document.getElementById('dateFilter').value;
         const campaignFilter = document.getElementById('campaignFilter').value;
+        
+        console.log('🔍 DEBUGGING: Filter values:', {
+            searchTerm, statusFilter, assignmentFilter, dateFilter, campaignFilter
+        });
         
         this.filteredLeads = this.leads.filter(lead => {
             // Search filter
@@ -802,6 +818,9 @@ class UnifiedLeadManagerClass {
             
             return true;
         });
+        
+        console.log('🔍 DEBUGGING: Filtered leads count:', this.filteredLeads.length);
+        console.log('🔍 DEBUGGING: Sample filtered lead:', this.filteredLeads[0] || 'No filtered leads');
         
         this.renderLeads();
     }
