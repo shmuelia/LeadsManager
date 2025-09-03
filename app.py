@@ -2823,34 +2823,67 @@ def add_phone_column_to_users():
         return jsonify({'error': str(e)}), 500
 
 def send_whatsapp_notification(phone_number, message):
-    """Send WhatsApp notification to user"""
+    """Send WhatsApp notification using WhatsApp Business API"""
     try:
+        import requests
+        
         # Format phone number for WhatsApp
         formatted_phone = format_phone_for_whatsapp(phone_number)
         if not formatted_phone:
             logger.warning(f"Invalid phone number for WhatsApp: {phone_number}")
             return False
         
-        # WhatsApp Business API integration
-        # For production, integrate with Twilio WhatsApp API or WhatsApp Business API
+        # WhatsApp Business API credentials
+        access_token = os.environ.get('WHATSAPP_ACCESS_TOKEN')
+        phone_number_id = os.environ.get('WHATSAPP_PHONE_NUMBER_ID')
+        app_id = os.environ.get('WHATSAPP_APP_ID', '837819029404196')
         
-        # For now, log the notification (replace with actual API call)
-        logger.info(f"📱 WhatsApp notification to {formatted_phone}: {message}")
+        # Log attempt for debugging
+        logger.info(f"📱 Attempting WhatsApp to {formatted_phone}")
+        logger.info(f"App ID: {app_id}, Phone Number ID: {phone_number_id}")
+        logger.info(f"Access Token configured: {bool(access_token)}")
         
-        # TODO: Implement actual WhatsApp API call
-        # Example with Twilio:
-        # from twilio.rest import Client
-        # client = Client(account_sid, auth_token)
-        # message = client.messages.create(
-        #     from_='whatsapp:+14155238886',
-        #     body=message,
-        #     to=f'whatsapp:+{formatted_phone}'
-        # )
+        if not access_token or not phone_number_id:
+            logger.warning("⚠️ WhatsApp credentials not configured - logging notification")
+            logger.info(f"📱 LOGGED WhatsApp to {formatted_phone}: {message}")
+            return True  # Return True for testing without credentials
         
-        return True
+        # WhatsApp Business API endpoint
+        url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Message payload for WhatsApp Business API
+        payload = {
+            'messaging_product': 'whatsapp',
+            'to': formatted_phone,
+            'type': 'text',
+            'text': {
+                'body': message
+            }
+        }
+        
+        logger.info(f"📤 Sending WhatsApp API request to {url}")
+        
+        # Send WhatsApp message
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            message_id = result.get('messages', [{}])[0].get('id', 'unknown')
+            logger.info(f"✅ WhatsApp sent successfully to {formatted_phone}")
+            logger.info(f"📧 Message ID: {message_id}")
+            return True
+        else:
+            logger.error(f"❌ WhatsApp API error {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return False
         
     except Exception as e:
-        logger.error(f"Failed to send WhatsApp notification: {e}")
+        logger.error(f"❌ WhatsApp notification failed: {e}")
         return False
 
 def format_phone_for_whatsapp(phone):
