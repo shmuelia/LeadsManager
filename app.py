@@ -567,7 +567,7 @@ def get_leads():
         if user_role in ['admin', 'campaign_manager'] or True:  # Temporarily allow all
             # Count total for pagination
             cur.execute("""
-                SELECT COUNT(*) 
+                SELECT COUNT(*) as count
                 FROM leads l 
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
             """, (selected_customer_id,))
@@ -576,7 +576,7 @@ def get_leads():
                 logger.error(f"COUNT query returned None for customer_id: {selected_customer_id}")
                 total_count = 0
             else:
-                total_count = count_result[0]
+                total_count = count_result['count']
             
             # Get paginated results with optimized query
             cur.execute("""
@@ -596,7 +596,7 @@ def get_leads():
             
             # Count total for pagination
             cur.execute("""
-                SELECT COUNT(*)
+                SELECT COUNT(*) as count
                 FROM leads l
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
             """, (username, selected_customer_id))
@@ -605,7 +605,7 @@ def get_leads():
                 logger.error(f"COUNT query returned None for username: {username}, customer_id: {selected_customer_id}")
                 total_count = 0
             else:
-                total_count = count_result[0]
+                total_count = count_result['count']
             
             # Get paginated results
             cur.execute("""
