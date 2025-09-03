@@ -1873,7 +1873,15 @@ def assign_lead_campaign_manager(lead_id):
         if user_role == 'admin':
             selected_customer_id = session.get('selected_customer_id', 1)
         else:  # campaign_manager
-            selected_customer_id = session.get('customer_id')
+            selected_customer_id = session.get('selected_customer_id') or session.get('customer_id')
+            
+        # Debug logging
+        logger.info(f"Assignment attempt by {session.get('username')} (role: {user_role})")
+        logger.info(f"Customer context: {selected_customer_id}")
+        
+        if not selected_customer_id:
+            logger.error(f"No customer_id found in session for {session.get('username')}")
+            return jsonify({'error': 'No customer assigned to your account'}), 400
         
         # Check if lead exists and belongs to user's customer scope
         cur.execute("SELECT id, name, customer_id FROM leads WHERE id = %s", (lead_id,))
