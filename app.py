@@ -2688,6 +2688,52 @@ def debug_quick_test():
     except Exception as e:
         return jsonify({'error': f'Exception: {str(e)}'}), 500
 
+@app.route('/debug/users-schema')
+def debug_users_schema():
+    """Check if phone columns exist in users table"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Check users table schema
+        cur.execute("""
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns 
+            WHERE table_name = 'users' 
+            ORDER BY ordinal_position
+        """)
+        columns = cur.fetchall()
+        
+        # Check if we can query phone field
+        phone_exists = False
+        whatsapp_exists = False
+        try:
+            cur.execute("SELECT phone FROM users LIMIT 1")
+            phone_exists = True
+        except Exception:
+            pass
+            
+        try:
+            cur.execute("SELECT whatsapp_notifications FROM users LIMIT 1")  
+            whatsapp_exists = True
+        except Exception:
+            pass
+            
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'columns': [{'name': col[0], 'type': col[1], 'nullable': col[2]} for col in columns],
+            'phone_column_exists': phone_exists,
+            'whatsapp_column_exists': whatsapp_exists
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/add-phone-to-users', methods=['POST'])
 @admin_required
 def add_phone_column_to_users():
