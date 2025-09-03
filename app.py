@@ -2742,6 +2742,48 @@ def debug_users_schema():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/setup-phone-columns')
+def setup_phone_columns():
+    """Public endpoint to add phone columns to users table - ONE TIME SETUP"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        results = []
+        
+        # Add phone column
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN phone VARCHAR(20)")
+            results.append("✅ Added phone column")
+            logger.info("Added phone column to users table")
+        except Exception as e:
+            results.append(f"⚠️ Phone column: {str(e)}")
+        
+        # Add whatsapp_notifications column
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN whatsapp_notifications BOOLEAN DEFAULT true")  
+            results.append("✅ Added whatsapp_notifications column")
+            logger.info("Added whatsapp_notifications column to users table")
+        except Exception as e:
+            results.append(f"⚠️ WhatsApp notifications column: {str(e)}")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'completed',
+            'results': results,
+            'message': 'Phone columns setup completed - refresh user management to see phone fields'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error setting up phone columns: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/add-phone-to-users', methods=['POST'])
 @admin_required
 def add_phone_column_to_users():
