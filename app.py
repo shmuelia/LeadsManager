@@ -1407,7 +1407,7 @@ def get_users_api():
         
         # Get user role and customer from session
         user_role = session.get('role')
-        user_customer_id = session.get('selected_customer_id')
+        user_customer_id = session.get('selected_customer_id') or session.get('customer_id')
         
         # Admin query - include plain_password for admins
         if user_role == 'admin':

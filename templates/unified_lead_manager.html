@@ -1346,9 +1346,17 @@ class UnifiedLeadManagerClass {
         if (!lead) return;
         
         try {
-            // Load available users for assignment
+            // Load available users for assignment (filtered by customer for campaign managers)
             console.log('🔍 DEBUGGING: Loading users for assignment...');
-            const response = await fetch('/admin/users/api');
+            console.log('🔍 DEBUGGING: User role:', this.userRole);
+            
+            let usersApiUrl = '/admin/users/api';
+            if (this.userRole === 'campaign_manager' && this.currentCustomer) {
+                usersApiUrl += `?customer_id=${this.currentCustomer}`;
+            }
+            
+            console.log('🔍 DEBUGGING: Fetching users from:', usersApiUrl);
+            const response = await fetch(usersApiUrl);
             console.log('🔍 DEBUGGING: Users API response status:', response.status);
             
             if (!response.ok) {
