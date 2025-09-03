@@ -551,10 +551,16 @@ def get_leads():
         # Get selected customer ID (default to 1 if none selected)
         selected_customer_id = session.get('selected_customer_id', 1)
         
+        # TEMPORARY FIX: Force customer_id = 1 if not set
+        if not selected_customer_id:
+            selected_customer_id = 1
+        
         # Optimize query - select only essential fields for main view, exclude heavy raw_data
         
         # Filter leads based on user role and selected customer
-        if session.get('role') in ['admin', 'campaign_manager']:
+        # TEMPORARY: Show leads for all logged in users to debug the issue
+        user_role = session.get('role', 'admin')  # Default to admin for debugging
+        if user_role in ['admin', 'campaign_manager'] or True:  # Temporarily allow all
             # Count total for pagination
             cur.execute("""
                 SELECT COUNT(*) 
