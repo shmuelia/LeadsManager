@@ -552,12 +552,6 @@ def get_leads():
         selected_customer_id = session.get('selected_customer_id', 1)
         
         # Optimize query - select only essential fields for main view, exclude heavy raw_data
-        base_fields = """
-            l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
-            l.campaign_name, l.form_name, l.lead_source, l.created_time, 
-            l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
-            u.full_name as assigned_full_name
-        """
         
         # Filter leads based on user role and selected customer
         if session.get('role') in ['admin', 'campaign_manager']:
@@ -570,8 +564,11 @@ def get_leads():
             total_count = cur.fetchone()[0]
             
             # Get paginated results with optimized query
-            cur.execute(f"""
-                SELECT {base_fields}
+            cur.execute("""
+                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
+                       l.campaign_name, l.form_name, l.lead_source, l.created_time, 
+                       l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
+                       u.full_name as assigned_full_name
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
@@ -591,8 +588,11 @@ def get_leads():
             total_count = cur.fetchone()[0]
             
             # Get paginated results
-            cur.execute(f"""
-                SELECT {base_fields}
+            cur.execute("""
+                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
+                       l.campaign_name, l.form_name, l.lead_source, l.created_time, 
+                       l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
+                       u.full_name as assigned_full_name
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
@@ -2564,6 +2564,48 @@ def debug_leads_api():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/debug/quick-test')
+def debug_quick_test():
+    """Quick test to see what's happening"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'No DB connection'}), 500
+            
+        cur = conn.cursor()
+        
+        # Test the exact query from the leads API
+        selected_customer_id = 1  # Hard-coded test
+        
+        cur.execute("""
+            SELECT COUNT(*) 
+            FROM leads l 
+            WHERE l.customer_id = %s OR l.customer_id IS NULL
+        """, (selected_customer_id,))
+        count_result = cur.fetchone()[0]
+        
+        cur.execute("""
+            SELECT id, name, customer_id 
+            FROM leads 
+            WHERE customer_id = %s OR customer_id IS NULL
+            ORDER BY id DESC 
+            LIMIT 5
+        """, (selected_customer_id,))
+        leads_sample = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'count_query_result': count_result,
+            'sample_leads': leads_sample,
+            'test_customer_id': selected_customer_id
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Exception: {str(e)}'}), 500
 
 @app.route('/debug/lead/<int:lead_id>')
 def debug_specific_lead(lead_id):
