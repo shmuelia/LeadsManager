@@ -1347,12 +1347,28 @@ class UnifiedLeadManagerClass {
         
         try {
             // Load available users for assignment
+            console.log('🔍 DEBUGGING: Loading users for assignment...');
             const response = await fetch('/admin/users/api');
+            console.log('🔍 DEBUGGING: Users API response status:', response.status);
+            
             if (!response.ok) {
-                throw new Error('Failed to load users');
+                console.error('🔍 DEBUGGING: Users API failed with status:', response.status);
+                throw new Error(`Failed to load users (HTTP ${response.status})`);
             }
             
-            const users = await response.json();
+            const usersData = await response.json();
+            console.log('🔍 DEBUGGING: Users API response:', usersData);
+            
+            // Handle different response formats from the users API
+            let users;
+            if (usersData.users && Array.isArray(usersData.users)) {
+                users = usersData.users;
+            } else if (Array.isArray(usersData)) {
+                users = usersData;
+            } else {
+                console.error('🔍 DEBUGGING: Unexpected users data format:', usersData);
+                throw new Error('Invalid users data format');
+            }
             
             // Create assignment modal
             const modal = document.createElement('div');
@@ -1421,22 +1437,48 @@ class UnifiedLeadManagerClass {
         const lead = this.leads.find(l => l.id === leadId);
         if (!lead) return;
         
-        // Define status progression flow
-        const statusFlow = {
-            'new': 'contacted',
-            'contacted': 'qualified', 
-            'qualified': 'interested',
-            'interested': 'hired',
-            'hired': 'closed',
-            'rejected': 'closed',
-            'closed': 'new'
-        };
+        // Create status selection modal with all options
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>עדכון סטטוס: ${lead.name || 'ליד'}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 15px; color: #6b7280;">סטטוס נוכחי: <strong class="status-badge status-${lead.status}">${this.getStatusLabel(lead.status)}</strong></p>
+                    <p style="margin-bottom: 15px;">בחר סטטוס חדש:</p>
+                    <select id="statusSelect" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; margin-bottom: 15px;">
+                        <option value="new" ${lead.status === 'new' ? 'selected' : ''}>חדש</option>
+                        <option value="contacted" ${lead.status === 'contacted' ? 'selected' : ''}>נוצר קשר</option>
+                        <option value="qualified" ${lead.status === 'qualified' ? 'selected' : ''}>מוכשר</option>
+                        <option value="interested" ${lead.status === 'interested' ? 'selected' : ''}>מתעניין</option>
+                        <option value="not_interested" ${lead.status === 'not_interested' ? 'selected' : ''}>לא מתעניין</option>
+                        <option value="callback" ${lead.status === 'callback' ? 'selected' : ''}>חזרה</option>
+                        <option value="interview_scheduled" ${lead.status === 'interview_scheduled' ? 'selected' : ''}>מתואם ראיון</option>
+                        <option value="hired" ${lead.status === 'hired' ? 'selected' : ''}>התקבל</option>
+                        <option value="rejected" ${lead.status === 'rejected' ? 'selected' : ''}>נדחה</option>
+                        <option value="closed" ${lead.status === 'closed' ? 'selected' : ''}>סגור</option>
+                    </select>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">הערת עדכון (אופציונלי):</label>
+                        <textarea id="statusNote" placeholder="הוסף הערה על העדכון..." 
+                                style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; height: 80px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.performStatusChangeWithNote(${leadId}, document.getElementById('statusSelect').value, document.getElementById('statusNote').value, this.closest('.modal-overlay'))">
+                        עדכן סטטוס
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        ביטול
+                    </button>
+                </div>
+            </div>
+        `;
         
-        // Get next status
-        const nextStatus = statusFlow[lead.status] || 'contacted';
-        
-        // Update status directly
-        await this.performStatusChange(leadId, nextStatus, null);
+        document.body.appendChild(modal);
     }
     
     async closeLeadDirectly(leadId) {
@@ -1444,6 +1486,36 @@ class UnifiedLeadManagerClass {
         await this.performStatusChange(leadId, 'closed', null);
     }
     
+    async performStatusChangeWithNote(leadId, newStatus, note, modal) {
+        // Enhanced status change with optional note
+        try {
+            const response = await fetch(`/leads/${leadId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    status: newStatus,
+                    user_name: this.fullName || this.username || 'משתמש',
+                    note: note && note.trim() ? note.trim() : null
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                const statusLabel = this.getStatusLabel(newStatus);
+                const noteText = note && note.trim() ? ` עם הערה: "${note.trim()}"` : '';
+                this.showToast(`סטטוס עודכן ל"${statusLabel}"${noteText}`, 'success');
+                await this.loadLeads();
+                if (modal) modal.remove();
+            } else {
+                this.showToast(result.error || 'שגיאה בעדכון סטטוס הליד', 'error');
+            }
+        } catch (error) {
+            console.error('Status change with note error:', error);
+            this.showToast('שגיאה בעדכון סטטוס הליד', 'error');
+        }
+    }
+
     async performStatusChange(leadId, newStatus, modal) {
         try {
             const response = await fetch(`/leads/${leadId}/status`, {
@@ -1664,6 +1736,77 @@ style.textContent = `
         padding: 20px;
         max-height: calc(90vh - 100px);
         overflow-y: auto;
+    }
+    
+    /* Modal overlay for assignment and status modals */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    
+    .modal-overlay .modal-content {
+        background: white;
+        border-radius: 12px;
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    .modal-overlay .modal-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-overlay .modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 5px;
+    }
+    
+    .modal-overlay .modal-body {
+        padding: 25px;
+    }
+    
+    .modal-overlay .modal-footer {
+        padding: 20px 25px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    
+    .btn-secondary:hover {
+        background: #4b5563;
     }
 `;
 document.head.appendChild(style);
