@@ -47,6 +47,24 @@
                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: ltr; font-size: 16px;">
             </div>
             
+            <!-- Phone Number -->
+            <div class="form-field">
+                <label for="userPhone" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">📱 טלפון להתראות WhatsApp:</label>
+                <input type="tel" id="userPhone" name="phone" placeholder="050-1234567 או 0501234567"
+                       style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: ltr; font-size: 16px;">
+                <small style="color: #6b7280; font-size: 0.9em; margin-top: 5px; display: block;">נדרש להתראות WhatsApp כשמוקצים לידים</small>
+            </div>
+            
+            <!-- WhatsApp Notifications -->
+            <div class="form-field">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="userWhatsappNotifications" name="whatsapp_notifications" checked
+                           style="width: 18px; height: 18px;">
+                    <span style="font-weight: bold; color: #2c3e50;">💬 קבל התראות WhatsApp כשמוקצים לידים</span>
+                </label>
+                <small style="color: #6b7280; font-size: 0.9em; margin-top: 5px; display: block;">ניתן לכבות התראות בכל עת</small>
+            </div>
+            
             <!-- Password -->
             <div class="form-field">
                 <label for="userPassword" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">סיסמה:</label>
@@ -264,10 +282,12 @@ function showUserModal(userId = null) {
         document.getElementById('userUsername').value = user.username;
         document.getElementById('userFullName').value = user.full_name || '';
         document.getElementById('userEmail').value = user.email || '';
+        document.getElementById('userPhone').value = user.phone || '';
         document.getElementById('userPassword').value = ''; // Don't show current password
         document.getElementById('userDepartment').value = user.department || '';
         document.getElementById('userRole').value = user.role;
         document.getElementById('userActive').checked = user.active;
+        document.getElementById('userWhatsappNotifications').checked = user.whatsapp_notifications !== false; // Default true
         
         if (userRole === 'admin') {
             document.getElementById('userCustomer').value = user.customer_id || '';
@@ -283,6 +303,7 @@ function showUserModal(userId = null) {
         document.getElementById('userModalTitle').textContent = 'הוסף משתמש חדש';
         document.getElementById('userForm').reset();
         document.getElementById('userActive').checked = true;
+        document.getElementById('userWhatsappNotifications').checked = true; // Default notifications on
         document.getElementById('currentPasswordField').style.display = 'none';
         
         if (userRole === 'campaign_manager') {
@@ -334,10 +355,12 @@ document.getElementById('userForm').addEventListener('submit', async function(e)
         username: document.getElementById('userUsername').value.trim(),
         full_name: document.getElementById('userFullName').value.trim(),
         email: document.getElementById('userEmail').value.trim(),
+        phone: document.getElementById('userPhone').value.trim(),
         password: document.getElementById('userPassword').value.trim(),
         department: document.getElementById('userDepartment').value,
         role: document.getElementById('userRole').value,
-        active: document.getElementById('userActive').checked
+        active: document.getElementById('userActive').checked,
+        whatsapp_notifications: document.getElementById('userWhatsappNotifications').checked
     };
     
     if (userRole === 'admin') {

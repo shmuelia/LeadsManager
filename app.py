@@ -1414,8 +1414,8 @@ def get_users_api():
             customer_filter = request.args.get('customer_id')
             if customer_filter:
                 cur.execute("""
-                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
-                           u.customer_id, c.name as customer_name, u.plain_password
+                    SELECT u.id, u.username, u.full_name, u.email, u.phone, u.role, u.department, u.active, u.created_at, 
+                           u.customer_id, c.name as customer_name, u.plain_password, u.whatsapp_notifications
                     FROM users u
                     LEFT JOIN customers c ON u.customer_id = c.id
                     WHERE u.customer_id = %s
@@ -1423,8 +1423,8 @@ def get_users_api():
                 """, (customer_filter,))
             else:
                 cur.execute("""
-                    SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
-                           u.customer_id, c.name as customer_name, u.plain_password
+                    SELECT u.id, u.username, u.full_name, u.email, u.phone, u.role, u.department, u.active, u.created_at, 
+                           u.customer_id, c.name as customer_name, u.plain_password, u.whatsapp_notifications
                     FROM users u
                     LEFT JOIN customers c ON u.customer_id = c.id
                     ORDER BY u.created_at DESC
@@ -1439,8 +1439,8 @@ def get_users_api():
                 return jsonify({'error': 'No customer assigned to your account'}), 400
                 
             cur.execute("""
-                SELECT u.id, u.username, u.full_name, u.email, u.role, u.department, u.active, u.created_at, 
-                       u.customer_id, c.name as customer_name, u.plain_password
+                SELECT u.id, u.username, u.full_name, u.email, u.phone, u.role, u.department, u.active, u.created_at, 
+                       u.customer_id, c.name as customer_name, u.plain_password, u.whatsapp_notifications
                 FROM users u
                 LEFT JOIN customers c ON u.customer_id = c.id
                 WHERE u.customer_id = %s AND u.customer_id > 0
@@ -1581,8 +1581,8 @@ def create_user():
         
         # Create user
         cur.execute("""
-            INSERT INTO users (username, password_hash, plain_password, full_name, email, role, department, customer_id, active)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (username, password_hash, plain_password, full_name, email, phone, role, department, customer_id, active, whatsapp_notifications)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
         """, (
             data['username'],
@@ -1590,10 +1590,12 @@ def create_user():
             password,  # Store plain password for admin reference
             data['full_name'],
             data.get('email'),
+            data.get('phone'),
             target_role,
             data.get('department'),
             target_customer_id,
-            data.get('active', True)
+            data.get('active', True),
+            data.get('whatsapp_notifications', True)
         ))
         
         user_id = cur.fetchone()[0]
@@ -1668,6 +1670,14 @@ def update_user(user_id):
         if 'email' in data:
             update_fields.append("email = %s")
             update_values.append(data['email'])
+        
+        if 'phone' in data:
+            update_fields.append("phone = %s")
+            update_values.append(data['phone'])
+        
+        if 'whatsapp_notifications' in data:
+            update_fields.append("whatsapp_notifications = %s")
+            update_values.append(data['whatsapp_notifications'])
         
         # Role and customer changes only for admins
         if user_role == 'admin':
