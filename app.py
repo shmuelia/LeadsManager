@@ -562,9 +562,10 @@ def get_leads():
         # Optimize query - select only essential fields for main view, exclude heavy raw_data
         
         # Filter leads based on user role and selected customer
-        # TEMPORARY: Show leads for all logged in users to debug the issue
-        user_role = session.get('role', 'admin')  # Default to admin for debugging
-        if user_role in ['admin', 'campaign_manager'] or True:  # Temporarily allow all
+        user_role = session.get('role')
+        logger.info(f"User role: {user_role}, Username: {session.get('username')}")
+        
+        if user_role in ['admin', 'campaign_manager']:
             # Count total for pagination
             cur.execute("""
                 SELECT COUNT(*) as count
