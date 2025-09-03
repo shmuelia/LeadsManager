@@ -43,6 +43,14 @@ def init_database():
             
         cur = conn.cursor()
         
+        # Auto-migrate: Add phone columns if they don't exist
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_notifications BOOLEAN DEFAULT true")
+            logger.info("Auto-migration: Added phone columns to users table")
+        except Exception as e:
+            logger.info(f"Phone columns migration (probably already exist): {e}")
+        
         # Create leads table
         # Create leads table
         cur.execute("""
