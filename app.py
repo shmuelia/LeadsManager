@@ -1935,6 +1935,39 @@ def assign_lead_campaign_manager(lead_id):
             selected_customer_id
         ))
         
+        # Send WhatsApp notification to assigned user
+        if assigned_to and user_full_name:
+            try:
+                # Get user's phone number for notification
+                cur.execute("SELECT phone, whatsapp_notifications FROM users WHERE username = %s", (assigned_to,))
+                user_contact = cur.fetchone()
+                
+                if user_contact and user_contact[0] and user_contact[1]:  # Has phone and notifications enabled
+                    user_phone = user_contact[0]
+                    
+                    # Create WhatsApp message
+                    message = f"""🎯 ליד חדש הוקצה אליך!
+
+📋 שם הליד: {lead_name}
+👤 הוקצה על ידי: {session.get('full_name', session.get('username', 'מנהל'))}
+⏰ זמן הקצאה: {datetime.now().strftime('%H:%M %d/%m/%Y')}
+
+🔗 לצפייה בליד: https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/dashboard
+
+בהצלחה! 💪"""
+                    
+                    # Send WhatsApp notification
+                    notification_sent = send_whatsapp_notification(user_phone, message)
+                    if notification_sent:
+                        logger.info(f"WhatsApp notification sent to {assigned_to} ({user_phone}) for lead {lead_id}")
+                    else:
+                        logger.warning(f"Failed to send WhatsApp notification to {assigned_to}")
+                else:
+                    logger.info(f"User {assigned_to} has no phone or notifications disabled")
+                    
+            except Exception as e:
+                logger.error(f"Error sending WhatsApp notification: {e}")
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -2644,6 +2677,93 @@ def debug_quick_test():
         
     except Exception as e:
         return jsonify({'error': f'Exception: {str(e)}'}), 500
+
+@app.route('/admin/add-phone-to-users', methods=['POST'])
+@admin_required
+def add_phone_column_to_users():
+    """Admin: Add phone column to users table for WhatsApp notifications"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor()
+        
+        # Add phone column to users table
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)")
+            logger.info("Added phone column to users table")
+        except Exception as e:
+            logger.warning(f"Phone column might already exist: {e}")
+        
+        # Add whatsapp_notifications column
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_notifications BOOLEAN DEFAULT true")
+            logger.info("Added whatsapp_notifications column to users table")
+        except Exception as e:
+            logger.warning(f"WhatsApp notifications column might already exist: {e}")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Phone and WhatsApp notification columns added to users table'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding phone column: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def send_whatsapp_notification(phone_number, message):
+    """Send WhatsApp notification to user"""
+    try:
+        # Format phone number for WhatsApp
+        formatted_phone = format_phone_for_whatsapp(phone_number)
+        if not formatted_phone:
+            logger.warning(f"Invalid phone number for WhatsApp: {phone_number}")
+            return False
+        
+        # WhatsApp Business API integration
+        # For production, integrate with Twilio WhatsApp API or WhatsApp Business API
+        
+        # For now, log the notification (replace with actual API call)
+        logger.info(f"📱 WhatsApp notification to {formatted_phone}: {message}")
+        
+        # TODO: Implement actual WhatsApp API call
+        # Example with Twilio:
+        # from twilio.rest import Client
+        # client = Client(account_sid, auth_token)
+        # message = client.messages.create(
+        #     from_='whatsapp:+14155238886',
+        #     body=message,
+        #     to=f'whatsapp:+{formatted_phone}'
+        # )
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send WhatsApp notification: {e}")
+        return False
+
+def format_phone_for_whatsapp(phone):
+    """Format phone number for WhatsApp API"""
+    if not phone:
+        return None
+        
+    # Remove all non-digit characters
+    clean_phone = ''.join(filter(str.isdigit, phone))
+    
+    # Handle Israeli phone numbers
+    if clean_phone.startswith('972'):
+        return clean_phone
+    elif clean_phone.startswith('0'):
+        return '972' + clean_phone[1:]
+    elif len(clean_phone) == 9:
+        return '972' + clean_phone
+    else:
+        return clean_phone
 
 @app.route('/debug/lead/<int:lead_id>')
 def debug_specific_lead(lead_id):
