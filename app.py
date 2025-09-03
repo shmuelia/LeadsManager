@@ -646,8 +646,17 @@ def get_leads():
         })
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         logger.error(f"Error fetching leads: {str(e)}")
-        return jsonify({'error': str(e), 'leads': []}), 200
+        logger.error(f"Full traceback: {error_details}")
+        
+        return jsonify({
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'error_details': error_details,
+            'leads': []
+        }), 200
 
 @app.route('/leads/<int:lead_id>')
 def get_lead(lead_id):
