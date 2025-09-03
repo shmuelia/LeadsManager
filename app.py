@@ -2834,9 +2834,9 @@ def send_whatsapp_notification(phone_number, message):
             return False
         
         # WhatsApp Business API credentials
-        access_token = os.environ.get('WHATSAPP_ACCESS_TOKEN')
-        phone_number_id = os.environ.get('WHATSAPP_PHONE_NUMBER_ID')
-        app_id = os.environ.get('WHATSAPP_APP_ID', '837819029404196')
+        access_token = os.environ.get('WHATSAPP_ACCESS_TOKEN', '').strip().replace('\n', '').replace('\r', '')
+        phone_number_id = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '').strip()
+        app_id = os.environ.get('WHATSAPP_APP_ID', '837819029404196').strip()
         
         # Log attempt for debugging
         logger.info(f"📱 Attempting WhatsApp to {formatted_phone}")
