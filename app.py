@@ -13,6 +13,7 @@ from queue import Queue
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -27,6 +28,11 @@ SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
 SMTP_USERNAME = os.environ.get('SMTP_USERNAME')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
 FROM_EMAIL = os.environ.get('FROM_EMAIL', SMTP_USERNAME)
+
+# VAPID keys for Web Push (generate these and set as environment variables)
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', 'BNXkq-iSf8tDoN1Uw_9MPSP4pePWlXhU-RQHbzJzXqRRCGxJkJmQm3zJzqZf9Kj7tCw5lPXdVUv8r6s3VHJyLGQ')
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', 'BGNe7dtMqKG7_NhS8XRO4z2O3NVz4Oa9-SjUm3GCNgD9x2LqYqx7q2u5j9Q8tCw5lPXdVUv8r6s3VHJyLGQp_U')
+VAPID_CLAIMS = {"sub": "mailto:admin@leadmanager.com"}
 
 # Notification system for real-time updates
 notification_queues = {}  # Dictionary to store notification queues by customer_id
@@ -632,6 +638,25 @@ def webhook():
                 except Exception as email_error:
                     logger.error(f"Error sending email notifications: {email_error}")
                 
+                # Send native push notifications to subscribed devices
+                try:
+                    if hasattr(app, 'push_subscriptions'):
+                        for username, sub_data in app.push_subscriptions.items():
+                            if sub_data['customer_id'] == customer_id and sub_data['user_role'] in ['campaign_manager', 'admin']:
+                                logger.info(f"Sending push notification to {username}")
+                                push_sent = send_push_notification(
+                                    subscription_info=sub_data['subscription'],
+                                    lead_name=name,
+                                    platform=lead_data.get('platform', 'facebook'),
+                                    campaign_name=lead_data.get('campaign_name')
+                                )
+                                if push_sent:
+                                    logger.info(f"Native push notification sent to {username}")
+                                else:
+                                    logger.warning(f"Failed to send push notification to {username}")
+                except Exception as push_error:
+                    logger.error(f"Error sending push notifications: {push_error}")
+                
                 logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
             else:
                 logger.warning("Database not available, lead data logged only")
@@ -810,6 +835,54 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
         
     except Exception as e:
         logger.error(f"Email notification error: {e}")
+        return False
+
+def send_push_notification(subscription_info, lead_name, platform, campaign_name):
+    """Send native push notification to mobile device"""
+    try:
+        if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+            logger.info("Push notifications disabled - no VAPID keys configured")
+            return False
+            
+        # Create push notification data
+        notification_payload = {
+            "title": "🔔 לייד חדש הגיע!",
+            "body": f"לייד חדש מ{platform}: {lead_name}",
+            "icon": "https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/static/icon-192.png",
+            "badge": "https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/static/badge-72.png",
+            "vibrate": [200, 100, 200],
+            "tag": "new-lead",
+            "requireInteraction": True,
+            "actions": [
+                {
+                    "action": "view",
+                    "title": "צפה בלייד"
+                }
+            ],
+            "data": {
+                "url": "/campaign-manager",
+                "leadName": lead_name,
+                "platform": platform,
+                "campaign": campaign_name
+            }
+        }
+        
+        # Send push notification
+        webpush(
+            subscription_info=subscription_info,
+            data=json.dumps(notification_payload),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims=VAPID_CLAIMS
+        )
+        
+        logger.info(f"Native push notification sent for lead: {lead_name}")
+        return True
+        
+    except WebPushException as e:
+        logger.error(f"Web push error: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Push notification error: {e}")
         return False
 
 def send_notification(customer_id, notification_data):

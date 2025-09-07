@@ -290,6 +290,22 @@
         // Push notification system
         let pushSubscription = null;
         
+        // Convert VAPID key from base64 to Uint8Array
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+        
         async function initializePushNotifications() {
             // Check if push notifications are supported
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -311,10 +327,11 @@
                     return false;
                 }
                 
-                // Subscribe to push notifications
+                // Subscribe to push notifications with VAPID key
+                const vapidPublicKey = 'BGNe7dtMqKG7_NhS8XRO4z2O3NVz4Oa9-SjUm3GCNgD9x2LqYqx7q2u5j9Q8tCw5lPXdVUv8r6s3VHJyLGQp_U';
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: null // Will use default for now
+                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
                 });
                 
                 pushSubscription = subscription;
