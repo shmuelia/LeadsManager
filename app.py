@@ -590,10 +590,26 @@ def webhook():
                         'timestamp': int(time.time())
                     }
                     
-                    # Send directly to SSE stream
+                    # Send directly to SSE stream AND store for later delivery
                     logger.info(f"Sending direct notification to SSE clients for customer {customer_id}")
+                    logger.info(f"Active queues for customer {customer_id}: {len(notification_queues.get(customer_id, []))}")
+                    
                     send_notification(customer_id, notification_data_direct)
-                    logger.info(f"Direct notification sent successfully to SSE stream")
+                    
+                    # Also store notification for delivery when clients reconnect
+                    if not hasattr(app, 'pending_notifications'):
+                        app.pending_notifications = {}
+                    if customer_id not in app.pending_notifications:
+                        app.pending_notifications[customer_id] = []
+                        
+                    # Only keep last 5 notifications to avoid memory issues
+                    app.pending_notifications[customer_id].append(notification_data_direct)
+                    if len(app.pending_notifications[customer_id]) > 5:
+                        app.pending_notifications[customer_id] = app.pending_notifications[customer_id][-5:]
+                        
+                    logger.info(f"Notification stored for customer {customer_id}, pending count: {len(app.pending_notifications[customer_id])}")
+                    
+                    logger.info(f"Direct notification sent and stored successfully")
                     
                 except Exception as notif_error:
                     logger.error(f"Error sending direct notification for lead {lead_id}: {notif_error}")
@@ -933,6 +949,19 @@ def notification_stream():
                 
                 # Send initial connection confirmation
                 yield f"data: {json.dumps({'type': 'connected', 'customer_id': customer_id, 'username': username})}\n\n"
+                
+                # Send any pending notifications for this customer
+                if hasattr(app, 'pending_notifications') and customer_id in app.pending_notifications:
+                    pending = app.pending_notifications[customer_id]
+                    logger.info(f"Delivering {len(pending)} pending notifications to {username}")
+                    
+                    for pending_notification in pending:
+                        yield f"data: {json.dumps(pending_notification)}\n\n"
+                        logger.info(f"Delivered pending notification: {pending_notification.get('title', 'unknown')}")
+                    
+                    # Clear delivered notifications
+                    app.pending_notifications[customer_id] = []
+                    logger.info(f"Cleared pending notifications for customer {customer_id}")
                 
                 while True:
                     # Wait for notification with timeout
