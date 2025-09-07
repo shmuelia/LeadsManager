@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, Response
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, Response, send_from_directory
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
@@ -800,6 +800,50 @@ def initialize_database():
     except Exception as e:
         logger.error(f"Manual database initialization error: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/subscribe-push', methods=['POST'])
+@campaign_manager_required
+def subscribe_push():
+    """Store push notification subscription for campaign managers"""
+    try:
+        data = request.get_json()
+        if not data or 'subscription' not in data:
+            return jsonify({'error': 'Missing subscription data'}), 400
+            
+        subscription = data['subscription']
+        user_role = data.get('user_role', 'unknown')
+        username = session.get('username', 'unknown')
+        customer_id = session.get('customer_id', 1)
+        
+        logger.info(f"Push subscription received from {username}: {subscription}")
+        
+        # Store subscription in a simple global dict for now
+        # In production, store in database
+        if not hasattr(app, 'push_subscriptions'):
+            app.push_subscriptions = {}
+            
+        app.push_subscriptions[username] = {
+            'subscription': subscription,
+            'customer_id': customer_id,
+            'user_role': user_role,
+            'created_at': int(time.time())
+        }
+        
+        logger.info(f"Push subscription stored for {username} (customer {customer_id})")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Push subscription registered successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Push subscription error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files including service worker"""
+    return send_from_directory('static', filename)
 
 @app.route('/leads')
 @login_required

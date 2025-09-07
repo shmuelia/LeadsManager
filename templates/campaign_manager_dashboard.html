@@ -287,6 +287,60 @@
             };
         }
         
+        // Push notification system
+        let pushSubscription = null;
+        
+        async function initializePushNotifications() {
+            // Check if push notifications are supported
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                console.log('Push notifications not supported');
+                return false;
+            }
+            
+            try {
+                // Register service worker
+                const registration = await navigator.serviceWorker.register('/static/sw.js');
+                console.log('Service Worker registered:', registration);
+                
+                // Request notification permission
+                const permission = await Notification.requestPermission();
+                console.log('Notification permission:', permission);
+                
+                if (permission !== 'granted') {
+                    alert('יש לאשר התראות כדי לקבל עדכונים על לידים חדשים');
+                    return false;
+                }
+                
+                // Subscribe to push notifications
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: null // Will use default for now
+                });
+                
+                pushSubscription = subscription;
+                console.log('Push subscription created:', subscription);
+                
+                // Send subscription to server
+                await fetch('/subscribe-push', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        subscription: subscription.toJSON(),
+                        user_role: 'campaign_manager'
+                    })
+                });
+                
+                console.log('Push subscription sent to server');
+                return true;
+                
+            } catch (error) {
+                console.error('Push notification setup error:', error);
+                return false;
+            }
+        }
+        
         // Initialize notifications when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize sound (requires user interaction first)
@@ -295,6 +349,12 @@
                     notificationSound = initNotificationSound();
                     document.removeEventListener('click', initSound);
                 }
+            }, { once: true });
+            
+            // Initialize push notifications (requires user interaction)
+            document.addEventListener('click', function initPush() {
+                initializePushNotifications();
+                document.removeEventListener('click', initPush);
             }, { once: true });
             
             // Connect to notifications
