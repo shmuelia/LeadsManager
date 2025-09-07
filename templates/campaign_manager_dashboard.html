@@ -280,9 +280,9 @@
             }
         });
         
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
+        // Add CSS animations for notifications
+        const notificationStyle = document.createElement('style');
+        notificationStyle.textContent = `
             @keyframes slideIn {
                 from {
                     transform: translateX(-100%);
@@ -305,7 +305,7 @@
                 }
             }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(notificationStyle);
     </script>
 </body>
 </html>
