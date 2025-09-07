@@ -10,6 +10,9 @@ from functools import wraps
 import time
 import threading
 from queue import Queue
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -17,6 +20,13 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-product
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Email configuration
+SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+SMTP_USERNAME = os.environ.get('SMTP_USERNAME')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
+FROM_EMAIL = os.environ.get('FROM_EMAIL', SMTP_USERNAME)
 
 # Notification system for real-time updates
 notification_queues = {}  # Dictionary to store notification queues by customer_id
@@ -582,6 +592,46 @@ def webhook():
                 except Exception as notif_error:
                     logger.error(f"Error sending direct notification for lead {lead_id}: {notif_error}")
                 
+                # Send email notification to campaign managers
+                try:
+                    # Get campaign managers for this customer
+                    conn_email = get_db_connection()
+                    if conn_email:
+                        cur_email = conn_email.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                        cur_email.execute("""
+                            SELECT email, full_name FROM users 
+                            WHERE role = 'campaign_manager' 
+                            AND customer_id = %s 
+                            AND active = true 
+                            AND email IS NOT NULL
+                        """, (customer_id,))
+                        
+                        campaign_managers = cur_email.fetchall()
+                        cur_email.close()
+                        conn_email.close()
+                        
+                        for manager in campaign_managers:
+                            if manager['email']:
+                                logger.info(f"Sending email notification to {manager['full_name']} ({manager['email']})")
+                                email_sent = send_email_notification(
+                                    to_email=manager['email'],
+                                    lead_name=name,
+                                    lead_phone=phone,
+                                    lead_email=lead_data.get('email'),
+                                    platform=lead_data.get('platform', 'facebook'),
+                                    campaign_name=lead_data.get('campaign_name')
+                                )
+                                if email_sent:
+                                    logger.info(f"Email notification sent successfully to {manager['email']}")
+                                else:
+                                    logger.warning(f"Failed to send email notification to {manager['email']}")
+                        
+                        if not campaign_managers:
+                            logger.info("No campaign managers with email found for email notifications")
+                            
+                except Exception as email_error:
+                    logger.error(f"Error sending email notifications: {email_error}")
+                
                 logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
             else:
                 logger.warning("Database not available, lead data logged only")
@@ -668,6 +718,99 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
     except Exception as e:
         logger.error(f"Error creating notification: {e}")
         return None
+
+def send_email_notification(to_email, lead_name, lead_phone, lead_email, platform, campaign_name):
+    """Send email notification for new lead"""
+    try:
+        if not SMTP_USERNAME or not SMTP_PASSWORD:
+            logger.info("Email notifications disabled - no SMTP credentials configured")
+            return False
+            
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'🔔 לייד חדש הגיע! - {lead_name}'
+        msg['From'] = FROM_EMAIL
+        msg['To'] = to_email
+        
+        # Hebrew email content
+        text_content = f"""
+לייד חדש הגיע!
+
+שם: {lead_name}
+טלפון: {lead_phone or 'לא צוין'}
+אימייל: {lead_email or 'לא צוין'}  
+פלטפורמה: {platform or 'לא ידוע'}
+קמפיין: {campaign_name or 'לא צוין'}
+
+כנס למערכת לניהול הלייד:
+https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
+
+מערכת ניהול לידים - אלחנן מאפיית לחם
+        """
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; direction: rtl; background: #f5f5f5; margin: 0; padding: 20px; }}
+                .container {{ background: white; border-radius: 10px; padding: 30px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+                .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+                .lead-info {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0; }}
+                .lead-info strong {{ color: #1e40af; }}
+                .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }}
+                .cta-button {{ display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 15px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🔔 לייד חדש הגיע!</h2>
+                </div>
+                
+                <div class="lead-info">
+                    <p><strong>שם:</strong> {lead_name}</p>
+                    <p><strong>טלפון:</strong> {lead_phone or 'לא צוין'}</p>
+                    <p><strong>אימייל:</strong> {lead_email or 'לא צוין'}</p>
+                    <p><strong>פלטפורמה:</strong> {platform or 'לא ידוע'}</p>
+                    <p><strong>קמפיין:</strong> {campaign_name or 'לא צוין'}</p>
+                </div>
+                
+                <div style="text-align: center;">
+                    <a href="https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager" class="cta-button">
+                        🚀 כנס למערכת לניהול הלייד
+                    </a>
+                </div>
+                
+                <div class="footer">
+                    <p>מערכת ניהול לידים - אלחנן מאפיית לחם</p>
+                    <p>התראה אוטומטית למנהלי קמפיין</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Create text and HTML parts
+        text_part = MIMEText(text_content, 'plain', 'utf-8')
+        html_part = MIMEText(html_content, 'html', 'utf-8')
+        
+        msg.attach(text_part)
+        msg.attach(html_part)
+        
+        # Send email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+            
+        logger.info(f"Email notification sent to {to_email} for lead: {lead_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Email notification error: {e}")
+        return False
 
 def send_notification(customer_id, notification_data):
     """Send notification to all connected clients for a specific customer"""
