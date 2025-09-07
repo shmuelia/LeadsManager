@@ -216,10 +216,12 @@ def login():
             
             # Set customer context if user has an assigned customer
             if user['customer_id']:
-                session['selected_customer_id'] = user['customer_id']
+                session['customer_id'] = user['customer_id']
+                session['selected_customer_id'] = user['customer_id'] 
                 session['selected_customer_name'] = user['customer_name']
             else:
                 # Default to customer #1 if no customer assigned
+                session['customer_id'] = 1
                 session['selected_customer_id'] = 1
                 session['selected_customer_name'] = 'מאפיית משמרות - לקוח ברירת מחדל'
             
