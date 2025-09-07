@@ -97,6 +97,9 @@
     <!-- Real-time Notifications -->
     <div id="notification-container" style="position: fixed; top: 20px; left: 20px; z-index: 10000;"></div>
     
+    <!-- Mobile Debug Panel -->
+    <div id="mobile-debug" style="position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-size: 12px; max-width: 300px; max-height: 200px; overflow-y: auto; z-index: 9999; display: block;"></div>
+    
     <script>
         // Real-time notification system
         let eventSource = null;
@@ -178,16 +181,36 @@
             }
         }
         
+        // Mobile debugging
+        function showMobileDebug(message) {
+            const debugContainer = document.getElementById('mobile-debug');
+            if (debugContainer) {
+                const now = new Date().toLocaleTimeString();
+                debugContainer.innerHTML = `[${now}] ${message}<br>` + debugContainer.innerHTML;
+                debugContainer.innerHTML = debugContainer.innerHTML.split('<br>').slice(0, 10).join('<br>'); // Keep last 10 messages
+            }
+        }
+        
         // Connect to notification stream
         function connectToNotifications() {
             if (eventSource) {
                 eventSource.close();
             }
             
+            showMobileDebug('🔄 מתחבר לשרת התראות...');
             console.log('Connecting to notification stream...');
+            
+            // Check if EventSource is supported
+            if (typeof EventSource === 'undefined') {
+                showMobileDebug('❌ EventSource לא נתמך בדפדפן זה');
+                console.error('EventSource not supported');
+                return;
+            }
+            
             eventSource = new EventSource('/notifications/stream');
             
             eventSource.onopen = function() {
+                showMobileDebug('✅ התחבר לשרת התראות בהצלחה');
                 console.log('Connected to notification stream');
             };
             
@@ -195,12 +218,16 @@
                 try {
                     const notification = JSON.parse(event.data);
                     console.log('Received notification:', notification);
+                    showMobileDebug(`📨 התקבלה התראה: ${notification.type}`);
                     
                     if (notification.type === 'connected') {
+                        showMobileDebug(`🔗 מחובר ללקוח: ${notification.customer_id}`);
                         console.log('Connected for customer:', notification.customer_id);
                     } else if (notification.type === 'heartbeat') {
+                        showMobileDebug('💓 Heartbeat');
                         // Heartbeat - do nothing
                     } else if (notification.type === 'new_lead') {
+                        showMobileDebug(`🔔 לייד חדש: ${notification.data?.lead_name || 'לא ידוע'}`);
                         showNotification(notification);
                         
                         // Refresh leads list if it exists (from unified component)
@@ -209,16 +236,26 @@
                         }
                     }
                 } catch (e) {
+                    showMobileDebug(`❌ שגיאה בניתוח התראה: ${e.message}`);
                     console.error('Error parsing notification:', e, event.data);
                 }
             };
             
             eventSource.onerror = function(event) {
+                showMobileDebug(`❌ שגיאת חיבור: ${event.type}`);
                 console.error('Notification stream error:', event);
+                
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    showMobileDebug('🔌 החיבור נסגר, מנסה להתחבר מחדש...');
+                }
+                
                 eventSource.close();
                 
                 // Reconnect after 5 seconds
-                setTimeout(connectToNotifications, 5000);
+                setTimeout(() => {
+                    showMobileDebug('🔄 מנסה להתחבר מחדש...');
+                    connectToNotifications();
+                }, 5000);
             };
         }
         
