@@ -558,24 +558,29 @@ def webhook():
                     'form_name': lead_data.get('form_name')
                 }
                 
-                # Create and send notification
-                logger.info(f"Attempting to create notification for lead {lead_id}: {notification_title}")
+                # Create and send notification directly (bypass database for now)
+                logger.info(f"Sending direct notification for lead {lead_id}: {notification_title}")
                 
                 try:
-                    notification_id = create_notification(
-                        customer_id=customer_id,
-                        lead_id=lead_id,
-                        notification_type='new_lead',
-                        title=notification_title,
-                        message=notification_message,
-                        data=notification_data
-                    )
-                    if notification_id:
-                        logger.info(f"Notification created successfully with ID: {notification_id}")
-                    else:
-                        logger.error(f"Failed to create notification for lead {lead_id}")
+                    # Create notification data for real-time sending (no database storage)
+                    notification_data_direct = {
+                        'id': f"direct_{lead_id}_{int(time.time())}",
+                        'type': 'new_lead',
+                        'title': notification_title,
+                        'message': notification_message,
+                        'lead_id': lead_id,
+                        'customer_id': customer_id,
+                        'data': notification_data,
+                        'timestamp': int(time.time())
+                    }
+                    
+                    # Send directly to SSE stream
+                    logger.info(f"Sending direct notification to SSE clients for customer {customer_id}")
+                    send_notification(customer_id, notification_data_direct)
+                    logger.info(f"Direct notification sent successfully to SSE stream")
+                    
                 except Exception as notif_error:
-                    logger.error(f"Error creating notification for lead {lead_id}: {notif_error}")
+                    logger.error(f"Error sending direct notification for lead {lead_id}: {notif_error}")
                 
                 logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
             else:
