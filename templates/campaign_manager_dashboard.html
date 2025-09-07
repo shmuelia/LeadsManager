@@ -97,8 +97,8 @@
     <!-- Real-time Notifications -->
     <div id="notification-container" style="position: fixed; top: 20px; left: 20px; z-index: 10000;"></div>
     
-    <!-- Mobile Debug Panel -->
-    <div id="mobile-debug" style="position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-size: 12px; max-width: 300px; max-height: 200px; overflow-y: auto; z-index: 9999; display: block;"></div>
+    <!-- Mobile Debug Panel - Hidden by default, can be shown for debugging -->
+    <div id="mobile-debug" style="position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-size: 12px; max-width: 300px; max-height: 200px; overflow-y: auto; z-index: 9999; display: none;"></div>
     
     <script>
         // Real-time notification system
@@ -188,14 +188,15 @@
             }
         }
         
-        // Mobile debugging
+        // Mobile debugging (disabled for production)
         function showMobileDebug(message) {
-            const debugContainer = document.getElementById('mobile-debug');
-            if (debugContainer) {
-                const now = new Date().toLocaleTimeString();
-                debugContainer.innerHTML = `[${now}] ${message}<br>` + debugContainer.innerHTML;
-                debugContainer.innerHTML = debugContainer.innerHTML.split('<br>').slice(0, 10).join('<br>'); // Keep last 10 messages
-            }
+            // Disabled - only enable for debugging
+            // const debugContainer = document.getElementById('mobile-debug');
+            // if (debugContainer) {
+            //     const now = new Date().toLocaleTimeString();
+            //     debugContainer.innerHTML = `[${now}] ${message}<br>` + debugContainer.innerHTML;
+            //     debugContainer.innerHTML = debugContainer.innerHTML.split('<br>').slice(0, 10).join('<br>');
+            // }
         }
         
         // Connect to notification stream
