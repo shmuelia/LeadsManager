@@ -719,6 +719,46 @@ def notification_stream():
         logger.error(f"SSE endpoint error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/test-notification')
+@campaign_manager_required 
+def test_notification():
+    """Test endpoint to manually trigger a notification"""
+    try:
+        # Get user's customer ID
+        user_role = session.get('role')
+        if user_role == 'admin':
+            customer_id = session.get('selected_customer_id', 1)
+        else:
+            customer_id = session.get('customer_id', 1)
+            
+        logger.info(f"Manual notification test for customer {customer_id}")
+        
+        # Create test notification
+        notification_id = create_notification(
+            customer_id=customer_id,
+            lead_id=999,  # Test lead ID
+            notification_type='new_lead', 
+            title='בדיקת התראה ידנית',
+            message='זוהי התראה ידנית לבדיקת המערכת',
+            data={
+                'lead_name': 'בדיקה ידנית',
+                'lead_email': 'test@manual.com',
+                'platform': 'manual',
+                'test': True
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'notification_id': notification_id,
+            'customer_id': customer_id,
+            'message': 'Test notification sent'
+        })
+        
+    except Exception as e:
+        logger.error(f"Test notification error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/leads')
 @login_required
 def get_leads():
