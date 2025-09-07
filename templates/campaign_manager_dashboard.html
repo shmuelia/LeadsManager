@@ -97,6 +97,11 @@
     <!-- Real-time Notifications -->
     <div id="notification-container" style="position: fixed; top: 20px; left: 20px; z-index: 10000;"></div>
     
+    <!-- Test Notification Button -->
+    <button onclick="testNotification()" style="position: fixed; top: 100px; right: 20px; background: #10b981; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; z-index: 9999;">
+        🔔 בדיקת התראה
+    </button>
+    
     <!-- Mobile Debug Panel - Hidden by default, can be shown for debugging -->
     <div id="mobile-debug" style="position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-size: 12px; max-width: 300px; max-height: 200px; overflow-y: auto; z-index: 9999; display: none;"></div>
     
@@ -295,6 +300,28 @@
                 connectToNotifications();
             }
         });
+        
+        // Test notification function
+        function testNotification() {
+            console.log('Manual test notification triggered');
+            const testNotification = {
+                type: 'new_lead',
+                title: 'בדיקת התראה ידנית',
+                message: 'זוהי התראה לבדיקה - צריכה להופיע!',
+                data: {
+                    lead_name: 'בדיקה ידנית',
+                    platform: 'test'
+                }
+            };
+            
+            // Simulate receiving notification through SSE
+            try {
+                showNotification(testNotification);
+                console.log('Manual notification displayed');
+            } catch (e) {
+                console.error('Error showing manual notification:', e);
+            }
+        }
         
         // Add CSS animations for notifications
         const notificationStyle = document.createElement('style');
