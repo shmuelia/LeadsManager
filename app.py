@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, Response
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
@@ -7,6 +7,9 @@ import logging
 import os
 import hashlib
 from functools import wraps
+import time
+import threading
+from queue import Queue
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -14,6 +17,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-product
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Notification system for real-time updates
+notification_queues = {}  # Dictionary to store notification queues by customer_id
 
 # Database connection
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -105,6 +111,21 @@ def init_database():
                 new_status VARCHAR(50),
                 activity_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 activity_metadata JSONB
+            );
+        """)
+        
+        # Create notifications table for real-time notifications history
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                customer_id INTEGER,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                notification_type VARCHAR(50) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                data JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                read_by_users JSONB DEFAULT '[]'::jsonb
             );
         """)
         
@@ -514,6 +535,31 @@ def webhook():
                 cur.close()
                 conn.close()
                 
+                # Send real-time notification for new lead
+                customer_id = 1  # Default customer ID for main webhook
+                notification_title = "לייד חדש הגיע!"
+                notification_message = f"לייד חדש מ{lead_data.get('platform', 'פייסבוק')}: {name}"
+                
+                # Additional notification data
+                notification_data = {
+                    'lead_name': name,
+                    'lead_email': lead_data.get('email'),
+                    'lead_phone': phone,
+                    'platform': lead_data.get('platform', 'facebook'),
+                    'campaign_name': lead_data.get('campaign_name'),
+                    'form_name': lead_data.get('form_name')
+                }
+                
+                # Create and send notification
+                create_notification(
+                    customer_id=customer_id,
+                    lead_id=lead_id,
+                    notification_type='new_lead',
+                    title=notification_title,
+                    message=notification_message,
+                    data=notification_data
+                )
+                
                 logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
             else:
                 logger.warning("Database not available, lead data logged only")
@@ -539,6 +585,110 @@ def webhook():
             'message': 'Failed to process lead',
             'error': str(e)
         }), 500
+
+def create_notification(customer_id, lead_id, notification_type, title, message, data=None):
+    """Create a notification in the database and send to connected clients"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            logger.warning("Database not available for notification creation")
+            return None
+            
+        cur = conn.cursor()
+        
+        # Insert notification into database
+        cur.execute("""
+            INSERT INTO notifications (customer_id, lead_id, notification_type, title, message, data)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (customer_id, lead_id, notification_type, title, message, json.dumps(data) if data else None))
+        
+        notification_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        # Create notification data for real-time sending
+        notification_data = {
+            'id': notification_id,
+            'type': notification_type,
+            'title': title,
+            'message': message,
+            'lead_id': lead_id,
+            'customer_id': customer_id,
+            'data': data,
+            'timestamp': int(time.time())
+        }
+        
+        # Send to connected clients
+        send_notification(customer_id, notification_data)
+        
+        return notification_id
+        
+    except Exception as e:
+        logger.error(f"Error creating notification: {e}")
+        return None
+
+def send_notification(customer_id, notification_data):
+    """Send notification to all connected clients for a specific customer"""
+    try:
+        if customer_id not in notification_queues:
+            notification_queues[customer_id] = []
+        
+        # Add notification to all active queues for this customer
+        for queue in notification_queues[customer_id][:]:  # Create copy to iterate safely
+            try:
+                queue.put(notification_data, timeout=1)  # Non-blocking put
+            except:
+                # Remove dead queues
+                notification_queues[customer_id].remove(queue)
+                
+        logger.info(f"Notification sent to {len(notification_queues.get(customer_id, []))} clients for customer {customer_id}")
+    except Exception as e:
+        logger.error(f"Error sending notification: {e}")
+
+@app.route('/notifications/stream')
+@campaign_manager_required
+def notification_stream():
+    """Server-Sent Events endpoint for real-time notifications"""
+    def event_stream():
+        # Get user's customer ID
+        user_role = session.get('role')
+        if user_role == 'admin':
+            customer_id = session.get('selected_customer_id', 1)
+        else:
+            customer_id = session.get('customer_id', 1)
+        
+        # Create a new queue for this client
+        client_queue = Queue()
+        
+        # Initialize the customer's queue list if it doesn't exist
+        if customer_id not in notification_queues:
+            notification_queues[customer_id] = []
+        notification_queues[customer_id].append(client_queue)
+        
+        # Send initial connection confirmation
+        yield f"data: {json.dumps({'type': 'connected', 'customer_id': customer_id})}\n\n"
+        
+        try:
+            while True:
+                # Wait for notification with timeout
+                try:
+                    notification = client_queue.get(timeout=30)
+                    yield f"data: {json.dumps(notification)}\n\n"
+                except:
+                    # Send heartbeat to keep connection alive
+                    yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': int(time.time())})}\n\n"
+        except GeneratorExit:
+            # Client disconnected, clean up
+            if customer_id in notification_queues and client_queue in notification_queues[customer_id]:
+                notification_queues[customer_id].remove(client_queue)
+            logger.info(f"Client disconnected from notifications for customer {customer_id}")
+
+    return Response(event_stream(), mimetype='text/event-stream',
+                   headers={'Cache-Control': 'no-cache',
+                           'Connection': 'keep-alive',
+                           'Access-Control-Allow-Origin': '*'})
 
 @app.route('/leads')
 @login_required
