@@ -132,7 +132,14 @@
         
         // Show notification banner
         function showNotification(notification) {
+            showMobileDebug(`🎯 showNotification called with: ${notification.title}`);
+            
             const container = document.getElementById('notification-container');
+            if (!container) {
+                showMobileDebug(`❌ notification-container לא נמצא`);
+                return;
+            }
+            showMobileDebug(`📍 Container found: ${container.id}`);
             
             const notificationElement = document.createElement('div');
             notificationElement.style.cssText = `
@@ -228,11 +235,19 @@
                         // Heartbeat - do nothing
                     } else if (notification.type === 'new_lead') {
                         showMobileDebug(`🔔 לייד חדש: ${notification.data?.lead_name || 'לא ידוע'}`);
-                        showNotification(notification);
+                        showMobileDebug(`📋 פרטי התראה: ${JSON.stringify(notification)}`);
+                        
+                        try {
+                            showNotification(notification);
+                            showMobileDebug(`✅ התראה הוצגה בהצלחה`);
+                        } catch (e) {
+                            showMobileDebug(`❌ שגיאה בהצגת התראה: ${e.message}`);
+                        }
                         
                         // Refresh leads list if it exists (from unified component)
                         if (typeof loadLeads === 'function') {
                             setTimeout(() => loadLeads(), 1000);
+                            showMobileDebug(`🔄 רשימת לידים מתרעננת`);
                         }
                     }
                 } catch (e) {
