@@ -608,16 +608,32 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
         cur = conn.cursor()
         
         # Insert notification into database
-        cur.execute("""
-            INSERT INTO notifications (customer_id, lead_id, notification_type, title, message, data)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (customer_id, lead_id, notification_type, title, message, json.dumps(data) if data else None))
-        
-        notification_id = cur.fetchone()[0]
-        conn.commit()
-        cur.close()
-        conn.close()
+        logger.info(f"Attempting to insert notification: customer_id={customer_id}, lead_id={lead_id}, type={notification_type}")
+        try:
+            cur.execute("""
+                INSERT INTO notifications (customer_id, lead_id, notification_type, title, message, data)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (customer_id, lead_id, notification_type, title, message, json.dumps(data) if data else None))
+            
+            result = cur.fetchone()
+            if not result:
+                logger.error("No result returned from notification INSERT")
+                cur.close()
+                conn.close()
+                return None
+                
+            notification_id = result[0]
+            logger.info(f"Notification inserted successfully with ID: {notification_id}")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as db_error:
+            logger.error(f"Database error inserting notification: {db_error}")
+            cur.close()
+            conn.close()
+            return None
         
         # Create notification data for real-time sending
         notification_data = {
