@@ -87,6 +87,9 @@
                     {{ session.get('full_name', session.get('username')) }}
                     (מנהל קמפיין)
                 </div>
+                <button onclick="testNotification()" style="background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                    🔔 בדיקת התראה
+                </button>
                 <button class="logout-btn" onclick="window.location.href='/logout'">
                     🚪 יציאה
                 </button>
