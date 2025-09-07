@@ -553,14 +553,23 @@ def webhook():
                 }
                 
                 # Create and send notification
-                create_notification(
-                    customer_id=customer_id,
-                    lead_id=lead_id,
-                    notification_type='new_lead',
-                    title=notification_title,
-                    message=notification_message,
-                    data=notification_data
-                )
+                logger.info(f"Attempting to create notification for lead {lead_id}: {notification_title}")
+                
+                try:
+                    notification_id = create_notification(
+                        customer_id=customer_id,
+                        lead_id=lead_id,
+                        notification_type='new_lead',
+                        title=notification_title,
+                        message=notification_message,
+                        data=notification_data
+                    )
+                    if notification_id:
+                        logger.info(f"Notification created successfully with ID: {notification_id}")
+                    else:
+                        logger.error(f"Failed to create notification for lead {lead_id}")
+                except Exception as notif_error:
+                    logger.error(f"Error creating notification for lead {lead_id}: {notif_error}")
                 
                 logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
             else:
@@ -623,7 +632,9 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
         }
         
         # Send to connected clients
+        logger.info(f"Sending notification to SSE clients for customer {customer_id}")
         send_notification(customer_id, notification_data)
+        logger.info(f"Notification sent to SSE stream")
         
         return notification_id
         
