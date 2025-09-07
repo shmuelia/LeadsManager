@@ -115,19 +115,25 @@ def init_database():
         """)
         
         # Create notifications table for real-time notifications history
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS notifications (
-                id SERIAL PRIMARY KEY,
-                customer_id INTEGER,
-                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-                notification_type VARCHAR(50) NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                message TEXT NOT NULL,
-                data JSONB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                read_by_users JSONB DEFAULT '[]'::jsonb
-            );
-        """)
+        logger.info("Creating notifications table...")
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    customer_id INTEGER,
+                    lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                    notification_type VARCHAR(50) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    data JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    read_by_users JSONB DEFAULT '[]'::jsonb
+                );
+            """)
+            logger.info("Notifications table created successfully")
+        except Exception as e:
+            logger.error(f"Error creating notifications table: {e}")
+            # Continue anyway - don't fail the entire initialization
         
         # Insert default admin user if not exists
         cur.execute("""
@@ -773,6 +779,21 @@ def test_notification():
         
     except Exception as e:
         logger.error(f"Test notification error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/init-db')
+@admin_required
+def initialize_database():
+    """Manually trigger database initialization"""
+    try:
+        logger.info("Manual database initialization triggered")
+        result = init_database()
+        return jsonify({
+            'success': result,
+            'message': 'Database initialization completed' if result else 'Database initialization failed'
+        })
+    except Exception as e:
+        logger.error(f"Manual database initialization error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/leads')
