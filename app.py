@@ -651,44 +651,60 @@ def send_notification(customer_id, notification_data):
 @campaign_manager_required
 def notification_stream():
     """Server-Sent Events endpoint for real-time notifications"""
-    def event_stream():
-        # Get user's customer ID
+    try:
+        # Get user's customer ID before creating the generator
         user_role = session.get('role')
+        username = session.get('username', 'unknown')
+        
         if user_role == 'admin':
             customer_id = session.get('selected_customer_id', 1)
         else:
             customer_id = session.get('customer_id', 1)
         
-        # Create a new queue for this client
-        client_queue = Queue()
+        logger.info(f"SSE connection request from {username} (role: {user_role}, customer: {customer_id})")
         
-        # Initialize the customer's queue list if it doesn't exist
-        if customer_id not in notification_queues:
-            notification_queues[customer_id] = []
-        notification_queues[customer_id].append(client_queue)
-        
-        # Send initial connection confirmation
-        yield f"data: {json.dumps({'type': 'connected', 'customer_id': customer_id})}\n\n"
-        
-        try:
-            while True:
-                # Wait for notification with timeout
-                try:
-                    notification = client_queue.get(timeout=30)
-                    yield f"data: {json.dumps(notification)}\n\n"
-                except:
-                    # Send heartbeat to keep connection alive
-                    yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': int(time.time())})}\n\n"
-        except GeneratorExit:
-            # Client disconnected, clean up
-            if customer_id in notification_queues and client_queue in notification_queues[customer_id]:
-                notification_queues[customer_id].remove(client_queue)
-            logger.info(f"Client disconnected from notifications for customer {customer_id}")
+        def event_stream():
+            # Create a new queue for this client
+            client_queue = Queue()
+            
+            try:
+                # Initialize the customer's queue list if it doesn't exist
+                if customer_id not in notification_queues:
+                    notification_queues[customer_id] = []
+                notification_queues[customer_id].append(client_queue)
+                
+                logger.info(f"SSE client connected: {username} for customer {customer_id}")
+                
+                # Send initial connection confirmation
+                yield f"data: {json.dumps({'type': 'connected', 'customer_id': customer_id, 'username': username})}\n\n"
+                
+                while True:
+                    # Wait for notification with timeout
+                    try:
+                        notification = client_queue.get(timeout=30)
+                        yield f"data: {json.dumps(notification)}\n\n"
+                    except:
+                        # Send heartbeat to keep connection alive
+                        yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': int(time.time()), 'customer_id': customer_id})}\n\n"
+                        
+            except GeneratorExit:
+                # Client disconnected, clean up
+                if customer_id in notification_queues and client_queue in notification_queues[customer_id]:
+                    notification_queues[customer_id].remove(client_queue)
+                logger.info(f"SSE client disconnected: {username} for customer {customer_id}")
+            except Exception as e:
+                logger.error(f"SSE stream error for {username}: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
-    return Response(event_stream(), mimetype='text/event-stream',
-                   headers={'Cache-Control': 'no-cache',
-                           'Connection': 'keep-alive',
-                           'Access-Control-Allow-Origin': '*'})
+        return Response(event_stream(), mimetype='text/event-stream',
+                       headers={'Cache-Control': 'no-cache',
+                               'Connection': 'keep-alive',
+                               'Access-Control-Allow-Origin': '*',
+                               'X-Accel-Buffering': 'no'})
+                               
+    except Exception as e:
+        logger.error(f"SSE endpoint error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/leads')
 @login_required
