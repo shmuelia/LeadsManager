@@ -367,6 +367,41 @@
                         <input type="text" id="instagramAppId" name="instagram_app_id" class="form-control">
                     </div>
                     
+                    <hr style="margin: 20px 0; border: 1px solid #e5e7eb;">
+                    <h3 style="margin-bottom: 15px; color: #374151;">⚙️ הגדרות התראות אימייל</h3>
+                    
+                    <div class="form-group">
+                        <label for="emailNotifications" title="כאשר מופעל, המערכת תשלח אימייל למנהלי קמפיין עם הגעת לייד חדש">
+                            <input type="checkbox" id="emailNotifications" name="email_notifications_enabled">
+                            הפעל התראות אימייל ללידים חדשים
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="senderEmail" title="כתובת האימייל שתופיע כשולח בהתראות. למשל: notifications@company.com">כתובת שולח (From Email) *</label>
+                        <input type="email" id="senderEmail" name="sender_email" class="form-control" placeholder="notifications@company.com" title="הכתובת שתופיע בשדה 'מאת' בהתראות האימייל">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="smtpServer" title="כתובת שרת האימייל היוצא. לגמייל: smtp.gmail.com, לאאוטלוק: smtp-mail.outlook.com">שרת SMTP</label>
+                        <input type="text" id="smtpServer" name="smtp_server" class="form-control" value="smtp.gmail.com" title="שרת SMTP לשליחת אימיילים. גמייל: smtp.gmail.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="smtpPort" title="פורט חיבור לשרת SMTP. 587 לחיבור מאובטח (TLS), 465 ל-SSL">פורט SMTP</label>
+                        <input type="number" id="smtpPort" name="smtp_port" class="form-control" value="587" title="פורט שרת SMTP. בדרך כלל 587 או 465">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="smtpUsername" title="כתובת האימייל המשמשת להתחברות לשרת SMTP">שם משתמש SMTP (Email)</label>
+                        <input type="email" id="smtpUsername" name="smtp_username" class="form-control" placeholder="your-email@gmail.com" title="כתובת האימייל להתחברות לשרת SMTP">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="smtpPassword" title="לגמייל: צור App Password בהגדרות האבטחה. לא הסיסמה הרגילה!">סיסמת SMTP (App Password)</label>
+                        <input type="password" id="smtpPassword" name="smtp_password" class="form-control" placeholder="App-specific password" title="לגמייל: App Password (לא הסיסמה הרגילה). ליצור ב: myaccount.google.com/apppasswords">
+                    </div>
+                    
                     <div class="form-group">
                         <label for="customerActive">
                             <input type="checkbox" id="customerActive" name="active" checked>
@@ -450,6 +485,12 @@
                 document.getElementById('zapierEmail').value = customer.zapier_account_email || '';
                 document.getElementById('facebookAppId').value = customer.facebook_app_id || '';
                 document.getElementById('instagramAppId').value = customer.instagram_app_id || '';
+                document.getElementById('emailNotifications').checked = customer.email_notifications_enabled || false;
+                document.getElementById('senderEmail').value = customer.sender_email || '';
+                document.getElementById('smtpServer').value = customer.smtp_server || 'smtp.gmail.com';
+                document.getElementById('smtpPort').value = customer.smtp_port || 587;
+                document.getElementById('smtpUsername').value = customer.smtp_username || '';
+                document.getElementById('smtpPassword').value = customer.smtp_password || '';
                 document.getElementById('customerActive').checked = customer.active;
             } else {
                 form.reset();
