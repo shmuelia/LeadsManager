@@ -366,18 +366,22 @@
         // Initialize notifications when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize sound (requires user interaction first)
+            let soundInitialized = false;
             document.addEventListener('click', function initSound() {
-                if (!notificationSound) {
+                if (!soundInitialized && !notificationSound) {
                     notificationSound = initNotificationSound();
-                    document.removeEventListener('click', initSound);
+                    soundInitialized = true;
                 }
-            }, { once: true });
+            });
             
             // Initialize push notifications (requires user interaction)
+            let pushInitialized = false;
             document.addEventListener('click', function initPush() {
-                initializePushNotifications();
-                document.removeEventListener('click', initPush);
-            }, { once: true });
+                if (!pushInitialized) {
+                    initializePushNotifications();
+                    pushInitialized = true;
+                }
+            });
             
             // Connect to notifications
             connectToNotifications();
