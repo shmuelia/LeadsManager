@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת התראות Android</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f9ff;
+            padding: 20px;
+            direction: rtl;
+        }
+        .test-btn {
+            background: #ef4444;
+            color: white;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            border: 4px solid #dc2626;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">🔔 בדיקת התראות Android מקוריות</h1>
+    
+    <div class="test-btn" onclick="testNativeNotification()">
+        📱 לחץ כאן לבדיקת התראות מקוריות
+    </div>
+    
+    <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3>הוראות:</h3>
+        <p>1. לחץ על הכפתור האדום</p>
+        <p>2. אשר התראות כשהמערכת שואלת</p>
+        <p>3. בדוק את פאנל ההתראות (גרור מלמעלה)</p>
+        <p>4. חפש התראה של האפליקציה</p>
+    </div>
+    
+    <a href="/campaign-manager" style="display: block; text-align: center; background: #3b82f6; color: white; padding: 15px; text-decoration: none; border-radius: 8px; margin: 20px 0;">
+        🏠 חזור למנהל קמפיין
+    </a>
+    
+    <script>
+        function testNativeNotification() {
+            console.log('Testing native notifications...');
+            
+            if (!('Notification' in window)) {
+                alert('התראות לא נתמכות בדפדפן זה');
+                return;
+            }
+            
+            if (Notification.permission === 'granted') {
+                // Already have permission, send notification
+                console.log('Permission already granted, sending notification');
+                new Notification('🔔 התראה מקורית פועלת!', {
+                    body: 'זוהי התראה מקורית של Android - אמורה להופיע בפאנל ההתראות',
+                    icon: '/favicon.ico',
+                    vibrate: [300, 100, 300, 100, 300],
+                    tag: 'test-native',
+                    requireInteraction: true
+                });
+                alert('התראה נשלחה! בדוק את פאנל ההתראות של Android');
+                
+            } else if (Notification.permission !== 'denied') {
+                // Request permission
+                console.log('Requesting notification permission');
+                Notification.requestPermission().then(function(permission) {
+                    console.log('Permission result:', permission);
+                    
+                    if (permission === 'granted') {
+                        console.log('Permission granted, sending test notification');
+                        new Notification('🔔 התראות הופעלו!', {
+                            body: 'התראות מקוריות הופעלו בהצלחה - בדוק את פאנל ההתראות',
+                            icon: '/favicon.ico',
+                            vibrate: [300, 100, 300],
+                            tag: 'setup-success'
+                        });
+                        alert('התראות הופעלו! בדוק את פאנל ההתראות של Android');
+                    } else {
+                        alert('יש לאשר התראות כדי שהמערכת תפעל');
+                    }
+                }).catch(function(error) {
+                    console.error('Permission request error:', error);
+                    alert('שגיאה בבקשת הרשאות: ' + error);
+                });
+                
+            } else {
+                alert('התראות נחסמו. יש לאשר התראות בהגדרות הדפדפן');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1090,6 +1090,12 @@ def serve_static(filename):
     """Serve static files including service worker"""
     return send_from_directory('static', filename)
 
+@app.route('/notification-test')
+@campaign_manager_required
+def notification_test():
+    """Simple page to test native mobile notifications"""
+    return render_template('notification_test.html')
+
 @app.route('/leads')
 @login_required
 def get_leads():
