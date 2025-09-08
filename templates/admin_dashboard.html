@@ -77,13 +77,13 @@
 </head>
 <body>
     <div class="container">
-        <!-- Include Unified Lead Manager Component -->
-        {% include 'unified_lead_manager.html' %}
-        
-        <!-- Admin Header moved to bottom for mobile optimization -->
+        <!-- Admin Header -->
         <div class="header">
             <h1>🛠️ לוח בקרה מנהל מערכת</h1>
             <div class="admin-nav">
+                <button class="nav-btn success" onclick="showLeadManager()">
+                    📋 צפה בלידים
+                </button>
                 <button class="nav-btn" onclick="location.href='/admin/users'">
                     👥 ניהול משתמשים
                 </button>
@@ -98,6 +98,47 @@
                 </button>
             </div>
         </div>
+        
+        <!-- Lead Manager (Hidden by default) -->
+        <div id="lead-manager-container" style="display: none;">
+            {% include 'unified_lead_manager.html' %}
+        </div>
+        
+        <!-- Welcome Message -->
+        <div class="header" id="welcome-message">
+            <h2>ברוך הבא, {{ session.get('full_name', session.get('username')) }}!</h2>
+            <p>בחר פעולה מהתפריט למעלה לתחילת העבודה.</p>
+            <p>לצפייה בלידים לחץ על "📋 צפה בלידים"</p>
+        </div>
+        
     </div>
+    
+    <script>
+        function showLeadManager() {
+            const container = document.getElementById('lead-manager-container');
+            const welcome = document.getElementById('welcome-message');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                welcome.style.display = 'none';
+                
+                // Update button text
+                event.target.innerHTML = '📋 הסתר לידים';
+                event.target.onclick = hideLeadManager;
+            }
+        }
+        
+        function hideLeadManager() {
+            const container = document.getElementById('lead-manager-container');
+            const welcome = document.getElementById('welcome-message');
+            
+            container.style.display = 'none';
+            welcome.style.display = 'block';
+            
+            // Update button text
+            event.target.innerHTML = '📋 צפה בלידים';
+            event.target.onclick = showLeadManager;
+        }
+    </script>
 </body>
 </html>
