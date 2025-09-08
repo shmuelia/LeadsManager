@@ -177,13 +177,16 @@
         
         .modal-content {
             background-color: white;
-            margin: 5% auto;
+            margin: 2% auto;
             padding: 0;
             border-radius: 15px;
-            width: 90%;
-            max-width: 600px;
+            width: 95%;
+            max-width: 700px;
+            max-height: 90vh;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         
         .modal-header {
@@ -199,6 +202,9 @@
         
         .modal-body {
             padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            max-height: calc(90vh - 120px);
         }
         
         .form-group {
@@ -291,20 +297,19 @@
         
         .tooltip-text {
             visibility: hidden;
-            width: 300px;
+            width: 280px;
             background-color: #1f2937;
             color: white;
             text-align: center;
             border-radius: 8px;
-            padding: 10px;
-            position: absolute;
-            z-index: 1000;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -150px;
-            font-size: 12px;
-            line-height: 1.4;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 12px;
+            position: fixed;
+            z-index: 2000;
+            font-size: 13px;
+            line-height: 1.5;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            border: 1px solid #4b5563;
+            max-width: 90vw;
         }
         
         .tooltip-text::after {
@@ -383,32 +388,52 @@
                     <input type="hidden" id="customerId" value="">
                     
                     <div class="form-group">
-                        <label for="customerName">שם הלקוח *</label>
+                        <div class="tooltip-container">
+                            <label for="customerName">שם הלקוח * ❓</label>
+                            <span class="tooltip-text">שם הלקוח כפי שיופיע במערכת. למשל: "אלחנן מאפיית לחם" או "חברת ABC"</span>
+                        </div>
                         <input type="text" id="customerName" name="name" class="form-control" required>
                     </div>
                     
+                    <h3 style="margin: 20px 0 15px 0; color: #374151;">🔗 הגדרות אינטגרציה</h3>
+                    
                     <div class="form-group">
-                        <label for="webhookUrl">URL וובהוק</label>
+                        <div class="tooltip-container">
+                            <label for="webhookUrl">URL וובהוק ❓</label>
+                            <span class="tooltip-text">כתובת ה-webhook לקבלת לידים מ-Zapier. בדרך כלל: /webhook<br>משמש לניתוב לידים ללקוח הנכון</span>
+                        </div>
                         <input type="text" id="webhookUrl" name="webhook_url" class="form-control" placeholder="/webhook">
                     </div>
                     
                     <div class="form-group">
-                        <label for="zapierKey">מפתח וובהוק זאפייר</label>
+                        <div class="tooltip-container">
+                            <label for="zapierKey">מפתח וובהוק זאפייר ❓</label>
+                            <span class="tooltip-text">מפתח ייחודי לזיהוי לידים מ-Zapier של הלקוח הזה. נוצר אוטומטית או מוגדר ידנית לאבטחה</span>
+                        </div>
                         <input type="text" id="zapierKey" name="zapier_webhook_key" class="form-control">
                     </div>
                     
                     <div class="form-group">
-                        <label for="zapierEmail">אימייל חשבון זאפייר</label>
+                        <div class="tooltip-container">
+                            <label for="zapierEmail">אימייל חשבון זאפייר ❓</label>
+                            <span class="tooltip-text">כתובת האימייל של חשבון Zapier של הלקוח. משמש לניהול ואימות אינטגרציות</span>
+                        </div>
                         <input type="email" id="zapierEmail" name="zapier_account_email" class="form-control">
                     </div>
                     
                     <div class="form-group">
-                        <label for="facebookAppId">מזהה אפליקציית פייסבוק</label>
+                        <div class="tooltip-container">
+                            <label for="facebookAppId">מזהה אפליקציית פייסבוק ❓</label>
+                            <span class="tooltip-text">App ID של אפליקציית Facebook Business של הלקוח. נדרש לחיבור ישיר ל-Facebook Lead Ads API</span>
+                        </div>
                         <input type="text" id="facebookAppId" name="facebook_app_id" class="form-control">
                     </div>
                     
                     <div class="form-group">
-                        <label for="instagramAppId">מזהה אפליקציית אינסטגרם</label>
+                        <div class="tooltip-container">
+                            <label for="instagramAppId">מזהה אפליקציית אינסטגרם ❓</label>
+                            <span class="tooltip-text">App ID של אפליקציית Instagram Business של הלקוח. נדרש לחיבור ישיר ל-Instagram Lead Ads</span>
+                        </div>
                         <input type="text" id="instagramAppId" name="instagram_app_id" class="form-control">
                     </div>
                     
@@ -679,6 +704,31 @@
                 closeCustomerModal();
             }
         }
+        
+        // Enhanced tooltip positioning
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipContainers = document.querySelectorAll('.tooltip-container');
+            
+            tooltipContainers.forEach(container => {
+                container.addEventListener('mouseenter', function(e) {
+                    const tooltip = container.querySelector('.tooltip-text');
+                    if (tooltip) {
+                        // Position tooltip near mouse cursor
+                        const rect = container.getBoundingClientRect();
+                        tooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - 300) + 'px';
+                        tooltip.style.top = (rect.top - 80) + 'px';
+                        tooltip.style.visibility = 'visible';
+                    }
+                });
+                
+                container.addEventListener('mouseleave', function() {
+                    const tooltip = container.querySelector('.tooltip-text');
+                    if (tooltip) {
+                        tooltip.style.visibility = 'hidden';
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html>
