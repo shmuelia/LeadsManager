@@ -2469,7 +2469,9 @@ def update_customer(customer_id):
         update_values = []
         
         allowed_fields = ['name', 'webhook_url', 'zapier_webhook_key', 'zapier_account_email', 
-                         'facebook_app_id', 'instagram_app_id', 'active']
+                         'facebook_app_id', 'instagram_app_id', 'active', 
+                         'sender_email', 'smtp_server', 'smtp_port', 'smtp_username', 
+                         'smtp_password', 'email_notifications_enabled']
         
         for field in allowed_fields:
             if field in data:
