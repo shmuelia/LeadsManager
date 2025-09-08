@@ -13,7 +13,6 @@ from queue import Queue
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -28,11 +27,6 @@ SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
 SMTP_USERNAME = os.environ.get('SMTP_USERNAME')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
 FROM_EMAIL = os.environ.get('FROM_EMAIL', SMTP_USERNAME)
-
-# VAPID keys for Web Push (generate these and set as environment variables)
-VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', 'BNXkq-iSf8tDoN1Uw_9MPSP4pePWlXhU-RQHbzJzXqRRCGxJkJmQm3zJzqZf9Kj7tCw5lPXdVUv8r6s3VHJyLGQ')
-VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', 'BGNe7dtMqKG7_NhS8XRO4z2O3NVz4Oa9-SjUm3GCNgD9x2LqYqx7q2u5j9Q8tCw5lPXdVUv8r6s3VHJyLGQp_U')
-VAPID_CLAIMS = {"sub": "mailto:admin@leadmanager.com"}
 
 # Notification system for real-time updates
 notification_queues = {}  # Dictionary to store notification queues by customer_id
@@ -65,13 +59,25 @@ def init_database():
             
         cur = conn.cursor()
         
-        # Auto-migrate: Add phone columns if they don't exist
+        # Auto-migrate: Add phone and email notification columns if they don't exist
         try:
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)")
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_notifications BOOLEAN DEFAULT true")
             logger.info("Auto-migration: Added phone columns to users table")
         except Exception as e:
             logger.info(f"Phone columns migration (probably already exist): {e}")
+            
+        # Auto-migrate: Add email notification settings to customers table
+        try:
+            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS sender_email VARCHAR(255)")
+            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_server VARCHAR(255) DEFAULT 'smtp.gmail.com'")
+            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_port INTEGER DEFAULT 587")
+            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_username VARCHAR(255)")
+            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_password VARCHAR(255)")
+            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS email_notifications_enabled BOOLEAN DEFAULT false")
+            logger.info("Auto-migration: Added email notification columns to customers table")
+        except Exception as e:
+            logger.info(f"Email notification columns migration (probably already exist): {e}")
         
         # Create leads table
         # Create leads table
@@ -574,45 +580,7 @@ def webhook():
                     'form_name': lead_data.get('form_name')
                 }
                 
-                # Create and send notification directly (bypass database for now)
-                logger.info(f"Sending direct notification for lead {lead_id}: {notification_title}")
-                
-                try:
-                    # Create notification data for real-time sending (no database storage)
-                    notification_data_direct = {
-                        'id': f"direct_{lead_id}_{int(time.time())}",
-                        'type': 'new_lead',
-                        'title': notification_title,
-                        'message': notification_message,
-                        'lead_id': lead_id,
-                        'customer_id': customer_id,
-                        'data': notification_data,
-                        'timestamp': int(time.time())
-                    }
-                    
-                    # Send directly to SSE stream AND store for later delivery
-                    logger.info(f"Sending direct notification to SSE clients for customer {customer_id}")
-                    logger.info(f"Active queues for customer {customer_id}: {len(notification_queues.get(customer_id, []))}")
-                    
-                    send_notification(customer_id, notification_data_direct)
-                    
-                    # Also store notification for delivery when clients reconnect
-                    if not hasattr(app, 'pending_notifications'):
-                        app.pending_notifications = {}
-                    if customer_id not in app.pending_notifications:
-                        app.pending_notifications[customer_id] = []
-                        
-                    # Only keep last 5 notifications to avoid memory issues
-                    app.pending_notifications[customer_id].append(notification_data_direct)
-                    if len(app.pending_notifications[customer_id]) > 5:
-                        app.pending_notifications[customer_id] = app.pending_notifications[customer_id][-5:]
-                        
-                    logger.info(f"Notification stored for customer {customer_id}, pending count: {len(app.pending_notifications[customer_id])}")
-                    
-                    logger.info(f"Direct notification sent and stored successfully")
-                    
-                except Exception as notif_error:
-                    logger.error(f"Error sending direct notification for lead {lead_id}: {notif_error}")
+                logger.info(f"Lead {lead_id} created successfully, sending email notifications...")
                 
                 # Send email notification to campaign managers
                 try:
@@ -636,6 +604,7 @@ def webhook():
                             if manager['email']:
                                 logger.info(f"Sending email notification to {manager['full_name']} ({manager['email']})")
                                 email_sent = send_email_notification(
+                                    customer_id=customer_id,
                                     to_email=manager['email'],
                                     lead_name=name,
                                     lead_phone=phone,
@@ -654,24 +623,6 @@ def webhook():
                 except Exception as email_error:
                     logger.error(f"Error sending email notifications: {email_error}")
                 
-                # Send native push notifications to subscribed devices
-                try:
-                    if hasattr(app, 'push_subscriptions'):
-                        for username, sub_data in app.push_subscriptions.items():
-                            if sub_data['customer_id'] == customer_id and sub_data['user_role'] in ['campaign_manager', 'admin']:
-                                logger.info(f"Sending push notification to {username}")
-                                push_sent = send_push_notification(
-                                    subscription_info=sub_data['subscription'],
-                                    lead_name=name,
-                                    platform=lead_data.get('platform', 'facebook'),
-                                    campaign_name=lead_data.get('campaign_name')
-                                )
-                                if push_sent:
-                                    logger.info(f"Native push notification sent to {username}")
-                                else:
-                                    logger.warning(f"Failed to send push notification to {username}")
-                except Exception as push_error:
-                    logger.error(f"Error sending push notifications: {push_error}")
                 
                 logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
             else:
@@ -760,17 +711,37 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
         logger.error(f"Error creating notification: {e}")
         return None
 
-def send_email_notification(to_email, lead_name, lead_phone, lead_email, platform, campaign_name):
-    """Send email notification for new lead"""
+def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_email, platform, campaign_name):
+    """Send email notification for new lead using customer-specific email settings"""
     try:
-        if not SMTP_USERNAME or not SMTP_PASSWORD:
-            logger.info("Email notifications disabled - no SMTP credentials configured")
+        # Get customer email settings
+        conn = get_db_connection()
+        if not conn:
+            logger.warning("Database not available for email settings")
             return False
             
-        # Create email message
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT sender_email, smtp_server, smtp_port, smtp_username, smtp_password, email_notifications_enabled
+            FROM customers WHERE id = %s
+        """, (customer_id,))
+        
+        customer_email_settings = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not customer_email_settings or not customer_email_settings['email_notifications_enabled']:
+            logger.info(f"Email notifications disabled for customer {customer_id}")
+            return False
+            
+        if not customer_email_settings['smtp_username'] or not customer_email_settings['smtp_password']:
+            logger.info(f"Email credentials not configured for customer {customer_id}")
+            return False
+            
+        # Create email message using customer settings
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f'🔔 לייד חדש הגיע! - {lead_name}'
-        msg['From'] = FROM_EMAIL
+        msg['From'] = customer_email_settings['sender_email'] or customer_email_settings['smtp_username']
         msg['To'] = to_email
         
         # Hebrew email content
@@ -840,10 +811,10 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
         msg.attach(text_part)
         msg.attach(html_part)
         
-        # Send email
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        # Send email using customer settings
+        with smtplib.SMTP(customer_email_settings['smtp_server'], customer_email_settings['smtp_port']) as server:
             server.starttls()
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.login(customer_email_settings['smtp_username'], customer_email_settings['smtp_password'])
             server.send_message(msg)
             
         logger.info(f"Email notification sent to {to_email} for lead: {lead_name}")
@@ -853,53 +824,6 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
         logger.error(f"Email notification error: {e}")
         return False
 
-def send_push_notification(subscription_info, lead_name, platform, campaign_name):
-    """Send native push notification to mobile device"""
-    try:
-        if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
-            logger.info("Push notifications disabled - no VAPID keys configured")
-            return False
-            
-        # Create push notification data
-        notification_payload = {
-            "title": "🔔 לייד חדש הגיע!",
-            "body": f"לייד חדש מ{platform}: {lead_name}",
-            "icon": "https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/static/icon-192.png",
-            "badge": "https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/static/badge-72.png",
-            "vibrate": [200, 100, 200],
-            "tag": "new-lead",
-            "requireInteraction": True,
-            "actions": [
-                {
-                    "action": "view",
-                    "title": "צפה בלייד"
-                }
-            ],
-            "data": {
-                "url": "/campaign-manager",
-                "leadName": lead_name,
-                "platform": platform,
-                "campaign": campaign_name
-            }
-        }
-        
-        # Send push notification
-        webpush(
-            subscription_info=subscription_info,
-            data=json.dumps(notification_payload),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims=VAPID_CLAIMS
-        )
-        
-        logger.info(f"Native push notification sent for lead: {lead_name}")
-        return True
-        
-    except WebPushException as e:
-        logger.error(f"Web push error: {e}")
-        return False
-    except Exception as e:
-        logger.error(f"Push notification error: {e}")
-        return False
 
 def send_notification(customer_id, notification_data):
     """Send notification to all connected clients for a specific customer"""
@@ -919,117 +843,7 @@ def send_notification(customer_id, notification_data):
     except Exception as e:
         logger.error(f"Error sending notification: {e}")
 
-@app.route('/notifications/stream')
-@campaign_manager_required
-def notification_stream():
-    """Server-Sent Events endpoint for real-time notifications"""
-    try:
-        # Get user's customer ID before creating the generator
-        user_role = session.get('role')
-        username = session.get('username', 'unknown')
-        
-        if user_role == 'admin':
-            customer_id = session.get('selected_customer_id', 1)
-        else:
-            customer_id = session.get('customer_id', 1)
-        
-        logger.info(f"SSE connection request from {username} (role: {user_role}, customer: {customer_id})")
-        
-        def event_stream():
-            # Create a new queue for this client
-            client_queue = Queue()
-            
-            try:
-                # Initialize the customer's queue list if it doesn't exist
-                if customer_id not in notification_queues:
-                    notification_queues[customer_id] = []
-                notification_queues[customer_id].append(client_queue)
-                
-                logger.info(f"SSE client connected: {username} for customer {customer_id}")
-                
-                # Send initial connection confirmation
-                yield f"data: {json.dumps({'type': 'connected', 'customer_id': customer_id, 'username': username})}\n\n"
-                
-                # Send any pending notifications for this customer
-                if hasattr(app, 'pending_notifications') and customer_id in app.pending_notifications:
-                    pending = app.pending_notifications[customer_id]
-                    logger.info(f"Delivering {len(pending)} pending notifications to {username}")
-                    
-                    for pending_notification in pending:
-                        yield f"data: {json.dumps(pending_notification)}\n\n"
-                        logger.info(f"Delivered pending notification: {pending_notification.get('title', 'unknown')}")
-                    
-                    # Clear delivered notifications
-                    app.pending_notifications[customer_id] = []
-                    logger.info(f"Cleared pending notifications for customer {customer_id}")
-                
-                while True:
-                    # Wait for notification with timeout
-                    try:
-                        notification = client_queue.get(timeout=30)
-                        yield f"data: {json.dumps(notification)}\n\n"
-                    except:
-                        # Send heartbeat to keep connection alive
-                        yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': int(time.time()), 'customer_id': customer_id})}\n\n"
-                        
-            except GeneratorExit:
-                # Client disconnected, clean up
-                if customer_id in notification_queues and client_queue in notification_queues[customer_id]:
-                    notification_queues[customer_id].remove(client_queue)
-                logger.info(f"SSE client disconnected: {username} for customer {customer_id}")
-            except Exception as e:
-                logger.error(f"SSE stream error for {username}: {e}")
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
-        return Response(event_stream(), mimetype='text/event-stream',
-                       headers={'Cache-Control': 'no-cache',
-                               'Connection': 'keep-alive',
-                               'Access-Control-Allow-Origin': '*',
-                               'X-Accel-Buffering': 'no'})
-                               
-    except Exception as e:
-        logger.error(f"SSE endpoint error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/test-notification')
-@campaign_manager_required 
-def test_notification():
-    """Test endpoint to manually trigger a notification"""
-    try:
-        # Get user's customer ID
-        user_role = session.get('role')
-        if user_role == 'admin':
-            customer_id = session.get('selected_customer_id', 1)
-        else:
-            customer_id = session.get('customer_id', 1)
-            
-        logger.info(f"Manual notification test for customer {customer_id}")
-        
-        # Create test notification
-        notification_id = create_notification(
-            customer_id=customer_id,
-            lead_id=999,  # Test lead ID
-            notification_type='new_lead', 
-            title='בדיקת התראה ידנית',
-            message='זוהי התראה ידנית לבדיקת המערכת',
-            data={
-                'lead_name': 'בדיקה ידנית',
-                'lead_email': 'test@manual.com',
-                'platform': 'manual',
-                'test': True
-            }
-        )
-        
-        return jsonify({
-            'success': True,
-            'notification_id': notification_id,
-            'customer_id': customer_id,
-            'message': 'Test notification sent'
-        })
-        
-    except Exception as e:
-        logger.error(f"Test notification error: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/init-db')
 @admin_required
@@ -1046,55 +860,52 @@ def initialize_database():
         logger.error(f"Manual database initialization error: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/subscribe-push', methods=['POST'])
-@campaign_manager_required
-def subscribe_push():
-    """Store push notification subscription for campaign managers"""
-    try:
-        data = request.get_json()
-        if not data or 'subscription' not in data:
-            return jsonify({'error': 'Missing subscription data'}), 400
-            
-        subscription = data['subscription']
-        user_role = data.get('user_role', 'unknown')
-        username = session.get('username', 'unknown')
-        customer_id = session.get('customer_id', 1)
-        
-        logger.info(f"Push subscription received from {username}: {subscription}")
-        
-        # Store subscription in a simple global dict for now
-        # In production, store in database
-        if not hasattr(app, 'push_subscriptions'):
-            app.push_subscriptions = {}
-            
-        app.push_subscriptions[username] = {
-            'subscription': subscription,
-            'customer_id': customer_id,
-            'user_role': user_role,
-            'created_at': int(time.time())
-        }
-        
-        logger.info(f"Push subscription stored for {username} (customer {customer_id})")
-        
-        return jsonify({
-            'success': True,
-            'message': 'Push subscription registered successfully'
-        })
-        
-    except Exception as e:
-        logger.error(f"Push subscription error: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     """Serve static files including service worker"""
     return send_from_directory('static', filename)
 
-@app.route('/notification-test')
+@app.route('/email-status')
 @campaign_manager_required
-def notification_test():
-    """Simple page to test native mobile notifications"""
-    return render_template('notification_test.html')
+def email_status():
+    """Check email notification status for current customer"""
+    try:
+        user_role = session.get('role')
+        if user_role == 'admin':
+            customer_id = session.get('selected_customer_id', 1)
+        else:
+            customer_id = session.get('customer_id', 1)
+            
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT sender_email, smtp_server, smtp_username, email_notifications_enabled
+            FROM customers WHERE id = %s
+        """, (customer_id,))
+        
+        customer_settings = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if customer_settings and customer_settings['email_notifications_enabled']:
+            return jsonify({
+                'enabled': True,
+                'sender_email': customer_settings['sender_email'] or customer_settings['smtp_username'],
+                'smtp_server': customer_settings['smtp_server']
+            })
+        else:
+            return jsonify({
+                'enabled': False,
+                'message': 'Email notifications not configured'
+            })
+            
+    except Exception as e:
+        logger.error(f"Email status check error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/leads')
 @login_required

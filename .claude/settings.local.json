@@ -17,7 +17,8 @@
       "Bash(heroku pg:psql:*)",
       "Bash(python:*)",
       "Bash(bash:*)",
-      "Bash(time curl:*)"
+      "Bash(time curl:*)",
+      "Bash(heroku config:set:*)"
     ],
     "deny": [],
     "ask": []
