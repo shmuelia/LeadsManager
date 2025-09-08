@@ -73,13 +73,29 @@
 </head>
 <body>
     <div class="container">
-        <!-- Notification Setup and Test -->
-        <div style="background: #3b82f6; color: white; padding: 15px; text-align: center; margin: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="setupNativeNotifications()" id="setup-button">
-            📱 הפעל התראות נייד מקוריות
-        </div>
-        
-        <div style="background: #10b981; color: white; padding: 15px; text-align: center; margin: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="testNotification()" id="test-button">
-            🔔 בדיקת התראה
+        <!-- Simple Native Notification Test -->
+        <div style="background: #ef4444; color: white; padding: 20px; text-align: center; margin: 15px; border-radius: 12px; font-size: 18px; font-weight: bold; border: 3px solid #dc2626;" onclick="
+            if (Notification.permission !== 'granted') {
+                Notification.requestPermission().then(function(permission) {
+                    if (permission === 'granted') {
+                        new Notification('🔔 התראות Android פעילות!', {
+                            body: 'התראה זו צריכה להופיע בפאנל ההתראות של Android',
+                            icon: '/favicon.ico',
+                            vibrate: [300, 100, 300]
+                        });
+                        alert('בדוק את פאנל ההתראות של Android!');
+                    }
+                });
+            } else {
+                new Notification('🎯 בדיקת התראה מקורית', {
+                    body: 'התראה מקורית - צריכה להופיע בפאנל ההתראות',
+                    icon: '/favicon.ico',
+                    vibrate: [300, 100, 300]
+                });
+                alert('התראה נשלחה - בדוק את פאנל ההתראות!');
+            }
+        ">
+            📱 לחץ להפעלת התראות Android מקוריות
         </div>
         
         <!-- Include Unified Lead Manager Component -->
