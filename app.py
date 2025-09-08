@@ -831,8 +831,16 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}
         logger.info(f"Email notification sent to {to_email} for lead: {lead_name}")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP Authentication failed for {customer_email_settings['smtp_username']}: {e}")
+        logger.error(f"Check Gmail App Password or enable 2-factor authentication")
+        return False
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error sending to {to_email}: {e}")
+        return False
     except Exception as e:
         logger.error(f"Email notification error: {e}")
+        logger.error(f"SMTP settings: server={customer_email_settings.get('smtp_server')}, port={customer_email_settings.get('smtp_port')}, user={customer_email_settings.get('smtp_username')}")
         return False
 
 
