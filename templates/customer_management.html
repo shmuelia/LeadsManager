@@ -282,6 +282,51 @@
             opacity: 0.6;
             pointer-events: none;
         }
+        
+        /* Custom tooltips */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip-text {
+            visibility: hidden;
+            width: 300px;
+            background-color: #1f2937;
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            font-size: 12px;
+            line-height: 1.4;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+        
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -378,28 +423,43 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="senderEmail" title="כתובת האימייל שתופיע כשולח בהתראות. למשל: notifications@company.com">כתובת שולח (From Email) *</label>
-                        <input type="email" id="senderEmail" name="sender_email" class="form-control" placeholder="notifications@company.com" title="הכתובת שתופיע בשדה 'מאת' בהתראות האימייל">
+                        <div class="tooltip-container">
+                            <label for="senderEmail">כתובת שולח (From Email) * ❓</label>
+                            <span class="tooltip-text">כתובת האימייל שתופיע כשולח בהתראות הלידים. למשל: notifications@company.com או leads@yourbusiness.co.il</span>
+                        </div>
+                        <input type="email" id="senderEmail" name="sender_email" class="form-control" placeholder="notifications@company.com">
                     </div>
                     
                     <div class="form-group">
-                        <label for="smtpServer" title="כתובת שרת האימייל היוצא. לגמייל: smtp.gmail.com, לאאוטלוק: smtp-mail.outlook.com">שרת SMTP</label>
-                        <input type="text" id="smtpServer" name="smtp_server" class="form-control" value="smtp.gmail.com" title="שרת SMTP לשליחת אימיילים. גמייל: smtp.gmail.com">
+                        <div class="tooltip-container">
+                            <label for="smtpServer">שרת SMTP ❓</label>
+                            <span class="tooltip-text">כתובת שרת האימייל היוצא:<br>• גמייל: smtp.gmail.com<br>• אאוטלוק: smtp-mail.outlook.com<br>• יאהו: smtp.mail.yahoo.com</span>
+                        </div>
+                        <input type="text" id="smtpServer" name="smtp_server" class="form-control" value="smtp.gmail.com">
                     </div>
                     
                     <div class="form-group">
-                        <label for="smtpPort" title="פורט חיבור לשרת SMTP. 587 לחיבור מאובטח (TLS), 465 ל-SSL">פורט SMTP</label>
-                        <input type="number" id="smtpPort" name="smtp_port" class="form-control" value="587" title="פורט שרת SMTP. בדרך כלל 587 או 465">
+                        <div class="tooltip-container">
+                            <label for="smtpPort">פורט SMTP ❓</label>
+                            <span class="tooltip-text">פורט חיבור לשרת SMTP:<br>• 587 - חיבור מאובטח (TLS) - מומלץ<br>• 465 - חיבור SSL<br>• 25 - לא מאובטח (לא מומלץ)</span>
+                        </div>
+                        <input type="number" id="smtpPort" name="smtp_port" class="form-control" value="587">
                     </div>
                     
                     <div class="form-group">
-                        <label for="smtpUsername" title="כתובת האימייל המשמשת להתחברות לשרת SMTP">שם משתמש SMTP (Email)</label>
-                        <input type="email" id="smtpUsername" name="smtp_username" class="form-control" placeholder="your-email@gmail.com" title="כתובת האימייל להתחברות לשרת SMTP">
+                        <div class="tooltip-container">
+                            <label for="smtpUsername">שם משתמש SMTP (Email) ❓</label>
+                            <span class="tooltip-text">כתובת האימייל המשמשת להתחברות לשרת SMTP. בדרך כלל זהה לכתובת האימייל הרגילה שלך</span>
+                        </div>
+                        <input type="email" id="smtpUsername" name="smtp_username" class="form-control" placeholder="your-email@gmail.com">
                     </div>
                     
                     <div class="form-group">
-                        <label for="smtpPassword" title="לגמייל: צור App Password בהגדרות האבטחה. לא הסיסמה הרגילה!">סיסמת SMTP (App Password)</label>
-                        <input type="password" id="smtpPassword" name="smtp_password" class="form-control" placeholder="App-specific password" title="לגמייל: App Password (לא הסיסמה הרגילה). ליצור ב: myaccount.google.com/apppasswords">
+                        <div class="tooltip-container">
+                            <label for="smtpPassword">סיסמת SMTP (App Password) ❓</label>
+                            <span class="tooltip-text">🚨 לגמייל: צור App Password בהגדרות האבטחה - לא הסיסמה הרגילה!<br>ליצור ב: myaccount.google.com/apppasswords<br>לספקים אחרים: השתמש בסיסמת האימייל הרגילה</span>
+                        </div>
+                        <input type="password" id="smtpPassword" name="smtp_password" class="form-control" placeholder="App-specific password">
                     </div>
                     
                     <div class="form-group">
