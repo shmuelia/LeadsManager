@@ -711,7 +711,7 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
         logger.error(f"Error creating notification: {e}")
         return None
 
-def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_email, platform, campaign_name):
+def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_email, platform, campaign_name, email_type="new_lead", assigned_to=None):
     """Send email notification for new lead using customer-specific email settings"""
     try:
         # Get customer email settings
@@ -739,14 +739,25 @@ def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_e
             return False
             
         # Create email message using customer settings
+        if email_type == "new_lead":
+            subject = f'🔔 לייד חדש הגיע! - {lead_name}'
+            title = 'לייד חדש הגיע!'
+            instruction = 'כנס למערכת לניהול והקצאת הלייד:'
+            target_url = '/campaign-manager'
+        else:  # assignment
+            subject = f'📋 הוקצה לך לייד חדש - {lead_name}'
+            title = f'הוקצה לך לייד חדש על ידי {assigned_to}!'
+            instruction = 'כנס למערכת לניהול הלייד:'
+            target_url = '/dashboard'
+        
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'🔔 לייד חדש הגיע! - {lead_name}'
+        msg['Subject'] = subject
         msg['From'] = customer_email_settings['sender_email'] or customer_email_settings['smtp_username']
         msg['To'] = to_email
         
         # Hebrew email content
         text_content = f"""
-לייד חדש הגיע!
+{title}
 
 שם: {lead_name}
 טלפון: {lead_phone or 'לא צוין'}
@@ -754,8 +765,8 @@ def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_e
 פלטפורמה: {platform or 'לא ידוע'}
 קמפיין: {campaign_name or 'לא צוין'}
 
-כנס למערכת לניהול הלייד:
-https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
+{instruction}
+https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}
 
 מערכת ניהול לידים - אלחנן מאפיית לחם
         """
@@ -778,7 +789,7 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
         <body>
             <div class="container">
                 <div class="header">
-                    <h2>🔔 לייד חדש הגיע!</h2>
+                    <h2>{title}</h2>
                 </div>
                 
                 <div class="lead-info">
@@ -790,8 +801,8 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager
                 </div>
                 
                 <div style="text-align: center;">
-                    <a href="https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/campaign-manager" class="cta-button">
-                        🚀 כנס למערכת לניהול הלייד
+                    <a href="https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}" class="cta-button">
+                        🚀 {instruction.replace(':', '')}
                     </a>
                 </div>
                 
@@ -2229,6 +2240,43 @@ def assign_lead(lead_id):
         conn.commit()
         cur.close()
         conn.close()
+        
+        # Send email notification to assigned user
+        if assigned_to:
+            try:
+                # Get assigned user's email
+                conn_email = get_db_connection()
+                if conn_email:
+                    cur_email = conn_email.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                    cur_email.execute("""
+                        SELECT email, full_name, customer_id FROM users 
+                        WHERE username = %s AND active = true AND email IS NOT NULL
+                    """, (assigned_to,))
+                    
+                    assigned_user = cur_email.fetchone()
+                    cur_email.close()
+                    conn_email.close()
+                    
+                    if assigned_user and assigned_user['email']:
+                        logger.info(f"Sending assignment email to {assigned_user['full_name']} ({assigned_user['email']})")
+                        email_sent = send_email_notification(
+                            customer_id=assigned_user['customer_id'],
+                            to_email=assigned_user['email'],
+                            lead_name=lead_name,
+                            lead_phone=lead_phone,
+                            lead_email=lead_email,
+                            platform=platform,
+                            campaign_name=campaign_name,
+                            email_type="assignment",
+                            assigned_to=session.get('full_name', 'מנהל קמפיין')
+                        )
+                        if email_sent:
+                            logger.info(f"Assignment email sent to {assigned_user['email']}")
+                        else:
+                            logger.warning(f"Failed to send assignment email to {assigned_user['email']}")
+                            
+            except Exception as email_error:
+                logger.error(f"Error sending assignment email: {email_error}")
         
         return jsonify({
             'status': 'success',
