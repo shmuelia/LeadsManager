@@ -73,9 +73,13 @@
 </head>
 <body>
     <div class="container">
-        <!-- Test Notification Button - Always Visible -->
-        <div style="background: #10b981; color: white; padding: 15px; text-align: center; margin: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="testNotification()">
-            🔔 לחץ כאן לבדיקת התראה
+        <!-- Notification Setup and Test -->
+        <div style="background: #3b82f6; color: white; padding: 15px; text-align: center; margin: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="setupNativeNotifications()" id="setup-button">
+            📱 הפעל התראות נייד מקוריות
+        </div>
+        
+        <div style="background: #10b981; color: white; padding: 15px; text-align: center; margin: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="testNotification()" id="test-button">
+            🔔 בדיקת התראה
         </div>
         
         <!-- Include Unified Lead Manager Component -->
@@ -394,25 +398,85 @@
             }
         });
         
+        // Setup native notifications  
+        async function setupNativeNotifications() {
+            console.log('Setting up native mobile notifications...');
+            
+            // Check support
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                alert('התראות נייד לא נתמכות בדפדפן זה');
+                return;
+            }
+            
+            try {
+                // Request permission
+                const permission = await Notification.requestPermission();
+                console.log('Notification permission:', permission);
+                
+                if (permission === 'granted') {
+                    // Register service worker
+                    const registration = await navigator.serviceWorker.register('/static/sw.js');
+                    console.log('Service worker registered');
+                    
+                    // Subscribe to push
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array('BM314mE394M4-HUFMwF3Gv0MxMXlRCGwP_TEotGPq-ELFff_kHnGPZDyTqv2H90XzFBzXNmryM3e5jk72YTqr5E')
+                    });
+                    
+                    console.log('Push subscription created');
+                    
+                    // Send test native notification
+                    new Notification('🔔 התראות נייד פעילות!', {
+                        body: 'התראות מקוריות הופעלו בהצלחה - תקבל התראות כאן',
+                        icon: '/favicon.ico',
+                        vibrate: [200, 100, 200]
+                    });
+                    
+                    document.getElementById('setup-button').style.background = '#10b981';
+                    document.getElementById('setup-button').innerHTML = '✅ התראות נייד פעילות';
+                    
+                } else {
+                    alert('יש לאשר התראות כדי לקבל עדכונים על לידים');
+                }
+                
+            } catch (error) {
+                console.error('Setup error:', error);
+                alert('שגיאה בהגדרת התראות: ' + error.message);
+            }
+        }
+        
         // Test notification function
         function testNotification() {
             console.log('Manual test notification triggered');
-            const testNotification = {
-                type: 'new_lead',
-                title: 'בדיקת התראה ידנית',
-                message: 'זוהי התראה לבדיקה - צריכה להופיע!',
-                data: {
-                    lead_name: 'בדיקה ידנית',
-                    platform: 'test'
-                }
-            };
             
-            // Simulate receiving notification through SSE
-            try {
-                showNotification(testNotification);
-                console.log('Manual notification displayed');
-            } catch (e) {
-                console.error('Error showing manual notification:', e);
+            // Test native notification if permission granted
+            if (Notification.permission === 'granted') {
+                new Notification('🔔 בדיקת התראה מקורית', {
+                    body: 'זוהי התראה מקורית של Android - אמורה להופיע בפאנל ההתראות',
+                    icon: '/favicon.ico',
+                    vibrate: [200, 100, 200],
+                    tag: 'test-notification'
+                });
+                console.log('Native notification sent');
+            } else {
+                // Fallback to banner notification
+                const testNotification = {
+                    type: 'new_lead',
+                    title: 'בדיקת התראה ידנית',
+                    message: 'זוהי התראה לבדיקה - צריכה להופיע!',
+                    data: {
+                        lead_name: 'בדיקה ידנית',
+                        platform: 'test'
+                    }
+                };
+                
+                try {
+                    showNotification(testNotification);
+                    console.log('Banner notification displayed');
+                } catch (e) {
+                    console.error('Error showing notification:', e);
+                }
             }
         }
         
