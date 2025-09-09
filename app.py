@@ -741,14 +741,14 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
             
         # Create email message using customer settings
         if email_type == "new_lead":
-            subject = f'🔔 !לייד חדש הגיע - {lead_name}'
-            title = f'שלום {to_username}, !לייד חדש הגיע'
-            instruction = ':כנס למערכת לניהול והקצאת הלייד'
+            subject = f'🔔 לייד חדש הגיע! - {lead_name}'
+            title = f'שלום {to_username}, לייד חדש הגיע!'
+            instruction = 'כנס למערכת לניהול והקצאת הלייד:'
             target_url = '/campaign-manager'
         else:  # assignment
             subject = f'📋 הוקצה לך לייד חדש - {lead_name}'
-            title = f'!שלום {to_username}, הוקצה לך לייד חדש על ידי {assigned_to}'
-            instruction = ':כנס למערכת לניהול הלייד'
+            title = f'שלום {to_username}, הוקצה לך לייד חדש על ידי {assigned_to}!'
+            instruction = 'כנס למערכת לניהול הלייד:'
             target_url = '/dashboard'
         
         msg = MIMEMultipart('alternative')
