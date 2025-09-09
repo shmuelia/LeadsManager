@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template, session, redirect, u
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
+import pytz
 import json
 import logging
 import os
@@ -723,7 +724,7 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
             
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            SELECT sender_email, smtp_server, smtp_port, smtp_username, smtp_password, email_notifications_enabled
+            SELECT sender_email, smtp_server, smtp_port, smtp_username, smtp_password, email_notifications_enabled, timezone
             FROM customers WHERE id = %s
         """, (customer_id,))
         
@@ -756,6 +757,11 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
         msg['From'] = customer_email_settings['sender_email'] or customer_email_settings['smtp_username']
         msg['To'] = to_email
         
+        # Get Israel timezone timestamp
+        customer_timezone = customer_email_settings.get('timezone', 'Asia/Jerusalem')
+        israel_tz = pytz.timezone(customer_timezone)
+        current_time = datetime.now(israel_tz).strftime('%d/%m/%Y %H:%M')
+        
         # Hebrew email content
         text_content = f"""
 {title}
@@ -765,6 +771,7 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
 אימייל: {lead_email or 'לא צוין'}  
 פלטפורמה: {platform or 'לא ידוע'}
 קמפיין: {campaign_name or 'לא צוין'}
+זמן: {current_time} (שעון ישראל)
 
 {instruction}
 https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}
