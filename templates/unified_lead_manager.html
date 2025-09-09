@@ -487,6 +487,93 @@
             display: none; /* Hide table on mobile */
         }
         
+        /* Enhanced mobile status badges */
+        .status-badge {
+            min-height: 44px; /* Touch target standard */
+            min-width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            border-radius: 20px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .status-badge:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        /* Mobile-friendly status change modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        /* Mobile status selection with large touch targets */
+        .mobile-status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
+        
+        .mobile-status-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 20px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 80px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .mobile-status-btn:active {
+            transform: scale(0.95);
+            background: #f8fafc;
+        }
+        
+        .status-icon {
+            font-size: 24px;
+        }
+        
+        /* Status-specific colors for mobile buttons */
+        .mobile-status-btn.status-new { border-color: #059669; color: #059669; }
+        .mobile-status-btn.status-contacted { border-color: #3b82f6; color: #3b82f6; }
+        .mobile-status-btn.status-qualified { border-color: #f59e0b; color: #f59e0b; }
+        .mobile-status-btn.status-interested { border-color: #22c55e; color: #22c55e; }
+        .mobile-status-btn.status-hired { border-color: #10b981; color: #10b981; }
+        .mobile-status-btn.status-rejected { border-color: #ef4444; color: #ef4444; }
+        .mobile-status-btn.status-closed { border-color: #9ca3af; color: #9ca3af; }
+        
         .control-panel {
             flex-direction: column;
             align-items: stretch;
