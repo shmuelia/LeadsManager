@@ -2366,8 +2366,8 @@ def assign_lead_campaign_manager(lead_id):
             logger.error(f"No customer_id found in session for {session.get('username')}")
             return jsonify({'error': 'No customer assigned to your account'}), 400
         
-        # Check if lead exists and belongs to user's customer scope
-        cur.execute("SELECT id, name, customer_id FROM leads WHERE id = %s", (lead_id,))
+        # Check if lead exists and belongs to user's customer scope - get all details for email
+        cur.execute("SELECT id, name, customer_id, phone, email, platform, campaign_name FROM leads WHERE id = %s", (lead_id,))
         lead = cur.fetchone()
         if not lead:
             return jsonify({'error': 'Lead not found'}), 404
@@ -2378,6 +2378,10 @@ def assign_lead_campaign_manager(lead_id):
             return jsonify({'error': 'Access denied'}), 403
             
         lead_name = lead[1]
+        lead_phone = lead[3]
+        lead_email = lead[4]  
+        platform = lead[5]
+        campaign_name = lead[6]
         
         # If assigning to a user, validate user exists and belongs to same customer
         if assigned_to:
