@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>לוח בקרה - ניהול לידים</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --primary-color: #059669;
+            --primary-light: #10b981;
+            --secondary-color: #3b82f6;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --success-color: #22c55e;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+        
+        body {
+            font-family: 'Heebo', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: rtl;
+            overflow-x: hidden;
+        }
+        
+        /* Mobile-First Container */
+        .mobile-container {
+            max-width: 100vw;
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px; /* Space for bottom navigation */
+        }
+        
+        /* Modern App Header */
+        .mobile-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .header-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 8px;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .header-btn:active {
+            background: var(--gray-200);
+            transform: scale(0.95);
+        }
+        
+        /* Enhanced Lead Cards */
+        .leads-section {
+            padding: 16px;
+        }
+        
+        .enhanced-lead-card {
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--gray-100);
+            overflow: hidden;
+            position: relative;
+            transform: translateZ(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .enhanced-lead-card:active {
+            transform: translateY(2px) translateZ(0);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        }
+        
+        /* Card Status Bar */
+        .card-status-bar {
+            height: 4px;
+            background: var(--gray-200);
+        }
+        
+        .status-new { background: var(--primary-color); }
+        .status-contacted { background: var(--secondary-color); }
+        .status-qualified { background: var(--warning-color); }
+        .status-interested { background: var(--success-color); }
+        .status-hired { background: var(--primary-light); }
+        .status-rejected { background: var(--danger-color); }
+        .status-closed { background: var(--gray-400); }
+        
+        /* Card Content */
+        .card-content {
+            padding: 20px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        
+        .lead-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+            line-height: 1.3;
+            max-width: 70%;
+        }
+        
+        .lead-priority {
+            background: var(--warning-color);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+        
+        .card-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-900);
+            direction: ltr;
+            text-align: right;
+        }
+        
+        /* Touch-Optimized Action Buttons */
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .action-btn-enhanced {
+            flex: 1;
+            min-height: 44px; /* iOS/Android touch target standard */
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            background: white;
+            color: var(--gray-700);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .action-btn-enhanced:active {
+            background: var(--gray-50);
+            transform: scale(0.98);
+        }
+        
+        .action-btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .action-btn-primary:active {
+            background: #047857;
+        }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--gray-200);
+            padding: 8px 0;
+            z-index: 1000;
+            direction: rtl;
+        }
+        
+        .nav-items {
+            display: flex;
+            justify-content: space-around;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            min-width: 64px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+        }
+        
+        .nav-item:active {
+            background: var(--gray-100);
+            transform: scale(0.95);
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+            color: var(--gray-600);
+        }
+        
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--gray-600);
+            text-align: center;
+        }
+        
+        .nav-item.active .nav-icon,
+        .nav-item.active .nav-label {
+            color: var(--primary-color);
+        }
+        
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 100px;
+            left: 20px; /* RTL: bottom-left instead of bottom-right */
+            width: 56px;
+            height: 56px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(5, 150, 105, 0.4);
+            z-index: 999;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .fab:active {
+            transform: scale(0.9);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.6);
+        }
+        
+        /* Quick Filters */
+        .quick-filters {
+            display: flex;
+            gap: 8px;
+            padding: 16px;
+            padding-bottom: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .filter-chip {
+            flex-shrink: 0;
+            padding: 8px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 20px;
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .filter-chip:active {
+            background: var(--gray-100);
+        }
+        
+        .filter-chip.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        /* Status Indicators */
+        .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-new { background: #dcfce7; color: #166534; }
+        .status-contacted { background: #dbeafe; color: #1e40af; }
+        .status-qualified { background: #fef3c7; color: #92400e; }
+        .status-interested { background: #ecfccb; color: #365314; }
+        .status-hired { background: #d1fae5; color: #065f46; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .status-closed { background: #f3f4f6; color: #4b5563; }
+        
+        /* Pull to Refresh */
+        .pull-refresh {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-500);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+        
+        /* Loading States */
+        .skeleton-card {
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            padding: 20px;
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+        
+        .skeleton-line {
+            height: 12px;
+            background: var(--gray-200);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .skeleton-line.short {
+            width: 60%;
+        }
+        
+        /* Haptic Feedback Classes */
+        .haptic-light:active {
+            animation: haptic-light 0.1s ease;
+        }
+        
+        @keyframes haptic-light {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.98); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            }
+            
+            .mobile-header {
+                background: rgba(30, 41, 59, 0.95);
+                border-bottom-color: var(--gray-700);
+            }
+            
+            .header-title {
+                color: white;
+            }
+            
+            .enhanced-lead-card {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+            }
+            
+            .lead-name {
+                color: white;
+            }
+            
+            .info-value {
+                color: var(--gray-200);
+            }
+        }
+        
+        /* Accessibility Improvements */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        /* Focus States */
+        .action-btn-enhanced:focus,
+        .nav-item:focus,
+        .fab:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Enhanced Mobile Header -->
+        <header class="mobile-header">
+            <h1 class="header-title">🎯 לידים שלי</h1>
+            <div class="header-actions">
+                <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
+                    🔍
+                </button>
+                <button class="header-btn haptic-light" onclick="showNotifications()" aria-label="התראות">
+                    🔔
+                </button>
+                <button class="header-btn haptic-light" onclick="showProfile()" aria-label="פרופיל">
+                    👤
+                </button>
+            </div>
+        </header>
+        
+        <!-- Quick Filters -->
+        <div class="quick-filters">
+            <div class="filter-chip active haptic-light" onclick="filterLeads('all')">
+                🌟 הכל
+            </div>
+            <div class="filter-chip haptic-light" onclick="filterLeads('new')">
+                🆕 חדש
+            </div>
+            <div class="filter-chip haptic-light" onclick="filterLeads('mine')">
+                👤 שלי
+            </div>
+            <div class="filter-chip haptic-light" onclick="filterLeads('urgent')">
+                🚨 דחוף
+            </div>
+            <div class="filter-chip haptic-light" onclick="filterLeads('today')">
+                📅 היום
+            </div>
+        </div>
+        
+        <!-- Enhanced Lead Cards Section -->
+        <div class="leads-section" id="leadsContainer">
+            <!-- Lead cards will be dynamically generated here -->
+            
+            <!-- Example Enhanced Lead Card -->
+            <div class="enhanced-lead-card haptic-light" onclick="openLead(123)">
+                <div class="card-status-bar status-new"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <div>
+                            <div class="lead-name">אברהם כהן</div>
+                            <div class="info-value" style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                📱 050-1234567
+                            </div>
+                        </div>
+                        <div class="status-badge status-new">חדש</div>
+                    </div>
+                    
+                    <div class="card-info-grid">
+                        <div class="info-item">
+                            <span class="info-label">פלטפורמה</span>
+                            <span class="info-value">Facebook</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">קמפיין</span>
+                            <span class="info-value">קיץ 2024</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">תאריך</span>
+                            <span class="info-value">09/09 15:30</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">מוקצה ל</span>
+                            <span class="info-value">לא מוקצה</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <button class="action-btn-enhanced haptic-light" onclick="callLead(event, '050-1234567')">
+                            📞 התקשר
+                        </button>
+                        <button class="action-btn-enhanced haptic-light" onclick="whatsappLead(event, '050-1234567')">
+                            💬 ווטסאפ
+                        </button>
+                        <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="assignLead(event, 123)">
+                            👤 הקצה
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div class="skeleton-card" style="display: none;" id="loadingSkeleton">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line"></div>
+            </div>
+            
+            <!-- Empty State -->
+            <div class="empty-state" style="display: none;" id="emptyState">
+                <div class="empty-icon">📋</div>
+                <div>אין לידים תואמים</div>
+            </div>
+        </div>
+        
+        <!-- Floating Action Button -->
+        <button class="fab haptic-light" onclick="addNewLead()" aria-label="הוסף ליד חדש">
+            ➕
+        </button>
+        
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <div class="nav-items">
+                <div class="nav-item active haptic-light" onclick="navigateTo('dashboard')">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">בית</div>
+                </div>
+                <div class="nav-item haptic-light" onclick="navigateTo('leads')">
+                    <div class="nav-icon">📋</div>
+                    <div class="nav-label">לידים</div>
+                </div>
+                <div class="nav-item haptic-light" onclick="navigateTo('calls')">
+                    <div class="nav-icon">📞</div>
+                    <div class="nav-label">שיחות</div>
+                </div>
+                <div class="nav-item haptic-light" onclick="navigateTo('reports')">
+                    <div class="nav-icon">📊</div>
+                    <div class="nav-label">דוחות</div>
+                </div>
+                <div class="nav-item haptic-light" onclick="navigateTo('profile')">
+                    <div class="nav-icon">👤</div>
+                    <div class="nav-label">פרופיל</div>
+                </div>
+            </div>
+        </nav>
+    </div>
+    
+    <script>
+        // Modern Mobile Interactions
+        let touchStartY = 0;
+        let touchEndY = 0;
+        
+        // Pull to Refresh
+        function handleTouchStart(e) {
+            touchStartY = e.changedTouches[0].screenY;
+        }
+        
+        function handleTouchEnd(e) {
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipeGesture();
+        }
+        
+        function handleSwipeGesture() {
+            const swipeDistance = touchEndY - touchStartY;
+            if (swipeDistance > 100 && window.scrollY === 0) {
+                refreshLeads();
+            }
+        }
+        
+        // Add touch listeners
+        document.addEventListener('touchstart', handleTouchStart, false);
+        document.addEventListener('touchend', handleTouchEnd, false);
+        
+        // Navigation Functions
+        function navigateTo(section) {
+            // Update active nav state
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Navigate to section (implement routing logic)
+            console.log(`Navigating to: ${section}`);
+        }
+        
+        function refreshLeads() {
+            console.log('Refreshing leads...');
+            // Add refresh logic here
+        }
+        
+        function callLead(event, phone) {
+            event.stopPropagation();
+            window.location.href = `tel:${phone}`;
+        }
+        
+        function whatsappLead(event, phone) {
+            event.stopPropagation();
+            const cleanPhone = phone.replace(/[^\d]/g, '');
+            window.open(`https://wa.me/972${cleanPhone.substring(1)}`, '_blank');
+        }
+        
+        function assignLead(event, leadId) {
+            event.stopPropagation();
+            console.log(`Assigning lead ${leadId}`);
+            // Add assignment logic here
+        }
+        
+        function openLead(leadId) {
+            console.log(`Opening lead ${leadId}`);
+            // Add lead details logic here
+        }
+        
+        function addNewLead() {
+            console.log('Adding new lead');
+            // Add new lead logic here
+        }
+        
+        function toggleSearch() {
+            console.log('Toggle search');
+            // Add search logic here
+        }
+        
+        function showNotifications() {
+            console.log('Show notifications');
+            // Add notifications logic here
+        }
+        
+        function showProfile() {
+            window.location.href = '/logout';
+        }
+        
+        function filterLeads(type) {
+            console.log(`Filtering leads: ${type}`);
+            // Add filtering logic here
+        }
+        
+        // Add haptic feedback simulation
+        function simulateHaptic() {
+            if (navigator.vibrate) {
+                navigator.vibrate(50); // Light haptic feedback
+            }
+        }
+        
+        // Add haptic to all haptic-light elements
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.closest('.haptic-light')) {
+                simulateHaptic();
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add initialization logic here
+            console.log('Enhanced mobile dashboard initialized');
+        });
+    </script>
+</body>
+</html>

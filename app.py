@@ -967,6 +967,12 @@ def test_email_to_user():
         logger.error(f"Direct assignment email test error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/mobile-dashboard')
+@login_required
+def mobile_dashboard():
+    """Enhanced mobile-first dashboard with modern UX"""
+    return render_template('dashboard_mobile_enhanced.html')
+
 @app.route('/leads')
 @login_required
 def get_leads():
