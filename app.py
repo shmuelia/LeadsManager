@@ -2419,6 +2419,48 @@ def assign_lead_campaign_manager(lead_id):
             except Exception as e:
                 logger.error(f"Error sending WhatsApp notification: {e}")
         
+        # Send email notification to assigned user (Campaign Manager Assignment)
+        if assigned_to:
+            logger.info(f"Campaign Manager assignment detected: {assigned_to}, attempting to send email notification")
+            try:
+                # Get assigned user's email
+                conn_email = get_db_connection()
+                if conn_email:
+                    logger.info(f"Database connection established for assignment email lookup")
+                    cur_email = conn_email.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                    cur_email.execute("""
+                        SELECT email, full_name, customer_id FROM users 
+                        WHERE username = %s AND active = true AND email IS NOT NULL
+                    """, (assigned_to,))
+                    
+                    assigned_user = cur_email.fetchone()
+                    cur_email.close()
+                    conn_email.close()
+                    
+                    if assigned_user and assigned_user['email']:
+                        logger.info(f"Sending assignment email to {assigned_user['full_name']} ({assigned_user['email']})")
+                        email_sent = send_email_notification(
+                            customer_id=assigned_user['customer_id'],
+                            to_email=assigned_user['email'],
+                            to_username=assigned_user['full_name'],
+                            lead_name=lead_name,
+                            lead_phone=lead_phone,
+                            lead_email=lead_email,
+                            platform=platform,
+                            campaign_name=campaign_name,
+                            email_type="assignment",
+                            assigned_to=session.get('full_name', 'מנהל קמפיין')
+                        )
+                        if email_sent:
+                            logger.info(f"Assignment email sent to {assigned_user['email']}")
+                        else:
+                            logger.warning(f"Failed to send assignment email to {assigned_user['email']}")
+                    else:
+                        logger.warning(f"User {assigned_to} not found or has no email address")
+                            
+            except Exception as email_error:
+                logger.error(f"Error sending assignment email: {email_error}")
+
         conn.commit()
         cur.close()
         conn.close()
