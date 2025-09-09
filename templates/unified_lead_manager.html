@@ -197,12 +197,34 @@
     
     .lead-card {
         background: white;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         border: 1px solid #e2e8f0;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.2s ease;
     }
+    
+    /* Status indicator bar */
+    .lead-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 4px;
+        background: #e5e7eb;
+    }
+    
+    .lead-card.status-new::before { background: #059669; }
+    .lead-card.status-contacted::before { background: #3b82f6; }
+    .lead-card.status-qualified::before { background: #f59e0b; }
+    .lead-card.status-interested::before { background: #22c55e; }
+    .lead-card.status-hired::before { background: #10b981; }
+    .lead-card.status-rejected::before { background: #ef4444; }
+    .lead-card.status-closed::before { background: #9ca3af; }
     
     .lead-card-header {
         display: flex;
@@ -246,12 +268,28 @@
     
     .lead-card-actions .action-btn {
         flex: 1;
-        max-width: 60px;
-        padding: 10px;
+        max-width: 80px;
+        padding: 12px;
         font-size: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
+        min-height: 44px; /* iOS/Android standard touch target */
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: #4b5563;
+        background: white;
+        font-weight: 500;
+        margin: 0 2px;
+    }
+    
+    .lead-card-actions .action-btn:active {
+        background: #f3f4f6;
+        transform: scale(0.98);
+        border-color: #d1d5db;
     }
 
     /* Lead Table for Desktop */
@@ -898,7 +936,7 @@ class UnifiedLeadManagerClass {
             const priorityIcon = priority >= 70 ? '🔥' : priority >= 40 ? '⚡' : '🔵';
             
             return `
-                <div class="lead-card" data-lead-id="${lead.id}">
+                <div class="lead-card status-${lead.status}" data-lead-id="${lead.id}">
                     <div class="lead-card-header">
                         <div>
                             <div class="lead-card-name">${lead.name || 'לא צוין'}</div>
