@@ -1047,7 +1047,7 @@ class UnifiedLeadManagerClass {
         const modalBody = document.getElementById('leadModalBody');
         const modalTitle = document.getElementById('leadModalTitle');
         
-        modalTitle.textContent = `פרטי ליד - ${lead.name || 'לא צוין'}`;
+        modalTitle.textContent = `פרטי ליד #${lead.id} - ${lead.name || 'לא צוין'}`;
         
         // Parse raw data for Zapier information
         let rawData = {};
@@ -1067,8 +1067,9 @@ class UnifiedLeadManagerClass {
             <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div>
-                        <h3 style="margin-bottom: 15px; color: #1e293b;">👤 פרטי הליד</h3>
+                        <h3 style="margin-bottom: 15px; color: #1e293b;">👤 פרטי הליד #${lead.id}</h3>
                         <div style="display: grid; gap: 12px;">
+                            <div><strong>מספר ליד:</strong> #${lead.id}</div>
                             <div><strong>שם מלא:</strong> ${lead.name || 'לא צוין'}</div>
                             <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
                             <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
