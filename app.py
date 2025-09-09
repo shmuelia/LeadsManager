@@ -742,8 +742,10 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
             
         # Create email message using customer settings
         if email_type == "new_lead":
+            # Extract role title (remove personal name)
+            role_title = to_username.split()[0] + " " + to_username.split()[1] if len(to_username.split()) > 1 else to_username
             subject = f'🔔 לייד חדש הגיע! - {lead_name}'
-            title = f'שלום {to_username}, לייד חדש הגיע!'
+            title = f'שלום {role_title}, לייד חדש הגיע!'
             instruction = 'כנס למערכת לניהול והקצאת הלייד:'
             target_url = '/campaign-manager'
         else:  # assignment
