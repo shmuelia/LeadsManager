@@ -744,14 +744,14 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
         if email_type == "new_lead":
             # Extract role title (remove personal name)
             role_title = to_username.split()[0] + " " + to_username.split()[1] if len(to_username.split()) > 1 else to_username
-            subject = f'🔔 לייד חדש הגיע! - {lead_name}'
-            title = f'שלום {role_title}, לייד חדש הגיע!'
-            instruction = 'כנס למערכת לניהול והקצאת הלייד:'
+            subject = f'🔔 ליד חדש הגיע! - {lead_name}'
+            title = f'שלום {role_title}, ליד חדש הגיע!'
+            instruction = 'כנס למערכת לניהול והקצאת הליד:'
             target_url = '/campaign-manager'
         else:  # assignment
-            subject = f'📋 הוקצה לך לייד חדש - {lead_name}'
-            title = f'שלום {to_username}, הוקצה לך לייד חדש על ידי {assigned_to}!'
-            instruction = 'כנס למערכת לניהול הלייד:'
+            subject = f'📋 הוקצה לך ליד חדש - {lead_name}'
+            title = f'שלום {to_username}, הוקצה לך ליד חדש על ידי {assigned_to}!'
+            instruction = 'כנס למערכת לניהול הליד:'
             target_url = '/dashboard'
         
         msg = MIMEMultipart('alternative')
