@@ -967,6 +967,11 @@ def test_email_to_user():
         logger.error(f"Direct assignment email test error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/test-deployment')
+def test_deployment():
+    """Test if template deployment is working"""
+    return render_template('test_deployment.html')
+
 @app.route('/mobile-dashboard')
 @login_required
 def mobile_dashboard():
