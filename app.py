@@ -972,6 +972,12 @@ def test_deployment():
     """Test if template deployment is working"""
     return render_template('test_deployment.html')
 
+@app.route('/dashboard-new')
+@login_required  
+def dashboard_new():
+    """NEW Enhanced dashboard with mobile improvements"""
+    return render_template('dashboard.html')
+
 @app.route('/mobile-dashboard')
 @login_required
 def mobile_dashboard():
