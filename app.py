@@ -606,6 +606,7 @@ def webhook():
                                 email_sent = send_email_notification(
                                     customer_id=customer_id,
                                     to_email=manager['email'],
+                                    to_username=manager['full_name'],
                                     lead_name=name,
                                     lead_phone=phone,
                                     lead_email=lead_data.get('email'),
@@ -711,7 +712,7 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
         logger.error(f"Error creating notification: {e}")
         return None
 
-def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_email, platform, campaign_name, email_type="new_lead", assigned_to=None):
+def send_email_notification(customer_id, to_email, to_username, lead_name, lead_phone, lead_email, platform, campaign_name, email_type="new_lead", assigned_to=None):
     """Send email notification for new lead using customer-specific email settings"""
     try:
         # Get customer email settings
@@ -740,14 +741,14 @@ def send_email_notification(customer_id, to_email, lead_name, lead_phone, lead_e
             
         # Create email message using customer settings
         if email_type == "new_lead":
-            subject = f'🔔 לייד חדש הגיע! - {lead_name}'
-            title = 'לייד חדש הגיע!'
-            instruction = 'כנס למערכת לניהול והקצאת הלייד:'
+            subject = f'🔔 !לייד חדש הגיע - {lead_name}'
+            title = f'שלום {to_username}, !לייד חדש הגיע'
+            instruction = ':כנס למערכת לניהול והקצאת הלייד'
             target_url = '/campaign-manager'
         else:  # assignment
             subject = f'📋 הוקצה לך לייד חדש - {lead_name}'
-            title = f'הוקצה לך לייד חדש על ידי {assigned_to}!'
-            instruction = 'כנס למערכת לניהול הלייד:'
+            title = f'!שלום {to_username}, הוקצה לך לייד חדש על ידי {assigned_to}'
+            instruction = ':כנס למערכת לניהול הלייד'
             target_url = '/dashboard'
         
         msg = MIMEMultipart('alternative')
@@ -778,18 +779,19 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}
             <meta charset="UTF-8">
             <style>
                 body {{ font-family: Arial, sans-serif; direction: rtl; background: #f5f5f5; margin: 0; padding: 20px; }}
-                .container {{ background: white; border-radius: 10px; padding: 30px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-                .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
-                .lead-info {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0; }}
+                .container {{ background: white; border-radius: 10px; padding: 30px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); direction: rtl; }}
+                .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; direction: rtl; }}
+                .lead-info {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0; direction: rtl; text-align: right; }}
                 .lead-info strong {{ color: #1e40af; }}
-                .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }}
+                .footer {{ text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; direction: rtl; }}
                 .cta-button {{ display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 15px 0; }}
+                .rtl-text {{ direction: rtl; text-align: right; }}
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
-                    <h2>{title}</h2>
+                    <h2 class="rtl-text">{title}</h2>
                 </div>
                 
                 <div class="lead-info">
@@ -2270,6 +2272,7 @@ def assign_lead(lead_id):
                         email_sent = send_email_notification(
                             customer_id=assigned_user['customer_id'],
                             to_email=assigned_user['email'],
+                            to_username=assigned_user['full_name'],
                             lead_name=lead_name,
                             lead_phone=lead_phone,
                             lead_email=lead_email,
