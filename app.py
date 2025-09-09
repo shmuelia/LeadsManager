@@ -935,6 +935,36 @@ def email_status():
         logger.error(f"Email status check error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/test-email-to-user')
+@admin_required
+def test_email_to_user():
+    """Test sending assignment email to ofriwas"""
+    try:
+        logger.info("Testing direct assignment email to ofriwas")
+        
+        result = send_email_notification(
+            customer_id=1,
+            to_email="amikam.shmueli@gmail.com",
+            to_username="עפרי ווסר",
+            lead_name="בדיקת אימייל ישירה",
+            lead_phone="050-1234567",
+            lead_email="test@direct.com",
+            platform="test",
+            campaign_name="בדיקה ישירה",
+            email_type="assignment",
+            assigned_to="מנהל בדיקה"
+        )
+        
+        return jsonify({
+            'success': result,
+            'message': 'Direct assignment email test completed',
+            'email_sent': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Direct assignment email test error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/leads')
 @login_required
 def get_leads():
