@@ -1010,8 +1010,7 @@ class UnifiedLeadManagerClass {
                     <td>
                         <span class="status-badge status-${lead.status}" 
                               onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})"
-                              oncontextmenu="window.UnifiedLeadManager.closeLeadDirectly(${lead.id}); return false;"
-                              title="לחיצה שמאל: סטטוס הבא | לחיצה ימין: סגירה">
+                              title="לחץ לשינוי סטטוס">
                             ${this.getStatusLabel(lead.status)}
                         </span>
                     </td>
@@ -1038,8 +1037,7 @@ class UnifiedLeadManagerClass {
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}"
                                   onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})"
-                                  oncontextmenu="window.UnifiedLeadManager.closeLeadDirectly(${lead.id}); return false;"
-                                  title="לחיצה שמאל: סטטוס הבא | לחיצה ימין: סגירה">
+                                  title="לחץ לשינוי סטטוס">
                                 ${this.getStatusLabel(lead.status)}
                             </span>
                         </div>
@@ -1588,20 +1586,45 @@ class UnifiedLeadManagerClass {
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
                 </div>
                 <div class="modal-body">
-                    <p style="margin-bottom: 15px; color: #6b7280;">סטטוס נוכחי: <strong class="status-badge status-${lead.status}">${this.getStatusLabel(lead.status)}</strong></p>
-                    <p style="margin-bottom: 15px;">בחר סטטוס חדש:</p>
-                    <select id="statusSelect" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; margin-bottom: 15px;">
-                        <option value="new" ${lead.status === 'new' ? 'selected' : ''}>חדש</option>
-                        <option value="contacted" ${lead.status === 'contacted' ? 'selected' : ''}>נוצר קשר</option>
-                        <option value="qualified" ${lead.status === 'qualified' ? 'selected' : ''}>מוכשר</option>
-                        <option value="interested" ${lead.status === 'interested' ? 'selected' : ''}>מתעניין</option>
-                        <option value="not_interested" ${lead.status === 'not_interested' ? 'selected' : ''}>לא מתעניין</option>
-                        <option value="callback" ${lead.status === 'callback' ? 'selected' : ''}>חזרה</option>
-                        <option value="interview_scheduled" ${lead.status === 'interview_scheduled' ? 'selected' : ''}>מתואם ראיון</option>
-                        <option value="hired" ${lead.status === 'hired' ? 'selected' : ''}>התקבל</option>
-                        <option value="rejected" ${lead.status === 'rejected' ? 'selected' : ''}>נדחה</option>
-                        <option value="closed" ${lead.status === 'closed' ? 'selected' : ''}>סגור</option>
-                    </select>
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <p style="color: #6b7280; margin-bottom: 8px;">סטטוס נוכחי:</p>
+                        <span class="status-badge status-${lead.status}" style="pointer-events: none;">${this.getStatusLabel(lead.status)}</span>
+                    </div>
+                    
+                    <div class="mobile-status-grid">
+                        <button class="mobile-status-btn status-new" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'new', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🆕</div>
+                            <div>חדש</div>
+                        </button>
+                        <button class="mobile-status-btn status-contacted" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'contacted', this.closest('.modal-overlay'))">
+                            <div class="status-icon">📞</div>
+                            <div>נוצר קשר</div>
+                        </button>
+                        <button class="mobile-status-btn status-qualified" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'qualified', this.closest('.modal-overlay'))">
+                            <div class="status-icon">✅</div>
+                            <div>מוכשר</div>
+                        </button>
+                        <button class="mobile-status-btn status-interested" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'interested', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🎯</div>
+                            <div>מתעניין</div>
+                        </button>
+                        <button class="mobile-status-btn status-hired" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'hired', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🎉</div>
+                            <div>התקבל</div>
+                        </button>
+                        <button class="mobile-status-btn status-rejected" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'rejected', this.closest('.modal-overlay'))">
+                            <div class="status-icon">❌</div>
+                            <div>נדחה</div>
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                        <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;" 
+                                onclick="window.UnifiedLeadManager.closeLeadDirectly(${leadId}); this.closest('.modal-overlay').remove();">
+                            <div class="status-icon">🔒</div>
+                            <div>סגור ליד לצמיתות</div>
+                        </button>
+                    </div>
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;">הערת עדכון (אופציונלי):</label>
                         <textarea id="statusNote" placeholder="הוסף הערה על העדכון..." 
