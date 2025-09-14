@@ -15,7 +15,12 @@ from queue import Queue
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import psycopg2
+import psycopg2.extras
 from database import db_manager
+
+# Database configuration
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
