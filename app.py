@@ -1,11 +1,12 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, Response, send_from_directory
-import psycopg2
-import psycopg2.extras
 from datetime import datetime
 import pytz
 import json
 import logging
-import os
 import hashlib
 from functools import wraps
 import time
@@ -14,6 +15,7 @@ from queue import Queue
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from database import db_manager
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -32,23 +34,9 @@ FROM_EMAIL = os.environ.get('FROM_EMAIL', SMTP_USERNAME)
 # Notification system for real-time updates
 notification_queues = {}  # Dictionary to store notification queues by customer_id
 
-# Database connection
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-
 def get_db_connection():
-    """Get database connection with error handling"""
-    try:
-        if DATABASE_URL:
-            conn = psycopg2.connect(DATABASE_URL)
-            return conn
-        else:
-            logger.warning("No DATABASE_URL found")
-            return None
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return None
+    """Get database connection using centralized DatabaseManager"""
+    return db_manager.get_connection()
 
 def init_database():
     """Initialize database tables if they don't exist"""
@@ -495,23 +483,45 @@ def webhook():
         logger.info(f"Total fields: {len(lead_data)}")
         logger.info(f"Field names: {list(lead_data.keys())}")
         
-        # Log any potential form response fields
+        # Log any potential form response fields (exclude system and standard fields)
         form_fields = {}
+        standard_fields = {
+            'id', 'ID', 'name', 'email', 'phone', 'platform', 'Platform', 'campaign_name', 'Campaign Name',
+            'form_name', 'Form Name', 'lead_source', 'created_time', 'Created Time', 'full_name', 'Full Name',
+            'phone_number', 'Page Id', 'Page Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Form Id',
+            'Ad Name', 'נוצר', 'שם', 'דוא"ל', 'טלפון', 'Raw Full Name', 'Raw Email', 'Raw מספר טלפון',
+            'Email', 'מספר טלפון', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle'
+        }
+
         for key, value in lead_data.items():
             # Skip known system fields
-            if key not in ['id', 'name', 'email', 'phone', 'platform', 'campaign_name', 
-                          'form_name', 'lead_source', 'created_time', 'full_name', 
-                          'phone_number', 'נוצר', 'שם', 'דוא"ל', 'טלפון']:
+            if key not in standard_fields:
                 if value and str(value).strip():
                     form_fields[key] = value
-                    logger.info(f"Potential form field: {key} = {value}")
-        
+                    logger.info(f"Custom form field: {key} = {value}")
+
         if form_fields:
-            logger.info(f"Found {len(form_fields)} potential form response fields")
+            logger.info(f"Found {len(form_fields)} custom form response fields")
         
-        # Extract data with multiple fallbacks
-        name = lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name') or lead_data.get('שם')
-        phone = lead_data.get('phone') or lead_data.get('phone_number') or lead_data.get('טלפון')
+        # Extract data with multiple fallbacks including Zapier field mappings
+        name = (lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name') or
+                lead_data.get('Full Name') or lead_data.get('שם') or lead_data.get('Raw Full Name'))
+
+        email = (lead_data.get('email') or lead_data.get('Email') or
+                 lead_data.get('Raw Email') or lead_data.get('דוא"ל'))
+
+        phone = (lead_data.get('phone') or lead_data.get('phone_number') or lead_data.get('טלפון') or
+                 lead_data.get('מספר טלפון') or lead_data.get('Raw מספר טלפון'))
+
+        # Extract campaign and form info from Zapier
+        campaign_name = (lead_data.get('campaign_name') or lead_data.get('Campaign Name') or
+                        lead_data.get('קמפיין'))
+
+        form_name = (lead_data.get('form_name') or lead_data.get('Form Name') or
+                    lead_data.get('טופס'))
+
+        # Extract platform
+        platform = lead_data.get('platform') or lead_data.get('Platform') or 'facebook'
         
         # Try to save to database, but don't fail if database is unavailable
         lead_id = None
@@ -548,13 +558,13 @@ def webhook():
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                 """, (
-                    lead_data.get('id'),
+                    lead_data.get('id') or lead_data.get('ID'),
                     name,
-                    lead_data.get('email'),
+                    email,
                     phone,
-                    lead_data.get('platform', 'facebook'),
-                    lead_data.get('campaign_name'),
-                    lead_data.get('form_name'),
+                    platform,
+                    campaign_name,
+                    form_name,
                     lead_data.get('lead_source'),
                     created_time,
                     json.dumps(lead_data),
@@ -569,16 +579,16 @@ def webhook():
                 # Send real-time notification for new lead
                 customer_id = 1  # Default customer ID for main webhook
                 notification_title = "לייד חדש הגיע!"
-                notification_message = f"לייד חדש מ{lead_data.get('platform', 'פייסבוק')}: {name}"
-                
+                notification_message = f"לייד חדש מ{platform}: {name}"
+
                 # Additional notification data
                 notification_data = {
                     'lead_name': name,
-                    'lead_email': lead_data.get('email'),
+                    'lead_email': email,
                     'lead_phone': phone,
-                    'platform': lead_data.get('platform', 'facebook'),
-                    'campaign_name': lead_data.get('campaign_name'),
-                    'form_name': lead_data.get('form_name')
+                    'platform': platform,
+                    'campaign_name': campaign_name,
+                    'form_name': form_name
                 }
                 
                 logger.info(f"Lead {lead_id} created successfully, sending email notifications...")
@@ -610,9 +620,9 @@ def webhook():
                                     to_username=manager['full_name'],
                                     lead_name=name,
                                     lead_phone=phone,
-                                    lead_email=lead_data.get('email'),
-                                    platform=lead_data.get('platform', 'facebook'),
-                                    campaign_name=lead_data.get('campaign_name')
+                                    lead_email=email,
+                                    platform=platform,
+                                    campaign_name=campaign_name
                                 )
                                 if email_sent:
                                     logger.info(f"Email notification sent successfully to {manager['email']}")
@@ -626,7 +636,7 @@ def webhook():
                     logger.error(f"Error sending email notifications: {email_error}")
                 
                 
-                logger.info(f"Lead saved to database: {name} ({lead_data.get('email')}) - ID: {lead_id}")
+                logger.info(f"Lead saved to database: {name} ({email}) - ID: {lead_id}")
             else:
                 logger.warning("Database not available, lead data logged only")
                 
@@ -635,7 +645,7 @@ def webhook():
             # Continue without database - at least log the lead
         
         # Always log the lead data for debugging
-        logger.info(f"Lead received: {name} ({lead_data.get('email')}) from {lead_data.get('platform', 'unknown')}")
+        logger.info(f"Lead received: {name} ({email}) from {platform}")
         
         return jsonify({
             'status': 'success',
