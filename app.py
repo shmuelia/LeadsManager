@@ -488,25 +488,64 @@ def webhook():
         logger.info(f"Total fields: {len(lead_data)}")
         logger.info(f"Field names: {list(lead_data.keys())}")
         
-        # Log any potential form response fields (exclude system and standard fields)
-        form_fields = {}
+        # Prepare clean lead data with numbered custom fields
+        clean_lead_data = dict(lead_data)  # Create a copy of original data
+
+        # Define standard fields to exclude from custom questions
         standard_fields = {
             'id', 'ID', 'name', 'email', 'phone', 'platform', 'Platform', 'campaign_name', 'Campaign Name',
             'form_name', 'Form Name', 'lead_source', 'created_time', 'Created Time', 'full_name', 'Full Name',
             'phone_number', 'Page Id', 'Page Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Form Id',
             'Ad Name', 'נוצר', 'שם', 'דוא"ל', 'טלפון', 'Raw Full Name', 'Raw Email', 'Raw מספר טלפון',
-            'Email', 'מספר טלפון', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle'
+            'Email', 'מספר טלפון', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
+            'form_id', 'lead_form_id', 'מזהה טופס לידים'
         }
 
-        for key, value in lead_data.items():
-            # Skip known system fields
-            if key not in standard_fields:
-                if value and str(value).strip():
-                    form_fields[key] = value
-                    logger.info(f"Custom form field: {key} = {value}")
+        # Check if data already has custom_question_X format (from Zapier)
+        has_numbered_format = any(key.startswith('custom_question_') for key in lead_data.keys())
 
-        if form_fields:
-            logger.info(f"Found {len(form_fields)} custom form response fields")
+        if not has_numbered_format:
+            # Convert non-standard fields to numbered format for consistent display
+            form_fields = {}
+            question_index = 0
+
+            # Special handling for known Hebrew form questions
+            hebrew_form_fields = [
+                'יש לך ניסיון בתחום?',
+                'מיקום מגורים:',
+                'תתאר/י אותך במשפט/שניים על עצמך:',
+                'מה התאריך הרצוי לקיום האירוע?',
+                'כמות האנשים שצפויה להגיע?',
+                'סוג האירוע',
+                'תקציב',
+                'בקשות מיוחדות',
+                'זמן מועדף לקשר'
+            ]
+
+            # Process fields in order - Hebrew form fields first, then others
+            for field_name in hebrew_form_fields:
+                if field_name in lead_data and lead_data[field_name] and str(lead_data[field_name]).strip():
+                    clean_lead_data[f'custom_question_{question_index}'] = field_name
+                    clean_lead_data[f'custom_answer_{question_index}'] = lead_data[field_name]
+                    form_fields[field_name] = lead_data[field_name]
+                    logger.info(f"Custom form field [{question_index}]: {field_name} = {lead_data[field_name]}")
+                    question_index += 1
+
+            # Then process any other non-standard fields
+            for key, value in lead_data.items():
+                if key not in standard_fields and key not in hebrew_form_fields:
+                    if value and str(value).strip() and not key.startswith('custom_'):
+                        clean_lead_data[f'custom_question_{question_index}'] = key
+                        clean_lead_data[f'custom_answer_{question_index}'] = value
+                        form_fields[key] = value
+                        logger.info(f"Custom form field [{question_index}]: {key} = {value}")
+                        question_index += 1
+
+            if form_fields:
+                logger.info(f"Found {len(form_fields)} custom form response fields, converted to numbered format")
+        else:
+            # Data already has numbered format, log it
+            logger.info("Data already contains custom_question_X format from Zapier")
         
         # Extract data with multiple fallbacks including Zapier field mappings
         name = (lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name') or
@@ -572,7 +611,7 @@ def webhook():
                     form_name,
                     lead_data.get('lead_source'),
                     created_time,
-                    json.dumps(lead_data),
+                    json.dumps(clean_lead_data),  # Use clean_lead_data with numbered format
                     1  # Default to customer #1 for main webhook
                 ))
                 

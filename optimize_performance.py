@@ -4,27 +4,21 @@ Performance Optimization Script for LeadsManager
 Adds database indexes and optimizations for faster data fetching
 """
 
-import psycopg2
-import psycopg2.extras
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import logging
 from datetime import datetime
+from database import db_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def get_db_connection():
-    """Get database connection"""
-    DATABASE_URL = os.environ.get('DATABASE_URL')
-    if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    
-    try:
-        return psycopg2.connect(DATABASE_URL)
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return None
+    """Get database connection using centralized DatabaseManager"""
+    return db_manager.get_connection()
 
 def create_performance_indexes():
     """Create database indexes for better performance"""

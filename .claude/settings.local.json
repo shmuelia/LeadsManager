@@ -18,7 +18,8 @@
       "Bash(python:*)",
       "Bash(bash:*)",
       "Bash(time curl:*)",
-      "Bash(heroku config:set:*)"
+      "Bash(heroku config:set:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

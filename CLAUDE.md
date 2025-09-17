@@ -111,11 +111,28 @@ GROUP BY c.id, c.name;
 # Deploy to development environment
 git push heroku main
 
-# Monitor deployment logs  
+# Monitor deployment logs
 heroku logs --tail --app eadmanager-fresh-2024-dev
 
 # Check application health
 curl https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/status
+```
+
+### Webhook Testing & Development
+```bash
+# Test webhook endpoint with sample lead data (Linux/Mac)
+./test_webhook.sh
+
+# Test webhook endpoint with sample lead data (Windows)
+./test_webhook.bat
+
+# Manual webhook test with curl
+curl -X POST https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"Full Name": "Test User", "Email": "test@example.com", "Raw מספר טלפון": "+972501234567"}'
+
+# Check webhook logs for debugging
+# Look for: POST /webhook, "=== WEBHOOK DATA RECEIVED ===", "Lead saved to database"
 ```
 
 ## Technical Architecture
@@ -149,10 +166,30 @@ elif session.get('role') == 'admin':
 
 ### Lead Collection Workflow
 1. **Webhook Reception**: `/webhook` endpoint receives Facebook/Instagram leads via Zapier
-2. **Customer Routing**: Webhook includes customer identification to route leads to correct tenant  
+2. **Customer Routing**: Webhook includes customer identification to route leads to correct tenant
 3. **Data Processing**: Extracts contact info, campaign data, form responses into JSONB raw_data
+   - **Enhanced Field Mapping**: Supports multiple field variants (`Full Name`/`Raw Full Name`/`שם`)
+   - **Custom Form Fields**: Automatically detects and stores non-standard fields in raw_data
+   - **Hebrew RTL Support**: Handles Hebrew field names and content properly
 4. **Activity Logging**: Creates audit trail entry for lead reception
 5. **Assignment Ready**: Leads appear in appropriate customer dashboards for assignment
+
+### Webhook Field Extraction Logic
+The webhook handles multiple field formats from Zapier:
+```python
+# Primary field extraction with fallbacks
+name = (lead_data.get('name') or lead_data.get('Full Name') or
+        lead_data.get('Raw Full Name') or lead_data.get('שם'))
+email = (lead_data.get('email') or lead_data.get('Email') or
+         lead_data.get('Raw Email') or lead_data.get('דוא"ל'))
+phone = (lead_data.get('phone') or lead_data.get('Raw מספר טלפון') or
+         lead_data.get('מספר טלפון'))
+```
+
+**Zapier Integration Status:**
+- ✅ Webhook URL: `https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/webhook`
+- ✅ Method: POST with JSON payload
+- ⚠️ **Critical**: Zap must be **published/turned ON** to send real data (test mode only validates endpoint)
 
 ### Frontend Architecture  
 - **Hebrew RTL Design**: All templates use `direction: rtl` with Inter font and comprehensive Hebrew tooltips
@@ -235,7 +272,17 @@ cur.execute("""
 Flask==2.3.3          # Web framework
 gunicorn==21.2.0       # WSGI server
 psycopg2-binary==2.9.7 # PostgreSQL adapter
+Flask-Mail==0.9.1      # Email notifications
+pytz==2024.1           # Timezone support
+requests==2.31.0       # HTTP requests for external APIs
 ```
+
+### Critical System Files
+- **`app.py`** - Main Flask application with all routes and business logic
+- **`database.py`** - DatabaseManager class for PostgreSQL connections with Heroku URL parsing
+- **`setup_database.py`** - Database schema initialization script
+- **`Procfile`** - Heroku deployment configuration (`web: gunicorn app:app`)
+- **`requirements.txt`** - Python dependencies for Heroku deployment
 
 ## Common Development Patterns
 
@@ -327,6 +374,78 @@ All interface elements include comprehensive Hebrew tooltips with:
 - **Phone Formatting**: `formatPhoneForWhatsApp()` function handles Israeli numbers
 - **Supported Formats**: 050-1234567, 0501234567, 972501234567, 501234567
 - **Auto Country Code**: Adds/maintains 972 prefix correctly
+
+### Email Notification System (September 2025)
+**Two-Step Email Notifications:**
+- **Campaign Manager Alerts**: Receive emails when new leads arrive from Facebook/Instagram
+- **User Assignment Alerts**: Users receive emails when leads are assigned to them
+- **Customer-Managed Settings**: Each customer configures their own SMTP settings and sender email
+- **Hebrew Email Templates**: Beautiful HTML emails with proper RTL formatting and Israel timezone
+
+**Email Configuration:**
+```python
+# Customer email settings stored per customer in database
+customers table: sender_email, smtp_server, smtp_port, smtp_username, smtp_password, email_notifications_enabled, timezone
+
+# Email types
+send_email_notification(customer_id, to_email, to_username, lead_name, ..., email_type="new_lead"|"assignment")
+```
+
+**Admin Email Management:**
+- `/admin/customers` - Configure email settings per customer with tooltips
+- Required: Gmail App Password (not regular password), sender email, SMTP credentials
+- Email status display shows if notifications are enabled: "📧 התראות אימייל פעילות"
+
+### Mobile UX Enhancements (Version 1.6)
+**Touch Optimization:**
+- **44px minimum touch targets** (iOS/Android standard)
+- **Status indicator bars** at top of lead cards (green=new, blue=contacted, etc.)
+- **Enhanced card shadows** and modern rounded corners (16px)
+- **Touch feedback** with scale animations and visual states
+- **Haptic feedback simulation** using navigator.vibrate()
+
+**Mobile-First Design Pattern:**
+- Cards displayed on mobile (≤768px), table on desktop (>768px)
+- Header positioned at bottom for mobile thumb accessibility
+- Action buttons with proper spacing and visual feedback
+- Status badges with color coding for quick visual identification
+
+### Development URLs
+- **Main Dashboard**: `/dashboard` (standard user interface)
+- **Enhanced Mobile**: `/mobile-dashboard` (demonstration of modern mobile patterns)
+- **Campaign Manager**: `/campaign-manager` (campaign manager specific interface)
+- **Admin Panel**: `/admin` (administrative functions)
+- **Customer Management**: `/admin/customers` (email settings, customer configuration)
+- **Webhook Endpoint**: `/webhook` (receives Zapier lead data)
+- **Debug Routes**: `/debug/search/<term>`, `/debug/lead/<id>`, `/debug/session`
+
+## Common Troubleshooting
+
+### Webhook Issues
+**Symptom**: Zapier test passes but no leads appear in dashboard
+- ✅ Check: Is the Zap published/turned ON? (Test mode ≠ Live mode)
+- ✅ Check: Look for `POST /webhook` entries in Heroku logs
+- ✅ Check: Verify webhook URL is exactly `https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/webhook`
+
+**Expected webhook logs:**
+```
+POST /webhook HTTP/1.1" 200
+INFO:app:=== WEBHOOK DATA RECEIVED ===
+INFO:app:Custom form field: כמות האנשים שצפויה להגיע = 50-60
+INFO:app:Lead saved to database: [Name] ([Email]) - ID: [ID]
+```
+
+### Database Connection Issues
+**Symptom**: `ModuleNotFoundError: No module named 'database'`
+- ✅ Ensure `database.py` exists with `DatabaseManager` class
+- ✅ Check `DATABASE_URL` environment variable is set
+- ✅ Verify `psycopg2-binary` is in requirements.txt
+
+### Role Permission Issues
+**Symptom**: Users can't access expected features
+- ✅ Check session role: `session.get('role')` vs database `user_role` field
+- ✅ Verify customer_id filtering in queries
+- ✅ Confirm route decorators: `@admin_required`, `@campaign_manager_required`
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
