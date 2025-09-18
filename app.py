@@ -1790,49 +1790,59 @@ def update_lead_status(lead_id):
     """Update lead status"""
     try:
         data = request.get_json()
-        
+
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
-            
+
         cur = conn.cursor()
-        
+
         # Get current status
         cur.execute("SELECT status FROM leads WHERE id = %s", (lead_id,))
         result = cur.fetchone()
         if not result:
             return jsonify({'error': 'Lead not found'}), 404
-            
+
         old_status = result[0]
         new_status = data.get('status')
         user_name = data.get('user_name', 'אנונימי')
-        
+        note = data.get('note', '').strip()
+
+        # Make note mandatory for status changes
+        if not note:
+            return jsonify({'error': 'הערה היא שדה חובה בעת שינוי סטטוס'}), 400
+
         # Update status
         cur.execute("""
-            UPDATE leads SET status = %s, updated_at = CURRENT_TIMESTAMP 
+            UPDATE leads SET status = %s, updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
         """, (new_status, lead_id))
-        
-        # Log status change activity
+
+        # Build description with note
+        status_description = f'סטטוס שונה מ-{old_status} ל-{new_status}'
+        if note:
+            status_description += f' | הערה: {note}'
+
+        # Log status change activity with note
         cur.execute("""
-            INSERT INTO lead_activities 
+            INSERT INTO lead_activities
             (lead_id, user_name, activity_type, description, previous_status, new_status)
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             lead_id, user_name, 'status_change',
-            f'סטטוס שונה מ-{old_status} ל-{new_status}',
+            status_description,
             old_status, new_status
         ))
-        
+
         conn.commit()
         cur.close()
         conn.close()
-        
+
         return jsonify({
             'status': 'success',
             'message': 'סטטוס עודכן בהצלחה'
         })
-        
+
     except Exception as e:
         logger.error(f"Error updating status: {str(e)}")
         return jsonify({'error': str(e)}), 500

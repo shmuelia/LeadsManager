@@ -1593,43 +1593,45 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="mobile-status-grid">
-                        <button class="mobile-status-btn status-new" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'new', this.closest('.modal-overlay'))">
+                        <button class="mobile-status-btn status-new" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'new', this.closest('.modal-overlay'))">
                             <div class="status-icon">🆕</div>
                             <div>חדש</div>
                         </button>
-                        <button class="mobile-status-btn status-contacted" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'contacted', this.closest('.modal-overlay'))">
+                        <button class="mobile-status-btn status-contacted" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'contacted', this.closest('.modal-overlay'))">
                             <div class="status-icon">📞</div>
                             <div>נוצר קשר</div>
                         </button>
-                        <button class="mobile-status-btn status-qualified" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'qualified', this.closest('.modal-overlay'))">
+                        <button class="mobile-status-btn status-qualified" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'qualified', this.closest('.modal-overlay'))">
                             <div class="status-icon">✅</div>
                             <div>מוכשר</div>
                         </button>
-                        <button class="mobile-status-btn status-interested" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'interested', this.closest('.modal-overlay'))">
+                        <button class="mobile-status-btn status-interested" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'interested', this.closest('.modal-overlay'))">
                             <div class="status-icon">🎯</div>
                             <div>מתעניין</div>
                         </button>
-                        <button class="mobile-status-btn status-hired" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'hired', this.closest('.modal-overlay'))">
+                        <button class="mobile-status-btn status-hired" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'hired', this.closest('.modal-overlay'))">
                             <div class="status-icon">🎉</div>
                             <div>התקבל</div>
                         </button>
-                        <button class="mobile-status-btn status-rejected" onclick="window.UnifiedLeadManager.performStatusChange(${leadId}, 'rejected', this.closest('.modal-overlay'))">
+                        <button class="mobile-status-btn status-rejected" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'rejected', this.closest('.modal-overlay'))">
                             <div class="status-icon">❌</div>
                             <div>נדחה</div>
                         </button>
                     </div>
-                    
+
                     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                        <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;" 
-                                onclick="window.UnifiedLeadManager.closeLeadDirectly(${leadId}); this.closest('.modal-overlay').remove();">
+                        <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;"
+                                onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'closed', this.closest('.modal-overlay'))">
                             <div class="status-icon">🔒</div>
                             <div>סגור ליד לצמיתות</div>
                         </button>
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">הערת עדכון (אופציונלי):</label>
-                        <textarea id="statusNote" placeholder="הוסף הערה על העדכון..." 
-                                style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; height: 80px; resize: vertical;"></textarea>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #dc2626;">הערת עדכון (חובה):</label>
+                        <textarea id="statusNote" placeholder="הוסף הערה על העדכון (שדה חובה)..."
+                                style="width: 100%; padding: 10px; border: 2px solid #dc2626; border-radius: 8px; height: 80px; resize: vertical;"
+                                required></textarea>
+                        <small style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;">* שדה חובה - יש להזין הערה לפני עדכון הסטטוס</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1646,13 +1648,76 @@ class UnifiedLeadManagerClass {
         document.body.appendChild(modal);
     }
     
+    showStatusChangeWithNote(leadId, newStatus, currentModal) {
+        // Close current modal if exists
+        if (currentModal) currentModal.remove();
+
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead) return;
+
+        // Create note input modal for status change
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>עדכון סטטוס ל: ${this.getStatusLabel(newStatus)}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 15px;">
+                        <p style="color: #6b7280; margin-bottom: 8px;">שם הליד: <strong>${lead.name || 'ליד'}</strong></p>
+                        <p style="color: #6b7280; margin-bottom: 12px;">סטטוס נוכחי: <span class="status-badge status-${lead.status}">${this.getStatusLabel(lead.status)}</span></p>
+                        <p style="color: #059669; margin-bottom: 16px;">סטטוס חדש: <span class="status-badge status-${newStatus}">${this.getStatusLabel(newStatus)}</span></p>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #dc2626;">הערת עדכון (חובה):</label>
+                        <textarea id="statusNoteModal${leadId}" placeholder="הוסף הערה על העדכון (שדה חובה)..."
+                                style="width: 100%; padding: 10px; border: 2px solid #dc2626; border-radius: 8px; height: 100px; resize: vertical;"
+                                autofocus required></textarea>
+                        <small style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;">* שדה חובה - יש להזין הערה לפני עדכון הסטטוס</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.performStatusChangeWithNote(${leadId}, '${newStatus}', document.getElementById('statusNoteModal${leadId}').value, this.closest('.modal-overlay'))">
+                        עדכן סטטוס
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        ביטול
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Focus on the note field
+        setTimeout(() => {
+            const noteField = document.getElementById(`statusNoteModal${leadId}`);
+            if (noteField) noteField.focus();
+        }, 100);
+    }
+
     async closeLeadDirectly(leadId) {
-        // Direct close without progression
-        await this.performStatusChange(leadId, 'closed', null);
+        // Redirect to note modal for closure
+        this.showStatusChangeWithNote(leadId, 'closed', null);
     }
     
     async performStatusChangeWithNote(leadId, newStatus, note, modal) {
-        // Enhanced status change with optional note
+        // Enhanced status change with mandatory note
+
+        // Validate note is provided
+        if (!note || !note.trim()) {
+            this.showToast('יש להזין הערה לפני עדכון הסטטוס', 'error');
+            // Highlight the note field
+            const noteField = document.getElementById('statusNote');
+            if (noteField) {
+                noteField.style.borderColor = '#dc2626';
+                noteField.style.borderWidth = '3px';
+                noteField.focus();
+            }
+            return;
+        }
+
         try {
             const response = await fetch(`/leads/${leadId}/status`, {
                 method: 'PUT',
@@ -1668,8 +1733,7 @@ class UnifiedLeadManagerClass {
             
             if (response.ok) {
                 const statusLabel = this.getStatusLabel(newStatus);
-                const noteText = note && note.trim() ? ` עם הערה: "${note.trim()}"` : '';
-                this.showToast(`סטטוס עודכן ל"${statusLabel}"${noteText}`, 'success');
+                this.showToast(`סטטוס עודכן ל"${statusLabel}" עם הערה: "${note.trim()}"`, 'success');
                 await this.loadLeads();
                 if (modal) modal.remove();
             } else {
@@ -1682,29 +1746,9 @@ class UnifiedLeadManagerClass {
     }
 
     async performStatusChange(leadId, newStatus, modal) {
-        try {
-            const response = await fetch(`/leads/${leadId}/status`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    status: newStatus,
-                    user_name: this.fullName || this.username || 'משתמש'
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                this.showToast(result.message || 'סטטוס הליד עודכן בהצלחה', 'success');
-                await this.loadLeads();
-                if (modal) modal.remove();
-            } else {
-                this.showToast(result.error || 'שגיאה בעדכון סטטוס הליד', 'error');
-            }
-        } catch (error) {
-            console.error('Status change error:', error);
-            this.showToast('שגיאה בעדכון סטטוס הליד', 'error');
-        }
+        // Redirect to note modal - notes are now mandatory
+        if (modal) modal.remove();
+        this.showStatusChangeWithNote(leadId, newStatus, null);
     }
     
     async changeCustomer(customerId) {
