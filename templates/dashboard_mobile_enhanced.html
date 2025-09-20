@@ -716,9 +716,6 @@
             <div class="filter-chip haptic-light" onclick="filterLeads('mine')">
                 👤 שלי
             </div>
-            <div class="filter-chip haptic-light" onclick="filterLeads('urgent')">
-                🚨 דחוף
-            </div>
             <div class="filter-chip haptic-light" onclick="filterLeads('today')">
                 📅 היום
             </div>
@@ -1058,12 +1055,12 @@
 
                             <div class="card-info-grid">
                                 <div class="info-item">
-                                    <span class="info-label">פלטפורמה</span>
-                                    <span class="info-value">${lead.platform || 'Unknown'}</span>
+                                    <span class="info-label">אימייל</span>
+                                    <span class="info-value" style="direction: ltr; text-align: right;">${lead.email || 'אין אימייל'}</span>
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">קמפיין</span>
-                                    <span class="info-value">${lead.campaign_name || 'ללא קמפיין'}</span>
+                                    <span class="info-label">סטטוס</span>
+                                    <span class="info-value">${this.getStatusLabel(lead.status)}</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">תאריך</span>
@@ -1095,8 +1092,6 @@
                     case 'mine':
                         const username = '{{ session.get("username") }}';
                         return this.leads.filter(l => l.assigned_to === username);
-                    case 'urgent':
-                        return this.leads.filter(l => l.priority === 'high' || l.status === 'new');
                     case 'today':
                         return this.leads.filter(l => {
                             const leadDate = new Date(l.created_time);
