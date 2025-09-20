@@ -34,7 +34,7 @@
         
         body {
             font-family: 'Heebo', 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             min-height: 100vh;
             direction: rtl;
             overflow-x: hidden;
@@ -50,9 +50,9 @@
         
         /* Modern App Header */
         .mobile-header {
-            background: rgba(255, 255, 255, 0.95);
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--gray-200);
+            box-shadow: 0 4px 20px rgba(5, 150, 105, 0.3);
             padding: 12px 20px;
             position: sticky;
             top: 0;
@@ -65,7 +65,8 @@
         .header-title {
             font-size: 18px;
             font-weight: 600;
-            color: var(--gray-900);
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .header-actions {
@@ -78,15 +79,15 @@
             height: 36px;
             border: none;
             border-radius: 8px;
-            background: var(--gray-100);
-            color: var(--gray-700);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
             font-size: 16px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
         
         .header-btn:active {
-            background: var(--gray-200);
+            background: rgba(255, 255, 255, 0.3);
             transform: scale(0.95);
         }
         
@@ -96,11 +97,11 @@
         }
         
         .enhanced-lead-card {
-            background: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
             border-radius: 16px;
             margin-bottom: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            border: 1px solid var(--gray-100);
+            box-shadow: 0 4px 20px rgba(5, 150, 105, 0.15);
+            border: 1px solid rgba(5, 150, 105, 0.2);
             overflow: hidden;
             position: relative;
             transform: translateZ(0);
@@ -276,9 +277,9 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(255, 255, 255, 0.95);
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             backdrop-filter: blur(20px);
-            border-top: 1px solid var(--gray-200);
+            box-shadow: 0 -4px 20px rgba(5, 150, 105, 0.2);
             padding: 8px 0;
             z-index: 1000;
             direction: rtl;
@@ -310,19 +311,20 @@
         
         .nav-icon {
             font-size: 20px;
-            color: var(--gray-600);
+            color: rgba(255, 255, 255, 0.7);
         }
-        
+
         .nav-label {
             font-size: 10px;
             font-weight: 500;
-            color: var(--gray-600);
+            color: rgba(255, 255, 255, 0.7);
             text-align: center;
         }
         
         .nav-item.active .nav-icon,
         .nav-item.active .nav-label {
-            color: var(--primary-color);
+            color: white;
+            font-weight: 600;
         }
         
         /* Floating Action Button */
@@ -361,12 +363,12 @@
         .filter-chip {
             flex-shrink: 0;
             padding: 8px 16px;
-            border: 1px solid var(--gray-300);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 20px;
-            background: white;
+            background: rgba(255, 255, 255, 0.2);
             font-size: 13px;
             font-weight: 500;
-            color: var(--gray-700);
+            color: white;
             cursor: pointer;
             transition: all 0.2s ease;
             white-space: nowrap;
@@ -377,9 +379,10 @@
         }
         
         .filter-chip.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
+            background: white;
+            color: var(--primary-color);
+            border-color: white;
+            font-weight: 600;
         }
         
         /* Status Indicators */
@@ -544,14 +547,13 @@
         <header class="mobile-header">
             <h1 class="header-title">🎯 לידים שלי v3.0</h1>
             <div class="header-actions">
+                {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
                     🔍
                 </button>
-                <button class="header-btn haptic-light" onclick="showNotifications()" aria-label="התראות">
-                    🔔
-                </button>
-                <button class="header-btn haptic-light" onclick="showProfile()" aria-label="פרופיל">
-                    👤
+                {% endif %}
+                <button class="header-btn haptic-light" onclick="showProfile()" aria-label="יציאה">
+                    🚪
                 </button>
             </div>
         </header>
@@ -579,61 +581,6 @@
         <div class="leads-section" id="leadsContainer">
             <!-- Lead cards will be dynamically generated here -->
             
-            <!-- Example Enhanced Lead Card with Swipe Actions -->
-            <div class="enhanced-lead-card swipe-container haptic-light" data-lead-id="123">
-                <div class="swipe-actions">
-                    <div class="swipe-action swipe-edit" onclick="editLead(123)">
-                        ✏️ ערוך
-                    </div>
-                    <div class="swipe-action swipe-delete" onclick="deleteLead(123)">
-                        🗑️ מחק
-                    </div>
-                </div>
-                <div class="card-status-bar status-new"></div>
-                <div class="card-content" onclick="openLead(123)">
-                    <div class="card-header">
-                        <div>
-                            <div class="lead-name">אברהם כהן</div>
-                            <div class="info-value" style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
-                                📱 050-1234567
-                            </div>
-                        </div>
-                        <div class="status-badge status-new">חדש</div>
-                    </div>
-                    
-                    <div class="card-info-grid">
-                        <div class="info-item">
-                            <span class="info-label">פלטפורמה</span>
-                            <span class="info-value">Facebook</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">קמפיין</span>
-                            <span class="info-value">קיץ 2024</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">תאריך</span>
-                            <span class="info-value">09/09 15:30</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">מוקצה ל</span>
-                            <span class="info-value">לא מוקצה</span>
-                        </div>
-                    </div>
-                    
-                    <div class="card-actions">
-                        <button class="action-btn-enhanced haptic-light" onclick="callLead(event, '050-1234567')">
-                            📞 התקשר
-                        </button>
-                        <button class="action-btn-enhanced haptic-light" onclick="whatsappLead(event, '050-1234567')">
-                            💬 ווטסאפ
-                        </button>
-                        <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="assignLead(event, 123)">
-                            👤 הקצה
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Loading State -->
             <div class="skeleton-card" style="display: none;" id="loadingSkeleton">
                 <div class="skeleton-line"></div>
@@ -648,10 +595,12 @@
             </div>
         </div>
         
+        {% if session.get('role') in ['admin', 'campaign_manager'] %}
         <!-- Floating Action Button -->
         <button class="fab haptic-light" onclick="addNewLead()" aria-label="הוסף ליד חדש">
             ➕
         </button>
+        {% endif %}
         
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
@@ -664,14 +613,12 @@
                     <div class="nav-icon">📋</div>
                     <div class="nav-label">לידים</div>
                 </div>
-                <div class="nav-item haptic-light" onclick="navigateTo('calls')">
-                    <div class="nav-icon">📞</div>
-                    <div class="nav-label">שיחות</div>
-                </div>
+                {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <div class="nav-item haptic-light" onclick="navigateTo('reports')">
                     <div class="nav-icon">📊</div>
                     <div class="nav-label">דוחות</div>
                 </div>
+                {% endif %}
                 <div class="nav-item haptic-light" onclick="navigateTo('profile')">
                     <div class="nav-icon">👤</div>
                     <div class="nav-label">פרופיל</div>
@@ -900,17 +847,22 @@
             createLeadCard(lead) {
                 const statusClass = `status-${lead.status || 'new'}`;
                 const statusLabel = this.getStatusLabel(lead.status);
+                const userRole = '{{ session.get("role") }}';
+
+                // Only show swipe actions for admin/campaign_manager
+                const swipeActions = (userRole === 'admin' || userRole === 'campaign_manager') ? `
+                    <div class="swipe-actions">
+                        <div class="swipe-action swipe-edit" onclick="leadManager.updateStatus(${lead.id})">
+                            ✏️ סטטוס
+                        </div>
+                        <div class="swipe-action swipe-delete" onclick="leadManager.deleteLead(${lead.id})">
+                            🗑️ מחק
+                        </div>
+                    </div>` : '';
 
                 return `
                     <div class="enhanced-lead-card swipe-container haptic-light" data-lead-id="${lead.id}">
-                        <div class="swipe-actions">
-                            <div class="swipe-action swipe-edit" onclick="leadManager.editLead(${lead.id})">
-                                ✏️ ערוך
-                            </div>
-                            <div class="swipe-action swipe-delete" onclick="leadManager.deleteLead(${lead.id})">
-                                🗑️ מחק
-                            </div>
-                        </div>
+                        ${swipeActions}
                         <div class="card-status-bar ${statusClass}"></div>
                         <div class="card-content" onclick="leadManager.openLead(${lead.id})">
                             <div class="card-header">
@@ -943,14 +895,8 @@
                             </div>
 
                             <div class="card-actions">
-                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.callLead(event, '${lead.phone}')">
-                                    📞 התקשר
-                                </button>
-                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.emailLead(event, '${lead.email}')">
-                                    ✉️ אימייל
-                                </button>
-                                <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="leadManager.assignLead(event, ${lead.id})">
-                                    👤 הקצה
+                                <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="leadManager.viewDetails(event, ${lead.id})">
+                                    👁️ צפה בפרטים
                                 </button>
                             </div>
                         </div>
@@ -1021,35 +967,52 @@
                 return date.toLocaleDateString('he-IL');
             }
 
-            callLead(event, phone) {
-                event.stopPropagation();
-                this.hapticFeedback('medium');
-                if (phone && phone !== 'ללא טלפון') {
-                    window.location.href = `tel:${phone}`;
-                }
-            }
-
-            emailLead(event, email) {
-                event.stopPropagation();
-                this.hapticFeedback('medium');
-                if (email && email !== 'null') {
-                    window.location.href = `mailto:${email}`;
-                }
-            }
-
-            async assignLead(event, leadId) {
-                event.stopPropagation();
-                this.hapticFeedback('heavy');
-                console.log(`Assigning lead ${leadId}`);
-                // Show assignment modal
-                this.showBottomSheet('assign', leadId);
-            }
 
             async openLead(leadId) {
                 this.hapticFeedback('light');
                 console.log(`Opening lead ${leadId}`);
                 // Show lead details in bottom sheet
                 this.showBottomSheet('details', leadId);
+            }
+
+            async viewDetails(event, leadId) {
+                event.stopPropagation();
+                this.hapticFeedback('light');
+                // Fetch and display lead details
+                try {
+                    const response = await fetch(`/lead/${leadId}`);
+                    const lead = await response.json();
+
+                    // Simple alert for now - will be replaced with bottom sheet
+                    alert(`
+📋 פרטי ליד
+
+שם: ${lead.name || 'ללא שם'}
+טלפון: ${lead.phone || 'ללא'}
+אימייל: ${lead.email || 'ללא'}
+סטטוס: ${this.getStatusLabel(lead.status)}
+קמפיין: ${lead.campaign_name || 'ללא'}
+תאריך: ${this.formatDate(lead.created_at)}
+                    `);
+                } catch (error) {
+                    console.error('Error loading lead details:', error);
+                }
+            }
+
+            async updateStatus(leadId) {
+                this.hapticFeedback('medium');
+                this.hideCardActions(document.querySelector(`[data-lead-id="${leadId}"]`));
+
+                // Simple status update prompt
+                const statuses = ['new', 'contacted', 'qualified', 'interested', 'hired', 'rejected', 'closed'];
+                const statusLabels = statuses.map(s => this.getStatusLabel(s)).join('\n');
+                const newStatus = prompt(`בחר סטטוס חדש:\n${statusLabels}`);
+
+                if (newStatus) {
+                    // Update status via API
+                    console.log(`Updating lead ${leadId} status to ${newStatus}`);
+                    // TODO: Implement actual status update
+                }
             }
 
             async editLead(leadId) {
