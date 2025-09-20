@@ -1643,7 +1643,7 @@ def get_single_lead(lead_id):
                 l.platform,
                 l.campaign_name,
                 l.assigned_to,
-                l.created_at,
+                l.created_time,
                 l.updated_at,
                 l.notes,
                 l.external_lead_id,
@@ -1662,8 +1662,8 @@ def get_single_lead(lead_id):
         conn.close()
 
         # Convert datetime objects to strings for JSON serialization
-        if lead.get('created_at'):
-            lead['created_at'] = lead['created_at'].isoformat()
+        if lead.get('created_time'):
+            lead['created_time'] = lead['created_time'].isoformat()
         if lead.get('updated_at'):
             lead['updated_at'] = lead['updated_at'].isoformat()
 

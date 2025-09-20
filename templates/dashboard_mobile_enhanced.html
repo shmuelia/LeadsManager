@@ -1055,7 +1055,7 @@
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">תאריך</span>
-                                    <span class="info-value">${this.formatDate(lead.created_at)}</span>
+                                    <span class="info-value">${this.formatDate(lead.created_time)}</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">מוקצה ל</span>
@@ -1087,7 +1087,7 @@
                         return this.leads.filter(l => l.priority === 'high' || l.status === 'new');
                     case 'today':
                         return this.leads.filter(l => {
-                            const leadDate = new Date(l.created_at);
+                            const leadDate = new Date(l.created_time);
                             return leadDate.toDateString() === today;
                         });
                     default:
@@ -1208,7 +1208,7 @@
 
                         <div class="detail-section">
                             <div class="detail-label">תאריך יצירה</div>
-                            <div class="detail-value">${this.formatDate(lead.created_at)}</div>
+                            <div class="detail-value">${this.formatDate(lead.created_time)}</div>
                         </div>
 
                         ${lead.notes ? `
