@@ -416,6 +416,76 @@ def debug_session():
         logger.error(f"Debug session error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/fix-lead-382')
+def fix_lead_382():
+    """Public endpoint to fix lead #382 phone number"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Check current state of lead #382
+        cur.execute("""
+            SELECT id, name, phone, raw_data
+            FROM leads
+            WHERE id = 382
+        """)
+        lead = cur.fetchone()
+
+        if not lead:
+            return jsonify({'error': 'Lead #382 not found'}), 404
+
+        result = {
+            'lead_id': 382,
+            'name': lead['name'],
+            'phone_before': lead['phone']
+        }
+
+        raw_data = lead['raw_data']
+        if isinstance(raw_data, str):
+            raw_data = json.loads(raw_data)
+
+        # Look for phone in raw_data
+        phone = None
+        phone_fields = ['Phone Number', 'phone', 'phone_number', 'טלפון', 'מספר טלפון', 'Raw מספר טלפון']
+
+        for field in phone_fields:
+            if field in raw_data and raw_data[field]:
+                phone = raw_data[field]
+                result['phone_found_in'] = field
+                break
+
+        if phone and (not lead['phone'] or lead['phone'] == ''):
+            # Update the phone field
+            cur.execute("""
+                UPDATE leads
+                SET phone = %s
+                WHERE id = 382
+            """, (phone,))
+            conn.commit()
+
+            result['status'] = 'fixed'
+            result['phone_after'] = phone
+            result['message'] = f'Phone updated from raw_data to: {phone}'
+        elif lead['phone']:
+            result['status'] = 'already_set'
+            result['phone_after'] = lead['phone']
+            result['message'] = f'Phone already set to: {lead["phone"]}'
+        else:
+            result['status'] = 'no_phone_found'
+            result['message'] = 'No phone number found in raw_data'
+            result['raw_data_keys'] = list(raw_data.keys()) if raw_data else []
+
+        cur.close()
+        conn.close()
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error fixing lead 382: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     """Receive Facebook leads from Zapier or Meta directly"""
