@@ -1615,6 +1615,64 @@ def dashboard():
         return render_template('dashboard_mobile_enhanced.html')
     return render_template('dashboard.html')
 
+@app.route('/lead/<int:lead_id>')
+@login_required
+def get_single_lead(lead_id):
+    """Get details for a single lead"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection error'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get customer context
+        if session.get('role') == 'admin':
+            selected_customer_id = session.get('selected_customer_id', 1)
+        else:
+            selected_customer_id = session.get('customer_id', 1)
+
+        # Fetch the lead with customer filtering
+        cur.execute("""
+            SELECT
+                l.id,
+                l.name,
+                l.email,
+                l.phone,
+                l.status,
+                l.platform,
+                l.campaign_name,
+                l.assigned_to,
+                l.created_at,
+                l.updated_at,
+                l.notes,
+                l.external_lead_id,
+                u.full_name as assigned_to_name
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_to = u.username AND u.customer_id = l.customer_id
+            WHERE l.id = %s AND l.customer_id = %s
+        """, (lead_id, selected_customer_id))
+
+        lead = cur.fetchone()
+
+        if not lead:
+            return jsonify({'error': 'Lead not found'}), 404
+
+        cur.close()
+        conn.close()
+
+        # Convert datetime objects to strings for JSON serialization
+        if lead.get('created_at'):
+            lead['created_at'] = lead['created_at'].isoformat()
+        if lead.get('updated_at'):
+            lead['updated_at'] = lead['updated_at'].isoformat()
+
+        return jsonify(lead)
+
+    except Exception as e:
+        logger.error(f"Error fetching lead {lead_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/campaign-manager')
 @campaign_manager_required
 def campaign_manager_dashboard():

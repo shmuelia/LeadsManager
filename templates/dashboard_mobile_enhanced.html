@@ -1156,6 +1156,12 @@
 
                 try {
                     const response = await fetch(`/lead/${leadId}`);
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP ${response.status}`);
+                    }
+
                     const lead = await response.json();
 
                     // Format the details HTML
@@ -1220,6 +1226,9 @@
                     content.innerHTML = `
                         <div style="text-align: center; padding: 40px; color: var(--danger-color);">
                             ❌ שגיאה בטעינת הפרטים
+                            <div style="font-size: 12px; margin-top: 10px; color: var(--gray-500);">
+                                ${error.message || 'Unknown error'}
+                            </div>
                         </div>
                     `;
                 }
