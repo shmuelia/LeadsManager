@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>🚀 Mobile Dashboard v3.0 - ניהול לידים מתקדם</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
             margin: 0;
@@ -109,7 +109,7 @@
             overflow: hidden;
             position: relative;
             transform: translateZ(0);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s ease;
         }
         
         .enhanced-lead-card:active {
@@ -346,7 +346,7 @@
             cursor: pointer;
             box-shadow: 0 8px 24px rgba(5, 150, 105, 0.4);
             z-index: 999;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s ease;
         }
         
         .fab:active {
@@ -727,19 +727,6 @@
         <!-- Enhanced Lead Cards Section -->
         <div class="leads-section" id="leadsContainer">
             <!-- Lead cards will be dynamically generated here -->
-            
-            <!-- Loading State -->
-            <div class="skeleton-card" style="display: none;" id="loadingSkeleton">
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line short"></div>
-                <div class="skeleton-line"></div>
-            </div>
-            
-            <!-- Empty State -->
-            <div class="empty-state" style="display: none;" id="emptyState">
-                <div class="empty-icon">📋</div>
-                <div>אין לידים תואמים</div>
-            </div>
         </div>
         
         {% if session.get('role') in ['admin', 'campaign_manager'] %}
@@ -809,13 +796,28 @@
 
             async init() {
                 console.log('🚀 Initializing Mobile Lead Manager v3.0');
+
+                // Show loading immediately
+                document.getElementById('leadsContainer').innerHTML = `
+                    <div class="skeleton-card">
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line"></div>
+                    </div>
+                `;
+
+                // Setup gestures first
                 this.setupSwipeGestures();
                 this.setupPullToRefresh();
-                await this.loadLeads();
-                this.renderLeads();
 
-                // Auto-refresh every 30 seconds
-                setInterval(() => this.loadLeads(), 30000);
+                // Load leads after DOM is ready
+                setTimeout(async () => {
+                    await this.loadLeads();
+                    this.renderLeads();
+                }, 100);
+
+                // Auto-refresh every 60 seconds (not 30)
+                setInterval(() => this.loadLeads(), 60000);
             }
 
             setupSwipeGestures() {
@@ -1010,7 +1012,17 @@
                     return;
                 }
 
-                container.innerHTML = filtered.map(lead => this.createLeadCard(lead)).join('');
+                // Render only first 10 leads initially for faster load
+                const initialLeads = filtered.slice(0, 10);
+                container.innerHTML = initialLeads.map(lead => this.createLeadCard(lead)).join('');
+
+                // Load rest after a short delay
+                if (filtered.length > 10) {
+                    setTimeout(() => {
+                        const remainingLeads = filtered.slice(10);
+                        container.innerHTML += remainingLeads.map(lead => this.createLeadCard(lead)).join('');
+                    }, 200);
+                }
             }
 
             createLeadCard(lead) {
