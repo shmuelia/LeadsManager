@@ -557,13 +557,24 @@ def webhook():
         logger.info(f"=== WEBHOOK DATA RECEIVED ===")
         logger.info(f"Total fields: {len(lead_data)}")
         logger.info(f"Field names: {list(lead_data.keys())}")
+
+        # Log specific phone-related fields for debugging
+        phone_fields_to_check = ['phone', 'Phone Number', 'phone_number', 'טלפון', 'מספר טלפון', 'Raw מספר טלפון']
+        for field in phone_fields_to_check:
+            if field in lead_data:
+                logger.info(f"Found phone field '{field}': {lead_data[field]}")
+
+        # Log if we have any field containing 'phone' (case-insensitive)
+        phone_related_fields = [k for k in lead_data.keys() if 'phone' in k.lower()]
+        if phone_related_fields:
+            logger.info(f"All phone-related fields: {phone_related_fields}")
         
         # Prepare clean lead data with numbered custom fields
         clean_lead_data = dict(lead_data)  # Create a copy of original data
 
         # Define standard fields to exclude from custom questions
         standard_fields = {
-            'id', 'ID', 'name', 'email', 'phone', 'platform', 'Platform', 'campaign_name', 'Campaign Name',
+            'id', 'ID', 'name', 'email', 'phone', 'Phone Number', 'platform', 'Platform', 'campaign_name', 'Campaign Name',
             'form_name', 'Form Name', 'lead_source', 'created_time', 'Created Time', 'full_name', 'Full Name',
             'phone_number', 'Page Id', 'Page Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Form Id',
             'Ad Name', 'נוצר', 'שם', 'דוא"ל', 'טלפון', 'Raw Full Name', 'Raw Email', 'Raw מספר טלפון',
@@ -627,6 +638,9 @@ def webhook():
         phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.get('phone_number') or
                  lead_data.get('טלפון') or lead_data.get('מספר טלפון') or lead_data.get('Raw מספר טלפון'))
 
+        # Log what we extracted
+        logger.info(f"Extracted values - Name: {name}, Email: {email}, Phone: {phone}")
+
         # Extract campaign and form info from Zapier
         campaign_name = (lead_data.get('campaign_name') or lead_data.get('Campaign Name') or
                         lead_data.get('קמפיין'))
@@ -666,7 +680,10 @@ def webhook():
                         except Exception as e:
                             logger.warning(f"Could not parse date from raw_data '{created_date}': {e}")
                             pass
-                
+
+                # Log what we're about to save
+                logger.info(f"About to save lead: name='{name}', email='{email}', phone='{phone}'")
+
                 cur.execute("""
                     INSERT INTO leads (external_lead_id, name, email, phone, platform, campaign_name, form_name, lead_source, created_time, raw_data, customer_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
