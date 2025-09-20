@@ -554,8 +554,8 @@ def webhook():
         email = (lead_data.get('email') or lead_data.get('Email') or
                  lead_data.get('Raw Email') or lead_data.get('דוא"ל'))
 
-        phone = (lead_data.get('phone') or lead_data.get('phone_number') or lead_data.get('טלפון') or
-                 lead_data.get('מספר טלפון') or lead_data.get('Raw מספר טלפון'))
+        phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.get('phone_number') or
+                 lead_data.get('טלפון') or lead_data.get('מספר טלפון') or lead_data.get('Raw מספר טלפון'))
 
         # Extract campaign and form info from Zapier
         campaign_name = (lead_data.get('campaign_name') or lead_data.get('Campaign Name') or
@@ -1852,6 +1852,81 @@ def update_lead_status(lead_id):
 def admin_dashboard():
     """Admin-only dashboard - desktop design"""
     return render_template('admin_dashboard.html')
+
+@app.route('/admin/fix-phone-numbers')
+@admin_required
+def fix_phone_numbers():
+    """Admin endpoint to fix phone numbers from raw_data"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Find leads with empty phone field but phone data in raw_data
+        cur.execute("""
+            SELECT id, name, phone, raw_data
+            FROM leads
+            WHERE (phone IS NULL OR phone = '')
+            AND raw_data IS NOT NULL
+        """)
+
+        leads_to_fix = cur.fetchall()
+        fixed_count = 0
+        fixed_leads = []
+
+        for lead in leads_to_fix:
+            raw_data = lead['raw_data']
+            if not raw_data:
+                continue
+
+            # Parse raw_data if it's a string
+            if isinstance(raw_data, str):
+                try:
+                    raw_data = json.loads(raw_data)
+                except:
+                    continue
+
+            # Look for phone number in various fields
+            phone = None
+            phone_fields = ['Phone Number', 'phone', 'phone_number', 'טלפון', 'מספר טלפון', 'Raw מספר טלפון']
+
+            for field in phone_fields:
+                if field in raw_data and raw_data[field]:
+                    phone = raw_data[field]
+                    break
+
+            if phone:
+                # Update the lead with the phone number
+                cur.execute("""
+                    UPDATE leads
+                    SET phone = %s
+                    WHERE id = %s
+                """, (phone, lead['id']))
+
+                fixed_leads.append({
+                    'id': lead['id'],
+                    'name': lead['name'],
+                    'phone': phone
+                })
+                fixed_count += 1
+
+        # Commit the changes
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Successfully fixed {fixed_count} leads',
+            'fixed_count': fixed_count,
+            'fixed_leads': fixed_leads
+        })
+
+    except Exception as e:
+        logger.error(f"Error fixing phone numbers: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/mass-close', methods=['POST'])
 def mass_close_leads():
