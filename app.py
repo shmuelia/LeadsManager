@@ -475,6 +475,125 @@ def check_recent_webhooks():
         logger.error(f"Error checking recent webhooks: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/analyze-field-patterns')
+def analyze_field_patterns():
+    """Analyze field name patterns across all leads"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get all leads with raw_data
+        cur.execute("""
+            SELECT id, raw_data, campaign_name
+            FROM leads
+            WHERE raw_data IS NOT NULL
+        """)
+
+        leads = cur.fetchall()
+
+        # Track field patterns
+        field_patterns = {
+            'phone': set(),
+            'email': set(),
+            'name': set(),
+            'campaign': set()
+        }
+
+        # Patterns by campaign
+        campaign_patterns = {}
+
+        # Keywords to identify field types
+        phone_keywords = ['phone', 'טלפון', 'mobile', 'cell', 'tel']
+        email_keywords = ['email', 'mail', 'דואר', 'דוא"ל', '@']
+        name_keywords = ['name', 'שם', 'full']
+        campaign_keywords = ['campaign', 'קמפיין', 'form']
+
+        for lead in leads:
+            raw_data = lead['raw_data']
+            if isinstance(raw_data, str):
+                try:
+                    raw_data = json.loads(raw_data)
+                except:
+                    continue
+
+            if not raw_data or not isinstance(raw_data, dict):
+                continue
+
+            campaign = lead.get('campaign_name') or 'Unknown'
+            if campaign not in campaign_patterns:
+                campaign_patterns[campaign] = {
+                    'phone': set(),
+                    'email': set(),
+                    'name': set()
+                }
+
+            for field_name in raw_data.keys():
+                if not field_name or field_name.startswith('custom_'):
+                    continue
+
+                field_lower = field_name.lower()
+
+                # Categorize the field
+                if any(keyword in field_lower for keyword in phone_keywords):
+                    field_patterns['phone'].add(field_name)
+                    campaign_patterns[campaign]['phone'].add(field_name)
+                elif any(keyword in field_lower for keyword in email_keywords):
+                    field_patterns['email'].add(field_name)
+                    campaign_patterns[campaign]['email'].add(field_name)
+                elif any(keyword in field_lower for keyword in name_keywords):
+                    field_patterns['name'].add(field_name)
+                    campaign_patterns[campaign]['name'].add(field_name)
+                elif any(keyword in field_lower for keyword in campaign_keywords):
+                    field_patterns['campaign'].add(field_name)
+
+        cur.close()
+        conn.close()
+
+        # Convert sets to lists for JSON serialization
+        result = {
+            'global_patterns': {
+                'phone': sorted(list(field_patterns['phone'])),
+                'email': sorted(list(field_patterns['email'])),
+                'name': sorted(list(field_patterns['name'])),
+                'campaign': sorted(list(field_patterns['campaign']))
+            },
+            'campaign_specific': {}
+        }
+
+        # Only include campaigns with variations
+        for campaign, patterns in campaign_patterns.items():
+            if any(patterns[field_type] for field_type in ['phone', 'email', 'name']):
+                result['campaign_specific'][campaign] = {
+                    'phone': sorted(list(patterns['phone'])),
+                    'email': sorted(list(patterns['email'])),
+                    'name': sorted(list(patterns['name']))
+                }
+
+        # Add recommendations
+        recommendations = []
+        if len(field_patterns['phone']) > 3:
+            recommendations.append(f"Found {len(field_patterns['phone'])} phone field variations - consider field mapping")
+        if len(field_patterns['email']) > 3:
+            recommendations.append(f"Found {len(field_patterns['email'])} email field variations")
+        if len(field_patterns['name']) > 3:
+            recommendations.append(f"Found {len(field_patterns['name'])} name field variations")
+
+        result['recommendations'] = recommendations
+        result['total_variations'] = {
+            'phone': len(field_patterns['phone']),
+            'email': len(field_patterns['email']),
+            'name': len(field_patterns['name'])
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error analyzing field patterns: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/fix-lead/<int:lead_id>')
 def fix_specific_lead(lead_id):
     """Fix a specific lead's phone number from raw_data"""
