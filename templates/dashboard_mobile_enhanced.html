@@ -1056,20 +1056,21 @@
                             <div class="card-info-grid">
                                 <div class="info-item">
                                     <span class="info-label">אימייל</span>
-                                    <span class="info-value" style="direction: ltr; text-align: right;">${lead.email || 'אין אימייל'}</span>
+                                    <span class="info-value" style="direction: ltr; text-align: right; font-size: 12px;">${lead.email || 'אין אימייל'}</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">סטטוס</span>
                                     <span class="info-value">${this.getStatusLabel(lead.status)}</span>
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">תאריך</span>
-                                    <span class="info-value">${this.formatDate(lead.created_time)}</span>
+                                    <span class="info-label">קמפיין</span>
+                                    <span class="info-value">${lead.campaign_name || 'ללא קמפיין'}</span>
                                 </div>
+                                ${userRole === 'admin' || userRole === 'campaign_manager' ? `
                                 <div class="info-item">
                                     <span class="info-label">מוקצה ל</span>
                                     <span class="info-value">${lead.assigned_to || 'לא מוקצה'}</span>
-                                </div>
+                                </div>` : ''}
                             </div>
 
                             <div class="card-actions">
