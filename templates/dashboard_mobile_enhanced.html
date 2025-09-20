@@ -34,7 +34,7 @@
         
         body {
             font-family: 'Heebo', 'Inter', sans-serif;
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            background: linear-gradient(135deg, #e0f2fe 0%, #ddd6fe 50%, #dcfce7 100%);
             min-height: 100vh;
             direction: rtl;
             overflow-x: hidden;
@@ -98,18 +98,54 @@
         /* Enhanced Lead Cards */
         .leads-section {
             padding: 16px;
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #10b981 100%);
+            min-height: calc(100vh - 200px);
+            position: relative;
         }
-        
+
+        .leads-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
         .enhanced-lead-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
             border-radius: 16px;
             margin-bottom: 16px;
-            box-shadow: 0 4px 20px rgba(5, 150, 105, 0.15);
-            border: 1px solid rgba(5, 150, 105, 0.2);
+            box-shadow:
+                0 4px 20px rgba(59, 130, 246, 0.15),
+                0 8px 40px rgba(16, 185, 129, 0.08);
+            border: 2px solid transparent;
+            background-clip: padding-box;
             overflow: hidden;
             position: relative;
             transform: translateZ(0);
             transition: transform 0.2s ease;
+        }
+
+        .enhanced-lead-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 2px;
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #a855f7 100%);
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0.3;
+            pointer-events: none;
         }
         
         .enhanced-lead-card:active {
@@ -190,11 +226,14 @@
         }
         
         .lead-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--gray-900);
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
             line-height: 1.3;
             max-width: 70%;
+            letter-spacing: -0.5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            margin-bottom: 4px;
         }
         
         .lead-priority {
@@ -1045,8 +1084,8 @@
                         <div class="card-content" onclick="leadManager.openLead(${lead.id})">
                             <div class="card-header">
                                 <div>
-                                    <div class="lead-name">${lead.name || 'ללא שם'}</div>
-                                    <div class="info-value" style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                    <div class="lead-name">👤 ${lead.name || 'ללא שם'}</div>
+                                    <div class="info-value" style="font-size: 14px; color: #64748b; margin-top: 6px; font-weight: 500;">
                                         📱 ${lead.phone || 'ללא טלפון'}
                                     </div>
                                 </div>
@@ -1074,8 +1113,15 @@
                             </div>
 
                             <div class="card-actions">
+                                ${lead.phone ? `
+                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.callLead(event, '${lead.phone}')">
+                                    📞
+                                </button>
+                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.whatsappLead(event, '${lead.phone}')">
+                                    💬
+                                </button>` : ''}
                                 <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="leadManager.viewDetails(event, ${lead.id})">
-                                    👁️ צפה בפרטים
+                                    👁️ פרטים
                                 </button>
                             </div>
                         </div>
@@ -1125,6 +1171,23 @@
                     'closed': 'סגור'
                 };
                 return labels[status] || 'חדש';
+            }
+
+            callLead(event, phone) {
+                event.stopPropagation();
+                this.hapticFeedback('medium');
+                if (phone && phone !== 'ללא טלפון') {
+                    window.location.href = `tel:${phone}`;
+                }
+            }
+
+            whatsappLead(event, phone) {
+                event.stopPropagation();
+                this.hapticFeedback('medium');
+                if (phone && phone !== 'ללא טלפון') {
+                    const cleanPhone = phone.replace(/[^\d]/g, '');
+                    window.open(`https://wa.me/972${cleanPhone.substring(1)}`, '_blank');
+                }
             }
 
             formatDate(dateStr) {
