@@ -475,6 +475,98 @@ def check_recent_webhooks():
         logger.error(f"Error checking recent webhooks: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/fix-lead/<int:lead_id>')
+def fix_specific_lead(lead_id):
+    """Fix a specific lead's phone number from raw_data"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get the lead
+        cur.execute("""
+            SELECT id, name, email, phone, raw_data
+            FROM leads
+            WHERE id = %s
+        """, (lead_id,))
+        lead = cur.fetchone()
+
+        if not lead:
+            return jsonify({'error': f'Lead #{lead_id} not found'}), 404
+
+        result = {
+            'lead_id': lead_id,
+            'name': lead['name'],
+            'email': lead['email'],
+            'phone_before': lead['phone']
+        }
+
+        raw_data = lead['raw_data']
+        if isinstance(raw_data, str):
+            raw_data = json.loads(raw_data)
+
+        # Look for phone, name, and email in raw_data (including fields with colons)
+        phone = None
+        name = lead['name']
+        email = lead['email']
+
+        # Check for phone
+        phone_fields = ['Phone Number:', 'Phone Number', 'phone', 'phone_number', 'טלפון', 'מספר טלפון', 'Raw מספר טלפון']
+        for field in phone_fields:
+            if field in raw_data and raw_data[field]:
+                phone = raw_data[field]
+                result['phone_found_in'] = field
+                break
+
+        # Check for name if missing
+        if not name:
+            name_fields = ['Full Name:', 'Full Name', 'name', 'full_name', 'שם', 'Raw Full Name']
+            for field in name_fields:
+                if field in raw_data and raw_data[field]:
+                    name = raw_data[field]
+                    result['name_found_in'] = field
+                    break
+
+        # Check for email if missing
+        if not email:
+            email_fields = ['Email:', 'Email', 'email', 'Raw Email', 'דוא"ל']
+            for field in email_fields:
+                if field in raw_data and raw_data[field]:
+                    email = raw_data[field]
+                    result['email_found_in'] = field
+                    break
+
+        # Update the lead
+        updates_made = []
+        if phone and not lead['phone']:
+            cur.execute("UPDATE leads SET phone = %s WHERE id = %s", (phone, lead_id))
+            updates_made.append(f"phone={phone}")
+        if name and not lead['name']:
+            cur.execute("UPDATE leads SET name = %s WHERE id = %s", (name, lead_id))
+            updates_made.append(f"name={name}")
+        if email and not lead['email']:
+            cur.execute("UPDATE leads SET email = %s WHERE id = %s", (email, lead_id))
+            updates_made.append(f"email={email}")
+
+        if updates_made:
+            conn.commit()
+            result['status'] = 'fixed'
+            result['updates'] = updates_made
+            result['message'] = f'Updated: {", ".join(updates_made)}'
+        else:
+            result['status'] = 'no_updates_needed'
+            result['message'] = 'All fields already set or no data found in raw_data'
+
+        cur.close()
+        conn.close()
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error fixing lead {lead_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/fix-lead-382')
 def fix_lead_382():
     """Public endpoint to fix lead #382 phone number"""
@@ -617,8 +709,8 @@ def webhook():
         logger.info(f"Total fields: {len(lead_data)}")
         logger.info(f"Field names: {list(lead_data.keys())}")
 
-        # Log specific phone-related fields for debugging
-        phone_fields_to_check = ['phone', 'Phone Number', 'phone_number', 'טלפון', 'מספר טלפון', 'Raw מספר טלפון']
+        # Log specific phone-related fields for debugging (including with colons)
+        phone_fields_to_check = ['phone', 'Phone Number', 'Phone Number:', 'phone_number', 'טלפון', 'מספר טלפון', 'Raw מספר טלפון']
         for field in phone_fields_to_check:
             if field in lead_data:
                 logger.info(f"Found phone field '{field}': {lead_data[field]}")
@@ -631,14 +723,15 @@ def webhook():
         # Prepare clean lead data with numbered custom fields
         clean_lead_data = dict(lead_data)  # Create a copy of original data
 
-        # Define standard fields to exclude from custom questions
+        # Define standard fields to exclude from custom questions (including with colons)
         standard_fields = {
-            'id', 'ID', 'name', 'email', 'phone', 'Phone Number', 'platform', 'Platform', 'campaign_name', 'Campaign Name',
-            'form_name', 'Form Name', 'lead_source', 'created_time', 'Created Time', 'full_name', 'Full Name',
+            'id', 'ID', 'name', 'email', 'phone', 'Phone Number', 'Phone Number:', 'platform', 'Platform',
+            'campaign_name', 'Campaign Name', 'Campaign Name:', 'form_name', 'Form Name', 'lead_source',
+            'created_time', 'Created Time', 'Create Time:', 'full_name', 'Full Name', 'Full Name:',
             'phone_number', 'Page Id', 'Page Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Form Id',
             'Ad Name', 'נוצר', 'שם', 'דוא"ל', 'טלפון', 'Raw Full Name', 'Raw Email', 'Raw מספר טלפון',
-            'Email', 'מספר טלפון', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
-            'form_id', 'lead_form_id', 'מזהה טופס לידים'
+            'Email', 'Email:', 'מספר טלפון', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id',
+            'Vehicle', 'form_id', 'lead_form_id', 'מזהה טופס לידים'
         }
 
         # Check if data already has custom_question_X format (from Zapier)
@@ -687,21 +780,24 @@ def webhook():
             # Data already has numbered format, log it
             logger.info("Data already contains custom_question_X format from Zapier")
         
-        # Extract data with multiple fallbacks including Zapier field mappings
+        # Extract data with multiple fallbacks including Zapier field mappings (with and without colons)
         name = (lead_data.get('name') or lead_data.get('full name') or lead_data.get('full_name') or
-                lead_data.get('Full Name') or lead_data.get('שם') or lead_data.get('Raw Full Name'))
+                lead_data.get('Full Name') or lead_data.get('Full Name:') or lead_data.get('שם') or
+                lead_data.get('Raw Full Name'))
 
-        email = (lead_data.get('email') or lead_data.get('Email') or
+        email = (lead_data.get('email') or lead_data.get('Email') or lead_data.get('Email:') or
                  lead_data.get('Raw Email') or lead_data.get('דוא"ל'))
 
-        phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.get('phone_number') or
-                 lead_data.get('טלפון') or lead_data.get('מספר טלפון') or lead_data.get('Raw מספר טלפון'))
+        phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.get('Phone Number:') or
+                 lead_data.get('phone_number') or lead_data.get('טלפון') or lead_data.get('מספר טלפון') or
+                 lead_data.get('Raw מספר טלפון'))
 
         # Log what we extracted
         logger.info(f"Extracted values - Name: {name}, Email: {email}, Phone: {phone}")
 
-        # Extract campaign and form info from Zapier
+        # Extract campaign and form info from Zapier (with and without colons)
         campaign_name = (lead_data.get('campaign_name') or lead_data.get('Campaign Name') or
+                        lead_data.get('Campaign Name:') or lead_data.get('\r\n\r\nCampaign Name:') or
                         lead_data.get('קמפיין'))
 
         form_name = (lead_data.get('form_name') or lead_data.get('Form Name') or
