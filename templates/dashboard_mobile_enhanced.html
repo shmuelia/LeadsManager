@@ -38,6 +38,8 @@
             min-height: 100vh;
             direction: rtl;
             overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
         }
         
         /* Mobile-First Container */
@@ -46,6 +48,8 @@
             margin: 0;
             padding: 0;
             padding-bottom: 80px; /* Space for bottom navigation */
+            min-height: 100vh;
+            position: relative;
         }
         
         /* Modern App Header */
@@ -740,6 +744,7 @@
                 let pulling = false;
 
                 document.addEventListener('touchstart', (e) => {
+                    // Only activate pull-to-refresh when at top of page
                     if (window.scrollY === 0) {
                         startY = e.touches[0].pageY;
                         pulling = true;
@@ -747,12 +752,16 @@
                 }, { passive: true });
 
                 document.addEventListener('touchmove', (e) => {
-                    if (!pulling) return;
+                    if (!pulling || window.scrollY > 0) {
+                        pulling = false;
+                        return;
+                    }
 
                     currentY = e.touches[0].pageY;
                     const diff = currentY - startY;
 
-                    if (diff > 0 && diff < 150) {
+                    // Only show pull-to-refresh for downward pull at top
+                    if (diff > 0 && diff < 150 && window.scrollY === 0) {
                         const pullRefresh = document.getElementById('pullRefresh');
                         pullRefresh.style.display = 'flex';
                         pullRefresh.style.transform = `translateY(${Math.min(diff, 60)}px)`;
@@ -767,7 +776,7 @@
                     const diff = currentY - startY;
                     const pullRefresh = document.getElementById('pullRefresh');
 
-                    if (pulling && diff > 100) {
+                    if (pulling && diff > 100 && window.scrollY === 0) {
                         pullRefresh.classList.add('show');
                         pullRefresh.querySelector('.refresh-spinner').textContent = '⟳ מרענן...';
                         this.refreshLeads();
@@ -1131,12 +1140,8 @@
                 }
             });
 
-            // Prevent pull-to-refresh on iOS
-            document.addEventListener('touchmove', function(e) {
-                if (e.touches[0].clientY > 0) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
+            // Remove iOS pull-to-refresh prevention that was blocking scrolling
+            // This was causing the scrolling issue
 
             // Log initialization complete
             console.log('✅ Mobile Dashboard initialized successfully');
