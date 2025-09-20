@@ -1204,11 +1204,11 @@ class UnifiedLeadManagerClass {
                             <div><strong>שם מלא:</strong> ${lead.name || 'לא צוין'}</div>
                             <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
                             <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
-                            
+
                             <!-- Facebook Lead Management Links -->
                             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1);">
                                 <div style="margin-bottom: 8px;"><strong>ניהול הליד בפייסבוק:</strong></div>
-                                
+
                                 ${leadFormId ? `
                                     <div style="margin-bottom: 8px;">
                                         <a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" target="_blank" style="color: #1877f2;">
@@ -1216,7 +1216,7 @@ class UnifiedLeadManagerClass {
                                         </a>
                                     </div>
                                 ` : ''}
-                                
+
                                 ${facebookPageId && leadId ? `
                                     <div style="margin-bottom: 8px;">
                                         <a href="https://business.facebook.com/latest/lead_access/leads?page_id=${facebookPageId}&lead_id=${leadId}" target="_blank" style="color: #1877f2;">
@@ -1224,7 +1224,7 @@ class UnifiedLeadManagerClass {
                                         </a>
                                     </div>
                                 ` : ''}
-                                
+
                                 ${lead.platform === 'fb' || lead.platform === 'ig' ? `
                                     <div style="margin-bottom: 8px;">
                                         <a href="https://business.facebook.com/latest/lead_access/leads" target="_blank" style="color: #4267B2;">
@@ -1237,7 +1237,7 @@ class UnifiedLeadManagerClass {
                                         </a>
                                     </div>
                                 ` : ''}
-                                
+
                                 ${lead.external_lead_id ? `
                                     <div style="margin-bottom: 8px;">
                                         <strong>מזהה ליד:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${lead.external_lead_id}</code>
@@ -1257,24 +1257,7 @@ class UnifiedLeadManagerClass {
                 </div>
             </div>
 
-            <!-- Campaign & Source Information -->
-            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                <h3 style="margin-bottom: 15px; color: #1e293b;">🎯 מקור הליד ומיקוד</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <div style="margin-bottom: 10px;"><strong>פלטפורמה:</strong> ${lead.platform === 'fb' ? 'Facebook' : lead.platform === 'ig' ? 'Instagram' : lead.platform || 'לא צוין'}</div>
-                        <div style="margin-bottom: 10px;"><strong>שם קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</div>
-                        <div><strong>שם הטופס:</strong> ${lead.form_name || 'לא צוין'}</div>
-                    </div>
-                    <div>
-                        <div style="margin-bottom: 10px;"><strong>מקור ליד:</strong> ${lead.lead_source || 'לא צוין'}</div>
-                        <div style="margin-bottom: 10px;"><strong>ID חיצוני:</strong> ${lead.external_lead_id || 'לא צוין'}</div>
-                        <div><strong>עדיפות:</strong> ${lead.priority || 'רגילה'}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Meta Form Responses (Meta Style Format) -->
+            <!-- Meta Form Responses (Meta Style Format) - Moved to Top -->
             ${Object.keys(rawData).length > 0 ? `
                 <div style="background: #ffffff; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #1877f2; box-shadow: 0 4px 12px rgba(24,119,242,0.15);">
                     <div style="border-bottom: 2px solid #1877f2; padding-bottom: 15px; margin-bottom: 20px;">
@@ -1423,6 +1406,27 @@ class UnifiedLeadManagerClass {
                     ` : ''}
                 </div>
             ` : '<div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; color: #6b7280;">אין נתונים מהטופס</div>'}
+
+            <!-- Campaign & Source Information Button -->
+            <div style="margin-bottom: 20px;">
+                <button onclick="toggleCampaignInfo()" style="width: 100%; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; padding: 15px 20px; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 600; color: #1e293b; transition: all 0.2s ease;">
+                    🎯 מקור הליד ומיקוד <span id="campaignToggleIcon" style="float: left;">▼</span>
+                </button>
+                <div id="campaignInfo" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 0 0 12px 12px; border: 2px solid #f59e0b; border-top: none; margin-top: -2px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <div style="margin-bottom: 10px;"><strong>פלטפורמה:</strong> ${lead.platform === 'fb' ? 'Facebook' : lead.platform === 'ig' ? 'Instagram' : lead.platform || 'לא צוין'}</div>
+                            <div style="margin-bottom: 10px;"><strong>שם קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</div>
+                            <div><strong>שם הטופס:</strong> ${lead.form_name || 'לא צוין'}</div>
+                        </div>
+                        <div>
+                            <div style="margin-bottom: 10px;"><strong>מקור ליד:</strong> ${lead.lead_source || 'לא צוין'}</div>
+                            <div style="margin-bottom: 10px;"><strong>ID חיצוני:</strong> ${lead.external_lead_id || 'לא צוין'}</div>
+                            <div><strong>עדיפות:</strong> ${lead.priority || 'רגילה'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Notes Section -->
             ${lead.notes ? `
@@ -1867,6 +1871,20 @@ class UnifiedLeadManagerClass {
             toast.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+}
+
+// Toggle campaign info section
+function toggleCampaignInfo() {
+    const campaignInfo = document.getElementById('campaignInfo');
+    const toggleIcon = document.getElementById('campaignToggleIcon');
+
+    if (campaignInfo.style.display === 'none') {
+        campaignInfo.style.display = 'block';
+        toggleIcon.textContent = '▲';
+    } else {
+        campaignInfo.style.display = 'none';
+        toggleIcon.textContent = '▼';
     }
 }
 
