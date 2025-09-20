@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>לוח בקרה - ניהול לידים</title>
+    <title>🚀 Mobile Dashboard v3.0 - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -126,9 +126,55 @@
         .status-rejected { background: var(--danger-color); }
         .status-closed { background: var(--gray-400); }
         
+        /* Swipeable Card */
+        .swipe-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .swipe-actions {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 200px;
+            display: flex;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .swipe-action {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .swipe-edit {
+            background: var(--secondary-color);
+        }
+
+        .swipe-delete {
+            background: var(--danger-color);
+        }
+
+        .enhanced-lead-card.swiped .swipe-actions {
+            transform: translateX(0);
+        }
+
+        .enhanced-lead-card.swiped .card-content {
+            transform: translateX(-200px);
+        }
+
         /* Card Content */
         .card-content {
             padding: 20px;
+            position: relative;
+            background: white;
+            transition: transform 0.3s ease;
         }
         
         .card-header {
@@ -363,6 +409,28 @@
             color: var(--gray-500);
             font-size: 14px;
             font-weight: 500;
+            background: white;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: fixed;
+            top: -60px;
+            left: 0;
+            right: 0;
+            z-index: 99;
+            transition: transform 0.3s ease;
+        }
+
+        .pull-refresh.show {
+            transform: translateY(60px);
+        }
+
+        .refresh-spinner {
+            animation: rotate 1s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
         
         /* Empty State */
@@ -467,9 +535,14 @@
 </head>
 <body>
     <div class="mobile-container">
+        <!-- Pull to Refresh Indicator -->
+        <div class="pull-refresh" id="pullRefresh" style="display: none;">
+            <div class="refresh-spinner">⟳ משיכה לרענון...</div>
+        </div>
+
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v2.0</h1>
+            <h1 class="header-title">🎯 לידים שלי v3.0</h1>
             <div class="header-actions">
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
                     🔍
@@ -506,10 +579,18 @@
         <div class="leads-section" id="leadsContainer">
             <!-- Lead cards will be dynamically generated here -->
             
-            <!-- Example Enhanced Lead Card -->
-            <div class="enhanced-lead-card haptic-light" onclick="openLead(123)">
+            <!-- Example Enhanced Lead Card with Swipe Actions -->
+            <div class="enhanced-lead-card swipe-container haptic-light" data-lead-id="123">
+                <div class="swipe-actions">
+                    <div class="swipe-action swipe-edit" onclick="editLead(123)">
+                        ✏️ ערוך
+                    </div>
+                    <div class="swipe-action swipe-delete" onclick="deleteLead(123)">
+                        🗑️ מחק
+                    </div>
+                </div>
                 <div class="card-status-bar status-new"></div>
-                <div class="card-content">
+                <div class="card-content" onclick="openLead(123)">
                     <div class="card-header">
                         <div>
                             <div class="lead-name">אברהם כהן</div>
@@ -600,112 +681,502 @@
     </div>
     
     <script>
-        // Modern Mobile Interactions
-        let touchStartY = 0;
-        let touchEndY = 0;
-        
-        // Pull to Refresh
-        function handleTouchStart(e) {
-            touchStartY = e.changedTouches[0].screenY;
-        }
-        
-        function handleTouchEnd(e) {
-            touchEndY = e.changedTouches[0].screenY;
-            handleSwipeGesture();
-        }
-        
-        function handleSwipeGesture() {
-            const swipeDistance = touchEndY - touchStartY;
-            if (swipeDistance > 100 && window.scrollY === 0) {
-                refreshLeads();
+        // Enhanced Mobile Lead Manager v3.0
+        class MobileLeadManager {
+            constructor() {
+                this.leads = [];
+                this.filteredLeads = [];
+                this.currentFilter = 'all';
+                this.touchStartX = 0;
+                this.touchStartY = 0;
+                this.touchEndX = 0;
+                this.touchEndY = 0;
+                this.currentSwipedCard = null;
+                this.isRefreshing = false;
+                this.init();
+            }
+
+            async init() {
+                console.log('🚀 Initializing Mobile Lead Manager v3.0');
+                this.setupSwipeGestures();
+                this.setupPullToRefresh();
+                await this.loadLeads();
+                this.renderLeads();
+
+                // Auto-refresh every 30 seconds
+                setInterval(() => this.loadLeads(), 30000);
+            }
+
+            setupSwipeGestures() {
+                document.addEventListener('touchstart', (e) => {
+                    const card = e.target.closest('.enhanced-lead-card');
+                    if (card) {
+                        this.touchStartX = e.changedTouches[0].screenX;
+                        this.touchStartY = e.changedTouches[0].screenY;
+                    }
+                }, false);
+
+                document.addEventListener('touchmove', (e) => {
+                    const card = e.target.closest('.enhanced-lead-card');
+                    if (card) {
+                        const currentX = e.changedTouches[0].screenX;
+                        const diffX = this.touchStartX - currentX;
+
+                        // Swipe left to reveal actions
+                        if (Math.abs(diffX) > 50) {
+                            e.preventDefault();
+                            const content = card.querySelector('.card-content');
+                            const swipeActions = card.querySelector('.swipe-actions');
+
+                            if (diffX > 0 && diffX < 200) {
+                                // Swiping left
+                                content.style.transform = `translateX(-${diffX}px)`;
+                                swipeActions.style.transform = `translateX(${200 - diffX}px)`;
+                            }
+                        }
+                    }
+                }, false);
+
+                document.addEventListener('touchend', (e) => {
+                    const card = e.target.closest('.enhanced-lead-card');
+                    if (card) {
+                        this.touchEndX = e.changedTouches[0].screenX;
+                        this.touchEndY = e.changedTouches[0].screenY;
+                        this.handleCardSwipe(card);
+                    }
+                }, false);
+            }
+
+            handleCardSwipe(card) {
+                const diffX = this.touchStartX - this.touchEndX;
+                const diffY = Math.abs(this.touchStartY - this.touchEndY);
+
+                // Only handle horizontal swipes
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) {
+                        // Swipe left - show actions
+                        this.showCardActions(card);
+                    } else {
+                        // Swipe right - hide actions
+                        this.hideCardActions(card);
+                    }
+                } else {
+                    // Reset position if swipe not complete
+                    const content = card.querySelector('.card-content');
+                    const swipeActions = card.querySelector('.swipe-actions');
+                    content.style.transform = '';
+                    swipeActions.style.transform = '';
+                }
+            }
+
+            showCardActions(card) {
+                // Close other swiped cards
+                if (this.currentSwipedCard && this.currentSwipedCard !== card) {
+                    this.hideCardActions(this.currentSwipedCard);
+                }
+
+                card.classList.add('swiped');
+                this.currentSwipedCard = card;
+                this.hapticFeedback('medium');
+            }
+
+            hideCardActions(card) {
+                card.classList.remove('swiped');
+                if (this.currentSwipedCard === card) {
+                    this.currentSwipedCard = null;
+                }
+            }
+
+            setupPullToRefresh() {
+                let startY = 0;
+                let currentY = 0;
+                let pulling = false;
+
+                document.addEventListener('touchstart', (e) => {
+                    if (window.scrollY === 0) {
+                        startY = e.touches[0].pageY;
+                        pulling = true;
+                    }
+                }, { passive: true });
+
+                document.addEventListener('touchmove', (e) => {
+                    if (!pulling) return;
+
+                    currentY = e.touches[0].pageY;
+                    const diff = currentY - startY;
+
+                    if (diff > 0 && diff < 150) {
+                        const pullRefresh = document.getElementById('pullRefresh');
+                        pullRefresh.style.display = 'flex';
+                        pullRefresh.style.transform = `translateY(${Math.min(diff, 60)}px)`;
+
+                        if (diff > 100) {
+                            pullRefresh.querySelector('.refresh-spinner').textContent = '↓ שחרר לרענון...';
+                        }
+                    }
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    const diff = currentY - startY;
+                    const pullRefresh = document.getElementById('pullRefresh');
+
+                    if (pulling && diff > 100) {
+                        pullRefresh.classList.add('show');
+                        pullRefresh.querySelector('.refresh-spinner').textContent = '⟳ מרענן...';
+                        this.refreshLeads();
+
+                        setTimeout(() => {
+                            pullRefresh.classList.remove('show');
+                            pullRefresh.style.display = 'none';
+                            pullRefresh.style.transform = '';
+                        }, 1500);
+                    } else {
+                        pullRefresh.style.display = 'none';
+                        pullRefresh.style.transform = '';
+                    }
+
+                    pulling = false;
+                    startY = 0;
+                    currentY = 0;
+                }, { passive: true });
+            }
+
+            hapticFeedback(intensity = 'light') {
+                if (navigator.vibrate) {
+                    const patterns = {
+                        light: 20,
+                        medium: 40,
+                        heavy: 60
+                    };
+                    navigator.vibrate(patterns[intensity] || 20);
+                }
+            }
+
+            async loadLeads() {
+                try {
+                    const response = await fetch('/leads');
+                    const data = await response.json();
+                    this.leads = data.leads || [];
+                    console.log(`📊 Loaded ${this.leads.length} leads`);
+                    return this.leads;
+                } catch (error) {
+                    console.error('Error loading leads:', error);
+                    return [];
+                }
+            }
+
+            async refreshLeads() {
+                if (this.isRefreshing) return;
+
+                this.isRefreshing = true;
+                console.log('🔄 Refreshing leads...');
+                this.hapticFeedback('medium');
+
+                await this.loadLeads();
+                this.renderLeads();
+
+                setTimeout(() => {
+                    this.isRefreshing = false;
+                }, 1000);
+            }
+
+            renderLeads() {
+                const container = document.getElementById('leadsContainer');
+                const filtered = this.filterLeadsByType(this.currentFilter);
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📋</div>
+                            <div>אין לידים ${this.getFilterLabel(this.currentFilter)}</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = filtered.map(lead => this.createLeadCard(lead)).join('');
+            }
+
+            createLeadCard(lead) {
+                const statusClass = `status-${lead.status || 'new'}`;
+                const statusLabel = this.getStatusLabel(lead.status);
+
+                return `
+                    <div class="enhanced-lead-card swipe-container haptic-light" data-lead-id="${lead.id}">
+                        <div class="swipe-actions">
+                            <div class="swipe-action swipe-edit" onclick="leadManager.editLead(${lead.id})">
+                                ✏️ ערוך
+                            </div>
+                            <div class="swipe-action swipe-delete" onclick="leadManager.deleteLead(${lead.id})">
+                                🗑️ מחק
+                            </div>
+                        </div>
+                        <div class="card-status-bar ${statusClass}"></div>
+                        <div class="card-content" onclick="leadManager.openLead(${lead.id})">
+                            <div class="card-header">
+                                <div>
+                                    <div class="lead-name">${lead.name || 'ללא שם'}</div>
+                                    <div class="info-value" style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                        📱 ${lead.phone || 'ללא טלפון'}
+                                    </div>
+                                </div>
+                                <div class="status-badge ${statusClass}">${statusLabel}</div>
+                            </div>
+
+                            <div class="card-info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">פלטפורמה</span>
+                                    <span class="info-value">${lead.platform || 'Unknown'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">קמפיין</span>
+                                    <span class="info-value">${lead.campaign_name || 'ללא קמפיין'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">תאריך</span>
+                                    <span class="info-value">${this.formatDate(lead.created_at)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">מוקצה ל</span>
+                                    <span class="info-value">${lead.assigned_to || 'לא מוקצה'}</span>
+                                </div>
+                            </div>
+
+                            <div class="card-actions">
+                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.callLead(event, '${lead.phone}')">
+                                    📞 התקשר
+                                </button>
+                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.emailLead(event, '${lead.email}')">
+                                    ✉️ אימייל
+                                </button>
+                                <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="leadManager.assignLead(event, ${lead.id})">
+                                    👤 הקצה
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            filterLeadsByType(type) {
+                const now = new Date();
+                const today = now.toDateString();
+
+                switch(type) {
+                    case 'new':
+                        return this.leads.filter(l => l.status === 'new');
+                    case 'mine':
+                        const username = '{{ session.get("username") }}';
+                        return this.leads.filter(l => l.assigned_to === username);
+                    case 'urgent':
+                        return this.leads.filter(l => l.priority === 'high' || l.status === 'new');
+                    case 'today':
+                        return this.leads.filter(l => {
+                            const leadDate = new Date(l.created_at);
+                            return leadDate.toDateString() === today;
+                        });
+                    default:
+                        return this.leads;
+                }
+            }
+
+            getFilterLabel(filter) {
+                const labels = {
+                    'new': 'חדשים',
+                    'mine': 'שהוקצו לי',
+                    'urgent': 'דחופים',
+                    'today': 'מהיום',
+                    'all': ''
+                };
+                return labels[filter] || '';
+            }
+
+            getStatusLabel(status) {
+                const labels = {
+                    'new': 'חדש',
+                    'contacted': 'יצרנו קשר',
+                    'qualified': 'מתאים',
+                    'interested': 'מעוניין',
+                    'hired': 'נשכר',
+                    'rejected': 'נדחה',
+                    'closed': 'סגור'
+                };
+                return labels[status] || 'חדש';
+            }
+
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                const date = new Date(dateStr);
+                const now = new Date();
+                const diff = now - date;
+                const hours = Math.floor(diff / 3600000);
+
+                if (hours < 1) return 'עכשיו';
+                if (hours < 24) return `לפני ${hours} שעות`;
+
+                const days = Math.floor(hours / 24);
+                if (days === 1) return 'אתמול';
+                if (days < 7) return `לפני ${days} ימים`;
+
+                return date.toLocaleDateString('he-IL');
+            }
+
+            callLead(event, phone) {
+                event.stopPropagation();
+                this.hapticFeedback('medium');
+                if (phone && phone !== 'ללא טלפון') {
+                    window.location.href = `tel:${phone}`;
+                }
+            }
+
+            emailLead(event, email) {
+                event.stopPropagation();
+                this.hapticFeedback('medium');
+                if (email && email !== 'null') {
+                    window.location.href = `mailto:${email}`;
+                }
+            }
+
+            async assignLead(event, leadId) {
+                event.stopPropagation();
+                this.hapticFeedback('heavy');
+                console.log(`Assigning lead ${leadId}`);
+                // Show assignment modal
+                this.showBottomSheet('assign', leadId);
+            }
+
+            async openLead(leadId) {
+                this.hapticFeedback('light');
+                console.log(`Opening lead ${leadId}`);
+                // Show lead details in bottom sheet
+                this.showBottomSheet('details', leadId);
+            }
+
+            async editLead(leadId) {
+                this.hapticFeedback('medium');
+                console.log(`Editing lead ${leadId}`);
+                this.hideCardActions(document.querySelector(`[data-lead-id="${leadId}"]`));
+                this.showBottomSheet('edit', leadId);
+            }
+
+            async deleteLead(leadId) {
+                this.hapticFeedback('heavy');
+                if (confirm('האם אתה בטוח שברצונך למחוק את הליד?')) {
+                    try {
+                        const response = await fetch(`/lead/${leadId}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            this.loadLeads().then(() => this.renderLeads());
+                        }
+                    } catch (error) {
+                        console.error('Error deleting lead:', error);
+                    }
+                }
+            }
+
+            showBottomSheet(type, data) {
+                // Bottom sheet implementation would go here
+                console.log(`Showing ${type} bottom sheet for`, data);
+            }
+
+            filterLeads(type) {
+                // Update filter chips UI
+                document.querySelectorAll('.filter-chip').forEach(chip => {
+                    chip.classList.remove('active');
+                });
+                event.target.classList.add('active');
+
+                this.currentFilter = type;
+                this.renderLeads();
+                this.hapticFeedback('light');
             }
         }
+
+        // Initialize the lead manager
+        let leadManager;
+
+        // Legacy function mappings for onclick handlers
+        function filterLeads(type) {
+            leadManager.filterLeads(type);
+        }
         
-        // Add touch listeners
-        document.addEventListener('touchstart', handleTouchStart, false);
-        document.addEventListener('touchend', handleTouchEnd, false);
-        
-        // Navigation Functions
+
+        // Legacy navigation functions for onclick handlers
         function navigateTo(section) {
-            // Update active nav state
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             event.currentTarget.classList.add('active');
-            
-            // Navigate to section (implement routing logic)
-            console.log(`Navigating to: ${section}`);
+
+            // Navigate to appropriate section
+            switch(section) {
+                case 'dashboard':
+                    window.location.href = '/dashboard';
+                    break;
+                case 'leads':
+                    leadManager.loadLeads();
+                    break;
+                case 'calls':
+                    alert('📞 יומן שיחות - בקרוב!');
+                    break;
+                case 'reports':
+                    window.location.href = '/reports';
+                    break;
+                case 'profile':
+                    window.location.href = '/logout';
+                    break;
+            }
         }
-        
-        function refreshLeads() {
-            console.log('Refreshing leads...');
-            // Add refresh logic here
-        }
-        
-        function callLead(event, phone) {
-            event.stopPropagation();
-            window.location.href = `tel:${phone}`;
-        }
-        
-        function whatsappLead(event, phone) {
-            event.stopPropagation();
-            const cleanPhone = phone.replace(/[^\d]/g, '');
-            window.open(`https://wa.me/972${cleanPhone.substring(1)}`, '_blank');
-        }
-        
-        function assignLead(event, leadId) {
-            event.stopPropagation();
-            console.log(`Assigning lead ${leadId}`);
-            // Add assignment logic here
-        }
-        
-        function openLead(leadId) {
-            console.log(`Opening lead ${leadId}`);
-            // Add lead details logic here
-        }
-        
+
         function addNewLead() {
-            console.log('Adding new lead');
-            // Add new lead logic here
+            leadManager.hapticFeedback('medium');
+            alert('➕ הוספת ליד חדש - בקרוב!');
+            // TODO: Implement add new lead modal
         }
-        
+
         function toggleSearch() {
-            console.log('Toggle search');
-            // Add search logic here
+            leadManager.hapticFeedback('light');
+            alert('🔍 חיפוש - בקרוב!');
+            // TODO: Implement search functionality
         }
-        
+
         function showNotifications() {
-            console.log('Show notifications');
-            // Add notifications logic here
+            leadManager.hapticFeedback('light');
+            alert('🔔 התראות - בקרוב!');
+            // TODO: Implement notifications
         }
-        
+
         function showProfile() {
+            leadManager.hapticFeedback('light');
             window.location.href = '/logout';
         }
-        
-        function filterLeads(type) {
-            console.log(`Filtering leads: ${type}`);
-            // Add filtering logic here
-        }
-        
-        // Add haptic feedback simulation
-        function simulateHaptic() {
-            if (navigator.vibrate) {
-                navigator.vibrate(50); // Light haptic feedback
-            }
-        }
-        
-        // Add haptic to all haptic-light elements
-        document.addEventListener('touchstart', function(e) {
-            if (e.target.closest('.haptic-light')) {
-                simulateHaptic();
-            }
-        });
-        
-        // Initialize
+
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Add initialization logic here
-            console.log('Enhanced mobile dashboard initialized');
+            console.log('🚀 Enhanced Mobile Dashboard v3.0 Starting...');
+
+            // Create lead manager instance
+            leadManager = new MobileLeadManager();
+
+            // Add global haptic feedback
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.closest('.haptic-light')) {
+                    if (navigator.vibrate) {
+                        navigator.vibrate(20);
+                    }
+                }
+            });
+
+            // Prevent pull-to-refresh on iOS
+            document.addEventListener('touchmove', function(e) {
+                if (e.touches[0].clientY > 0) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            // Log initialization complete
+            console.log('✅ Mobile Dashboard initialized successfully');
         });
     </script>
 </body>

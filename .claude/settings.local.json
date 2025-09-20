@@ -19,7 +19,9 @@
       "Bash(bash:*)",
       "Bash(time curl:*)",
       "Bash(heroku config:set:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(cd:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

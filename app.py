@@ -1605,7 +1605,14 @@ def get_lead(lead_id):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Beautiful web dashboard for viewing leads"""
+    """Beautiful web dashboard for viewing leads - with mobile detection"""
+    # Detect mobile device from user agent
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(device in user_agent for device in ['mobile', 'android', 'iphone', 'ipad'])
+
+    # Use enhanced mobile template for mobile devices
+    if is_mobile:
+        return render_template('dashboard_mobile_enhanced.html')
     return render_template('dashboard.html')
 
 @app.route('/campaign-manager')
