@@ -416,6 +416,65 @@ def debug_session():
         logger.error(f"Debug session error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/check-recent-webhooks')
+def check_recent_webhooks():
+    """Check recent leads to see what webhook data was received"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get the 5 most recent leads with their raw_data
+        cur.execute("""
+            SELECT id, name, email, phone, created_time, raw_data
+            FROM leads
+            ORDER BY id DESC
+            LIMIT 5
+        """)
+
+        recent_leads = cur.fetchall()
+        results = []
+
+        for lead in recent_leads:
+            raw_data = lead['raw_data']
+            if isinstance(raw_data, str):
+                try:
+                    raw_data = json.loads(raw_data)
+                except:
+                    pass
+
+            # Check for phone fields in raw_data
+            phone_fields_found = {}
+            if raw_data and isinstance(raw_data, dict):
+                for key in raw_data.keys():
+                    if 'phone' in key.lower() or 'טלפון' in key:
+                        phone_fields_found[key] = raw_data[key]
+
+            results.append({
+                'id': lead['id'],
+                'name': lead['name'],
+                'email': lead['email'],
+                'phone_in_db': lead['phone'],
+                'has_phone': bool(lead['phone']),
+                'phone_fields_in_raw_data': phone_fields_found,
+                'all_raw_data_fields': list(raw_data.keys()) if raw_data else []
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Recent leads analysis',
+            'leads': results
+        })
+
+    except Exception as e:
+        logger.error(f"Error checking recent webhooks: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/fix-lead-382')
 def fix_lead_382():
     """Public endpoint to fix lead #382 phone number"""
