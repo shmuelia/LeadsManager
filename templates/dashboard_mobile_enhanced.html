@@ -122,13 +122,13 @@
         }
 
         .enhanced-lead-card {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%);
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
             border-radius: 16px;
             margin-bottom: 16px;
             box-shadow:
                 0 4px 20px rgba(59, 130, 246, 0.15),
                 0 8px 40px rgba(16, 185, 129, 0.08);
-            border: 2px solid transparent;
+            border: 2px solid #e5e7eb;
             background-clip: padding-box;
             overflow: hidden;
             position: relative;
@@ -218,7 +218,7 @@
         .card-content {
             padding: 20px;
             position: relative;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #ffffff;
             transition: transform 0.3s ease;
         }
         
@@ -230,14 +230,14 @@
         }
         
         .lead-name {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1e293b;
-            line-height: 1.3;
+            font-size: 28px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.2;
             max-width: 70%;
             letter-spacing: -0.5px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            margin-bottom: 4px;
+            text-shadow: none;
+            margin-bottom: 8px;
         }
         
         .lead-priority {
@@ -264,17 +264,17 @@
         }
         
         .info-label {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--gray-500);
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .info-value {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--gray-900);
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
             direction: ltr;
             text-align: right;
         }
@@ -291,7 +291,7 @@
             min-height: 44px; /* iOS/Android touch target standard */
             border: 1px solid var(--gray-200);
             border-radius: 12px;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #ffffff;
             color: var(--gray-700);
             font-size: 14px;
             font-weight: 500;
@@ -426,7 +426,7 @@
         }
         
         .filter-chip.active {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #ffffff;
             color: var(--primary-color);
             border-color: white;
             font-weight: 600;
@@ -459,7 +459,7 @@
             color: var(--gray-500);
             font-size: 14px;
             font-weight: 500;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #ffffff;
             border-radius: 0 0 20px 20px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             position: fixed;
@@ -498,7 +498,7 @@
         
         /* Loading States */
         .skeleton-card {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #ffffff;
             border-radius: 16px;
             margin-bottom: 16px;
             padding: 20px;
@@ -608,7 +608,7 @@
 
         .bottom-sheet-content {
             position: relative;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #ffffff;
             border-radius: 20px 20px 0 0;
             width: 100%;
             max-width: 600px;
@@ -735,7 +735,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v3.04 🌿</h1>
+            <h1 class="header-title">🎯 לידים שלי v3.05</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1085,8 +1085,8 @@
                         <div class="card-content" onclick="leadManager.openLead(${lead.id})">
                             <div class="card-header">
                                 <div>
-                                    <div class="lead-name">👤 ${lead.name || 'ללא שם'}</div>
-                                    <div class="info-value" style="font-size: 14px; color: #64748b; margin-top: 6px; font-weight: 500;">
+                                    <div class="lead-name">${lead.name || 'ללא שם'}</div>
+                                    <div class="info-value" style="font-size: 18px; color: #374151; margin-top: 8px; font-weight: 600;">
                                         📱 ${lead.phone || 'ללא טלפון'}
                                     </div>
                                 </div>
