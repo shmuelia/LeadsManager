@@ -264,17 +264,17 @@
         }
         
         .info-label {
-            font-size: 14px;
-            font-weight: 600;
-            color: #6b7280;
+            font-size: 16px;
+            font-weight: 700;
+            color: #000000;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .info-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: #111827;
+            font-size: 18px;
+            font-weight: 700;
+            color: #000000;
             direction: ltr;
             text-align: right;
         }
@@ -434,9 +434,9 @@
         
         /* Status Indicators */
         .status-badge {
-            font-size: 11px;
-            font-weight: 600;
-            padding: 4px 10px;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 6px 12px;
             border-radius: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -735,7 +735,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v3.06</h1>
+            <h1 class="header-title">🎯 לידים שלי v3.07</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1086,7 +1086,7 @@
                             <div class="card-header">
                                 <div>
                                     <div class="lead-name">${lead.name || 'ללא שם'}</div>
-                                    <div class="info-value" style="font-size: 18px; color: #374151; margin-top: 8px; font-weight: 600;">
+                                    <div class="info-value" style="font-size: 20px; color: #000000; margin-top: 8px; font-weight: 700;">
                                         📱 ${lead.phone || 'ללא טלפון'}
                                     </div>
                                 </div>
