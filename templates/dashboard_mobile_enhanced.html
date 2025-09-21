@@ -735,7 +735,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v3.05</h1>
+            <h1 class="header-title">🎯 לידים שלי v3.06</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1352,9 +1352,13 @@
                 }
             }
 
-            showBottomSheet(type, data) {
-                // Bottom sheet implementation would go here
-                console.log(`Showing ${type} bottom sheet for`, data);
+            showBottomSheet(type, leadId) {
+                // Show the lead details modal for now
+                if (type === 'details') {
+                    this.viewDetails(new Event('click'), leadId);
+                } else {
+                    console.log(`Showing ${type} bottom sheet for`, leadId);
+                }
             }
 
             filterLeads(type) {
