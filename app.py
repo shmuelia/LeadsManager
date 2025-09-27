@@ -911,13 +911,14 @@ def webhook():
                  lead_data.get('phone_number') or lead_data.get('טלפון') or lead_data.get('מספר טלפון') or
                  lead_data.get('Raw מספר טלפון'))
 
-        # Log what we extracted
-        logger.info(f"Extracted values - Name: {name}, Email: {email}, Phone: {phone}")
-
         # Extract campaign and form info from Zapier (with and without colons)
         campaign_name = (lead_data.get('campaign_name') or lead_data.get('Campaign Name') or
                         lead_data.get('Campaign Name:') or lead_data.get('\r\n\r\nCampaign Name:') or
-                        lead_data.get('קמפיין'))
+                        lead_data.get('קמפיין') or lead_data.get('321085506__campaign_name'))
+
+        # Log what we extracted
+        logger.info(f"Extracted values - Name: {name}, Email: {email}, Phone: {phone}")
+        logger.info(f"Campaign name extracted: {campaign_name}")
 
         form_name = (lead_data.get('form_name') or lead_data.get('Form Name') or
                     lead_data.get('טופס'))
