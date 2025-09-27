@@ -502,11 +502,24 @@
             border-radius: 20px;
             font-weight: 600;
             transition: all 0.2s ease;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .status-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         
         .status-badge:active {
             transform: scale(0.95);
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        /* Ensure mobile status badges are always clickable */
+        .lead-card .status-badge {
+            pointer-events: auto;
+            touch-action: manipulation;
         }
         
         /* Mobile-friendly status change modal */
@@ -1038,9 +1051,11 @@ class UnifiedLeadManagerClass {
                         </div>
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}"
-                                  onclick="window.UnifiedLeadManager.quickStatusChange(${lead.id})"
-                                  title="לחץ לשינוי סטטוס">
+                                  onclick="console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); window.UnifiedLeadManager.quickStatusChange(${lead.id})"
+                                  title="לחץ לשינוי סטטוס"
+                                  style="position: relative;">
                                 ${this.getStatusLabel(lead.status)}
+                                <span style="position: absolute; top: -5px; right: -5px; font-size: 12px; color: #059669;">✏️</span>
                             </span>
                         </div>
                     </div>
@@ -1579,12 +1594,23 @@ class UnifiedLeadManagerClass {
     }
     
     async quickStatusChange(leadId) {
+        console.log('🔍 DEBUGGING: quickStatusChange called for leadId:', leadId);
         const lead = this.leads.find(l => l.id === leadId);
-        if (!lead) return;
+        if (!lead) {
+            console.error('🔍 DEBUGGING: Lead not found for ID:', leadId);
+            return;
+        }
+        
+        console.log('🔍 DEBUGGING: Found lead:', lead);
+        
+        // Check if we're on mobile and add fallback
+        const isMobile = window.innerWidth <= 768;
+        console.log('🔍 DEBUGGING: Is mobile:', isMobile);
         
         // Create status selection modal with all options
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
+        modal.style.zIndex = '10001'; // Ensure it's above other elements
         modal.innerHTML = `
             <div class="modal-content" style="max-width: 500px;">
                 <div class="modal-header">
@@ -1651,6 +1677,65 @@ class UnifiedLeadManagerClass {
         `;
         
         document.body.appendChild(modal);
+        
+        // Add debugging
+        console.log('🔍 DEBUGGING: Modal created and appended to body');
+        console.log('🔍 DEBUGGING: Modal element:', modal);
+        
+        // Ensure modal is visible
+        setTimeout(() => {
+            if (modal.parentNode) {
+                console.log('🔍 DEBUGGING: Modal is in DOM');
+                modal.style.display = 'flex';
+            } else {
+                console.error('🔍 DEBUGGING: Modal not in DOM');
+            }
+        }, 100);
+        
+        // Add fallback for mobile if modal doesn't work
+        if (isMobile) {
+            setTimeout(() => {
+                if (!modal.parentNode || modal.style.display === 'none') {
+                    console.log('🔍 DEBUGGING: Modal failed, using fallback');
+                    this.showMobileStatusFallback(leadId, lead);
+                }
+            }, 500);
+        }
+    }
+    
+    showMobileStatusFallback(leadId, lead) {
+        // Simple fallback using prompt for mobile
+        const statusOptions = [
+            { value: 'new', label: 'חדש' },
+            { value: 'contacted', label: 'נוצר קשר' },
+            { value: 'qualified', label: 'מוכשר' },
+            { value: 'interested', label: 'מתעניין' },
+            { value: 'hired', label: 'התקבל' },
+            { value: 'rejected', label: 'נדחה' },
+            { value: 'closed', label: 'סגור' }
+        ];
+        
+        const statusList = statusOptions.map((status, index) => 
+            `${index + 1}. ${status.label}`
+        ).join('\n');
+        
+        const userInput = prompt(
+            `עדכון סטטוס לליד: ${lead.name || 'ליד'}\n\n` +
+            `סטטוס נוכחי: ${this.getStatusLabel(lead.status)}\n\n` +
+            `בחר סטטוס חדש:\n${statusList}\n\n` +
+            `הזן מספר (1-7):`
+        );
+        
+        if (userInput && !isNaN(userInput)) {
+            const selectedIndex = parseInt(userInput) - 1;
+            if (selectedIndex >= 0 && selectedIndex < statusOptions.length) {
+                const selectedStatus = statusOptions[selectedIndex];
+                const note = prompt(`הוסף הערה על העדכון ל"${selectedStatus.label}":`);
+                if (note !== null) {
+                    this.performStatusChangeWithNote(leadId, selectedStatus.value, note, null);
+                }
+            }
+        }
     }
     
     showStatusChangeWithNote(leadId, newStatus, currentModal) {
