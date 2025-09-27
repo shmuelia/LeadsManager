@@ -122,13 +122,13 @@
         }
 
         .enhanced-lead-card {
-            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
             border-radius: 16px;
             margin-bottom: 16px;
             box-shadow:
-                0 4px 20px rgba(59, 130, 246, 0.15),
-                0 8px 40px rgba(16, 185, 129, 0.08);
-            border: 2px solid #e5e7eb;
+                0 4px 20px rgba(0, 0, 0, 0.15),
+                0 8px 40px rgba(0, 0, 0, 0.08);
+            border: 2px solid #374151;
             background-clip: padding-box;
             overflow: hidden;
             position: relative;
@@ -216,9 +216,9 @@
 
         /* Card Content */
         .card-content {
-            padding: 20px;
+            padding: 16px;
             position: relative;
-            background: #ffffff;
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
             transition: transform 0.3s ease;
         }
         
@@ -230,9 +230,9 @@
         }
         
         .lead-name {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 800;
-            color: #111827;
+            color: #ffffff;
             line-height: 1.2;
             max-width: 70%;
             letter-spacing: -0.5px;
@@ -289,33 +289,37 @@
         .action-btn-enhanced {
             flex: 1;
             min-height: 44px; /* iOS/Android touch target standard */
-            border: 1px solid var(--gray-200);
+            border: 1px solid #9ca3af;
             border-radius: 12px;
             background: #ffffff;
-            color: var(--gray-700);
+            color: #374151;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         .action-btn-enhanced:active {
-            background: var(--gray-50);
+            background: #f3f4f6;
             transform: scale(0.98);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         .action-btn-primary {
-            background: var(--primary-color);
+            background: #3b82f6;
             color: white;
-            border-color: var(--primary-color);
+            border-color: #3b82f6;
+            font-weight: 700;
         }
         
         .action-btn-primary:active {
-            background: #047857;
+            background: #2563eb;
+            transform: scale(0.98);
         }
         
         /* Bottom Navigation */
@@ -876,7 +880,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v3.13</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.14</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1227,42 +1231,19 @@
                             <div class="card-header">
                                 <div>
                                     <div class="lead-name">${lead.name || 'ללא שם'}</div>
-                                    <div class="info-value" style="font-size: 20px; color: #000000; margin-top: 8px; font-weight: 700;">
-                                        📱 ${lead.phone || 'ללא טלפון'}
-                                    </div>
                                 </div>
                                 <div class="status-badge ${statusClass}" onclick="event.stopPropagation(); console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); leadManager.updateStatus(${lead.id})" style="cursor: pointer;" title="לחץ לשינוי סטטוס">${statusLabel}</div>
                             </div>
 
-                            <div class="card-info-grid">
-                                <div class="info-item">
-                                    <span class="info-label">אימייל</span>
-                                    <span class="info-value" style="direction: ltr; text-align: right; font-size: 12px;">${lead.email || 'אין אימייל'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">סטטוס</span>
-                                    <span class="info-value">${this.getStatusLabel(lead.status)}</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">קמפיין</span>
-                                    <span class="info-value">${lead.campaign_name || 'ללא קמפיין'}</span>
-                                </div>
-                                ${userRole === 'admin' || userRole === 'campaign_manager' ? `
-                                <div class="info-item">
-                                    <span class="info-label">מוקצה ל</span>
-                                    <span class="info-value">${lead.assigned_to || 'לא מוקצה'}</span>
-                                </div>` : ''}
-                            </div>
-
                             <div class="card-actions">
                                 ${lead.phone ? `
-                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.callLead(event, '${lead.phone}')">
-                                    📞
+                                <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.callLead(event, '${lead.phone}')">
+                                    📞 התקשר
                                 </button>
-                                <button class="action-btn-enhanced haptic-light" onclick="leadManager.whatsappLead(event, '${lead.phone}')">
-                                    💬
+                                <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.whatsappLead(event, '${lead.phone}')">
+                                    💬 WhatsApp
                                 </button>` : ''}
-                                <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="leadManager.viewDetails(event, ${lead.id})">
+                                <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="event.stopPropagation(); leadManager.viewDetails(event, ${lead.id})">
                                     👁️ פרטים
                                 </button>
                             </div>
