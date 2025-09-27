@@ -4310,6 +4310,69 @@ def debug_webhook_fields():
         logger.error(f"Error in debug_webhook_fields: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/debug-lead/<int:lead_id>')
+def debug_lead(lead_id):
+    """Debug specific lead to see raw data fields"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        cur = conn.cursor()
+        
+        # Get lead with raw_data
+        cur.execute("""
+            SELECT id, name, email, phone, campaign_name, created_time, raw_data
+            FROM leads 
+            WHERE id = %s
+        """, (lead_id,))
+        
+        lead = cur.fetchone()
+        
+        if not lead:
+            return jsonify({'error': f'Lead #{lead_id} not found'}), 404
+        
+        lead_id_db, name, email, phone, campaign_name, created_time, raw_data = lead
+        
+        result = {
+            'lead_id': lead_id_db,
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'campaign_name': campaign_name,
+            'created_time': str(created_time) if created_time else None,
+            'raw_data_fields': {},
+            'campaign_related_fields': {},
+            'all_fields': []
+        }
+        
+        if raw_data:
+            try:
+                if isinstance(raw_data, str):
+                    data = json.loads(raw_data)
+                else:
+                    data = raw_data
+                
+                result['raw_data_fields'] = data
+                result['all_fields'] = list(data.keys())
+                
+                # Find campaign-related fields
+                campaign_fields = [k for k in data.keys() if 'campaign' in k.lower()]
+                result['campaign_related_fields'] = {field: data[field] for field in campaign_fields}
+                
+            except Exception as e:
+                result['raw_data_error'] = str(e)
+                result['raw_data_type'] = str(type(raw_data))
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Error in debug_lead: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # Initialize database on startup (but don't fail if it doesn't work)
 try:
     init_database()
