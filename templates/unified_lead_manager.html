@@ -1603,104 +1603,9 @@ class UnifiedLeadManagerClass {
         
         console.log('🔍 DEBUGGING: Found lead:', lead);
         
-        // Check if we're on mobile and add fallback
-        const isMobile = window.innerWidth <= 768;
-        console.log('🔍 DEBUGGING: Is mobile:', isMobile);
-        
-        // Create status selection modal with all options
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.style.zIndex = '10001'; // Ensure it's above other elements
-        modal.innerHTML = `
-            <div class="modal-content" style="max-width: 500px;">
-                <div class="modal-header">
-                    <h3>עדכון סטטוס: ${lead.name || 'ליד'}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
-                </div>
-                <div class="modal-body">
-                    <div style="margin-bottom: 20px; text-align: center;">
-                        <p style="color: #6b7280; margin-bottom: 8px;">סטטוס נוכחי:</p>
-                        <span class="status-badge status-${lead.status}" style="pointer-events: none;">${this.getStatusLabel(lead.status)}</span>
-                    </div>
-                    
-                    <div class="mobile-status-grid">
-                        <button class="mobile-status-btn status-new" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'new', this.closest('.modal-overlay'))">
-                            <div class="status-icon">🆕</div>
-                            <div>חדש</div>
-                        </button>
-                        <button class="mobile-status-btn status-contacted" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'contacted', this.closest('.modal-overlay'))">
-                            <div class="status-icon">📞</div>
-                            <div>נוצר קשר</div>
-                        </button>
-                        <button class="mobile-status-btn status-qualified" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'qualified', this.closest('.modal-overlay'))">
-                            <div class="status-icon">✅</div>
-                            <div>מוכשר</div>
-                        </button>
-                        <button class="mobile-status-btn status-interested" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'interested', this.closest('.modal-overlay'))">
-                            <div class="status-icon">🎯</div>
-                            <div>מתעניין</div>
-                        </button>
-                        <button class="mobile-status-btn status-hired" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'hired', this.closest('.modal-overlay'))">
-                            <div class="status-icon">🎉</div>
-                            <div>התקבל</div>
-                        </button>
-                        <button class="mobile-status-btn status-rejected" onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'rejected', this.closest('.modal-overlay'))">
-                            <div class="status-icon">❌</div>
-                            <div>נדחה</div>
-                        </button>
-                    </div>
-
-                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                        <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;"
-                                onclick="window.UnifiedLeadManager.showStatusChangeWithNote(${leadId}, 'closed', this.closest('.modal-overlay'))">
-                            <div class="status-icon">🔒</div>
-                            <div>סגור ליד לצמיתות</div>
-                        </button>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #dc2626;">הערת עדכון (חובה):</label>
-                        <textarea id="statusNote" placeholder="הוסף הערה על העדכון (שדה חובה)..."
-                                style="width: 100%; padding: 10px; border: 2px solid #dc2626; border-radius: 8px; height: 80px; resize: vertical;"
-                                required></textarea>
-                        <small style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;">* שדה חובה - יש להזין הערה לפני עדכון הסטטוס</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.performStatusChangeWithNote(${leadId}, document.getElementById('statusSelect').value, document.getElementById('statusNote').value, this.closest('.modal-overlay'))">
-                        עדכן סטטוס
-                    </button>
-                    <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
-                        ביטול
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Add debugging
-        console.log('🔍 DEBUGGING: Modal created and appended to body');
-        console.log('🔍 DEBUGGING: Modal element:', modal);
-        
-        // Ensure modal is visible
-        setTimeout(() => {
-            if (modal.parentNode) {
-                console.log('🔍 DEBUGGING: Modal is in DOM');
-                modal.style.display = 'flex';
-            } else {
-                console.error('🔍 DEBUGGING: Modal not in DOM');
-            }
-        }, 100);
-        
-        // Add fallback for mobile if modal doesn't work
-        if (isMobile) {
-            setTimeout(() => {
-                if (!modal.parentNode || modal.style.display === 'none') {
-                    console.log('🔍 DEBUGGING: Modal failed, using fallback');
-                    this.showMobileStatusFallback(leadId, lead);
-                }
-            }, 500);
-        }
+        // Use the same modal system that works on PC - showStatusChangeWithNote
+        // This ensures mobile gets the same working interface as PC
+        this.showStatusChangeWithNote(leadId, lead.status, null);
     }
     
     showMobileStatusFallback(leadId, lead) {
@@ -1745,9 +1650,73 @@ class UnifiedLeadManagerClass {
         const lead = this.leads.find(l => l.id === leadId);
         if (!lead) return;
 
+        // Create status selection modal (same as PC version)
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.zIndex = '10001';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>עדכון סטטוס: ${lead.name || 'ליד'}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <p style="color: #6b7280; margin-bottom: 8px;">סטטוס נוכחי:</p>
+                        <span class="status-badge status-${lead.status}" style="pointer-events: none;">${this.getStatusLabel(lead.status)}</span>
+                    </div>
+                    
+                    <div class="mobile-status-grid">
+                        <button class="mobile-status-btn status-new" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'new', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🆕</div>
+                            <div>חדש</div>
+                        </button>
+                        <button class="mobile-status-btn status-contacted" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'contacted', this.closest('.modal-overlay'))">
+                            <div class="status-icon">📞</div>
+                            <div>נוצר קשר</div>
+                        </button>
+                        <button class="mobile-status-btn status-qualified" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'qualified', this.closest('.modal-overlay'))">
+                            <div class="status-icon">✅</div>
+                            <div>מוכשר</div>
+                        </button>
+                        <button class="mobile-status-btn status-interested" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'interested', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🎯</div>
+                            <div>מתעניין</div>
+                        </button>
+                        <button class="mobile-status-btn status-hired" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'hired', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🎉</div>
+                            <div>התקבל</div>
+                        </button>
+                        <button class="mobile-status-btn status-rejected" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'rejected', this.closest('.modal-overlay'))">
+                            <div class="status-icon">❌</div>
+                            <div>נדחה</div>
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                        <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;"
+                                onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'closed', this.closest('.modal-overlay'))">
+                            <div class="status-icon">🔒</div>
+                            <div>סגור ליד לצמיתות</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    showStatusNoteModal(leadId, newStatus, currentModal) {
+        // Close current modal if exists
+        if (currentModal) currentModal.remove();
+
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead) return;
+
         // Create note input modal for status change
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
+        modal.style.zIndex = '10001';
         modal.innerHTML = `
             <div class="modal-content" style="max-width: 500px;">
                 <div class="modal-header">
