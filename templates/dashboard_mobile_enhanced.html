@@ -876,7 +876,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v3.12</h1>
+            <h1 class="header-title">🎯 לידים שלי v3.13</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1485,27 +1485,27 @@
                             </div>
                             
                             <div class="mobile-status-grid">
-                                <button class="mobile-status-btn status-new" onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'new', null)">
+                                <button class="mobile-status-btn status-new" onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'new', null)">
                                     <div class="status-icon">🆕</div>
                                     <div>חדש</div>
                                 </button>
-                                <button class="mobile-status-btn status-contacted" onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'contacted', null)">
+                                <button class="mobile-status-btn status-contacted" onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'contacted', null)">
                                     <div class="status-icon">📞</div>
                                     <div>נוצר קשר</div>
                                 </button>
-                                <button class="mobile-status-btn status-qualified" onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'qualified', null)">
+                                <button class="mobile-status-btn status-qualified" onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'qualified', null)">
                                     <div class="status-icon">✅</div>
                                     <div>מוכשר</div>
                                 </button>
-                                <button class="mobile-status-btn status-interested" onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'interested', null)">
+                                <button class="mobile-status-btn status-interested" onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'interested', null)">
                                     <div class="status-icon">🎯</div>
                                     <div>מתעניין</div>
                                 </button>
-                                <button class="mobile-status-btn status-hired" onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'hired', null)">
+                                <button class="mobile-status-btn status-hired" onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'hired', null)">
                                     <div class="status-icon">🎉</div>
                                     <div>התקבל</div>
                                 </button>
-                                <button class="mobile-status-btn status-rejected" onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'rejected', null)">
+                                <button class="mobile-status-btn status-rejected" onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'rejected', null)">
                                     <div class="status-icon">❌</div>
                                     <div>נדחה</div>
                                 </button>
@@ -1513,7 +1513,7 @@
 
                             <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                                 <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;"
-                                        onclick="this.closest('.modal-overlay').remove(); this.showStatusNoteModal(${leadId}, 'closed', null)">
+                                        onclick="this.closest('.modal-overlay').remove(); leadManager.showStatusNoteModal(${leadId}, 'closed', null)">
                                     <div class="status-icon">🔒</div>
                                     <div>סגור ליד לצמיתות</div>
                                 </button>
@@ -1527,11 +1527,17 @@
             }
 
             showStatusNoteModal(leadId, newStatus, currentModal) {
+                console.log('🔍 DEBUGGING: showStatusNoteModal called for leadId:', leadId, 'newStatus:', newStatus);
                 // Close current modal if exists
                 if (currentModal) currentModal.remove();
 
                 const lead = this.leads.find(l => l.id === leadId);
-                if (!lead) return;
+                if (!lead) {
+                    console.error('🔍 DEBUGGING: Lead not found in showStatusNoteModal:', leadId);
+                    return;
+                }
+                
+                console.log('🔍 DEBUGGING: Found lead in showStatusNoteModal:', lead);
 
                 // Create note input modal for status change
                 const modal = document.createElement('div');
@@ -1558,7 +1564,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="action-btn btn-primary" onclick="this.performStatusChangeWithNote(${leadId}, '${newStatus}', document.getElementById('statusNoteModal${leadId}').value, this.closest('.modal-overlay'))">
+                            <button class="action-btn btn-primary" onclick="leadManager.performStatusChangeWithNote(${leadId}, '${newStatus}', document.getElementById('statusNoteModal${leadId}').value, this.closest('.modal-overlay'))">
                                 עדכן סטטוס
                             </button>
                             <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
