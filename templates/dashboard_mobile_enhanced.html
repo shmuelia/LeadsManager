@@ -489,6 +489,97 @@
         .mobile-status-btn.status-hired { border-color: #10b981; color: #10b981; }
         .mobile-status-btn.status-rejected { border-color: #ef4444; color: #ef4444; }
         .mobile-status-btn.status-closed { border-color: #9ca3af; color: #9ca3af; }
+        
+        /* Modal Overlay Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .modal-overlay .modal-content {
+            background: linear-gradient(135deg, #fef7cd 0%, #fef3c7 100%);
+            border-radius: 12px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        .modal-overlay .modal-header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-overlay .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        .modal-overlay .modal-body {
+            padding: 25px;
+        }
+        
+        .modal-overlay .modal-footer {
+            padding: 20px 25px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .action-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
             letter-spacing: 0.5px;
         }
         
@@ -785,7 +876,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-            <h1 class="header-title">🎯 לידים שלי v3.11</h1>
+            <h1 class="header-title">🎯 לידים שלי v3.12</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1140,7 +1231,7 @@
                                         📱 ${lead.phone || 'ללא טלפון'}
                                     </div>
                                 </div>
-                                <div class="status-badge ${statusClass}" onclick="event.stopPropagation(); leadManager.updateStatus(${lead.id})" style="cursor: pointer;" title="לחץ לשינוי סטטוס">${statusLabel}</div>
+                                <div class="status-badge ${statusClass}" onclick="event.stopPropagation(); console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); leadManager.updateStatus(${lead.id})" style="cursor: pointer;" title="לחץ לשינוי סטטוס">${statusLabel}</div>
                             </div>
 
                             <div class="card-info-grid">
@@ -1364,15 +1455,18 @@
             }
 
             async updateStatus(leadId) {
+                console.log('🔍 DEBUGGING: updateStatus called for leadId:', leadId);
                 this.hapticFeedback('medium');
                 this.hideCardActions(document.querySelector(`[data-lead-id="${leadId}"]`));
 
                 // Find the lead data
                 const lead = this.leads.find(l => l.id === leadId);
                 if (!lead) {
-                    console.error('Lead not found:', leadId);
+                    console.error('🔍 DEBUGGING: Lead not found:', leadId);
                     return;
                 }
+                
+                console.log('🔍 DEBUGGING: Found lead:', lead);
 
                 // Create status selection modal (same as PC version)
                 const modal = document.createElement('div');
@@ -1428,6 +1522,8 @@
                     </div>
                 `;
                 document.body.appendChild(modal);
+                console.log('🔍 DEBUGGING: Modal created and appended to body');
+                console.log('🔍 DEBUGGING: Modal element:', modal);
             }
 
             showStatusNoteModal(leadId, newStatus, currentModal) {
