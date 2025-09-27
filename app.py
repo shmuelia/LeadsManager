@@ -928,6 +928,17 @@ def webhook():
                 logger.info(f"Found campaign name in field '{field}': {campaign_name}")
                 break
         
+        # If not found in exact fields, try fields with leading/trailing spaces
+        if not campaign_name:
+            for key, value in lead_data.items():
+                if value and str(value).strip():
+                    # Check if the key (with spaces trimmed) matches campaign patterns
+                    key_trimmed = key.strip().lower()
+                    if any(pattern in key_trimmed for pattern in ['campaign', 'קמפיין']):
+                        campaign_name = str(value).strip()
+                        logger.info(f"Found campaign name in field '{key}' (trimmed): {campaign_name}")
+                        break
+        
         # If still not found, log all available fields for debugging
         if not campaign_name:
             logger.warning("No campaign name found in any known field")
