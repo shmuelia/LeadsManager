@@ -1051,7 +1051,7 @@ class UnifiedLeadManagerClass {
                         </div>
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}"
-                                  onclick="console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); window.UnifiedLeadManager.quickStatusChange(${lead.id})"
+                                  onclick="event.stopPropagation(); console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); window.UnifiedLeadManager.quickStatusChange(${lead.id})"
                                   title="לחץ לשינוי סטטוס"
                                   style="position: relative;">
                                 ${this.getStatusLabel(lead.status)}
@@ -1069,7 +1069,7 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="lead-card-actions">
-                        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.viewLead(${lead.id})" 
+                        <button class="action-btn btn-primary" onclick="event.stopPropagation(); window.UnifiedLeadManager.viewLead(${lead.id})" 
                                 title="צפה בפרטים המלאים של ${lead.name || 'הליד'}">👁️</button>
                         ${lead.phone ? `
                             <a href="tel:${lead.phone}" class="action-btn btn-call" 
@@ -1083,11 +1083,11 @@ class UnifiedLeadManagerClass {
                                title="שלח אימייל ל-${lead.name || 'ליד'}: ${lead.email}">✉️</a>
                         ` : ''}
                         ${this.canAssign() ? `
-                            <button class="action-btn btn-assign" onclick="window.UnifiedLeadManager.quickAssign(${lead.id})" 
+                            <button class="action-btn btn-assign" onclick="event.stopPropagation(); window.UnifiedLeadManager.quickAssign(${lead.id})" 
                                     title="הקצה את ${lead.name || 'הליד'} למשתמש אחר">👤</button>
                         ` : ''}
                         ${this.userRole === 'admin' ? `
-                            <button class="action-btn btn-delete" onclick="window.UnifiedLeadManager.deleteLead(${lead.id})" 
+                            <button class="action-btn btn-delete" onclick="event.stopPropagation(); window.UnifiedLeadManager.deleteLead(${lead.id})" 
                                     title="מחק את ${lead.name || 'הליד'} לצמיתות (מנהל בלבד)">🗑️</button>
                         ` : ''}
                     </div>
