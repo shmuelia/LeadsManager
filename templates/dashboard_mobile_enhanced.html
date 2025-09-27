@@ -880,7 +880,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.14</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.15</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1231,6 +1231,7 @@
                             <div class="card-header">
                                 <div>
                                     <div class="lead-name">${lead.name || 'ללא שם'}</div>
+                                    <div class="campaign-name" style="font-size: 12px; color: #d1d5db; margin-top: 2px; font-weight: 500;">${lead.campaign_name || 'ללא קמפיין'}</div>
                                 </div>
                                 <div class="status-badge ${statusClass}" onclick="event.stopPropagation(); console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); leadManager.updateStatus(${lead.id})" style="cursor: pointer;" title="לחץ לשינוי סטטוס">${statusLabel}</div>
                             </div>
