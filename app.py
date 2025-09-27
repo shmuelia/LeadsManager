@@ -911,10 +911,33 @@ def webhook():
                  lead_data.get('phone_number') or lead_data.get('טלפון') or lead_data.get('מספר טלפון') or
                  lead_data.get('Raw מספר טלפון'))
 
-        # Extract campaign and form info from Zapier (with and without colons)
-        campaign_name = (lead_data.get('campaign_name') or lead_data.get('Campaign Name') or
-                        lead_data.get('Campaign Name:') or lead_data.get('\r\n\r\nCampaign Name:') or
-                        lead_data.get('קמפיין') or lead_data.get('321085506__campaign_name'))
+        # Extract campaign and form info from Zapier (with comprehensive field mapping)
+        campaign_name = None
+        
+        # Try all possible campaign name field variations
+        campaign_fields = [
+            'campaign_name', 'Campaign Name', 'Campaign Name:', '\r\n\r\nCampaign Name:',
+            'קמפיין', '321085506__campaign_name', 'campaign', 'Campaign',
+            'ad_campaign_name', 'ad_campaign', 'campaign_id', 'Campaign ID',
+            'campaign_title', 'Campaign Title', 'adset_name', 'Adset Name'
+        ]
+        
+        for field in campaign_fields:
+            if field in lead_data and lead_data[field] and str(lead_data[field]).strip():
+                campaign_name = str(lead_data[field]).strip()
+                logger.info(f"Found campaign name in field '{field}': {campaign_name}")
+                break
+        
+        # If still not found, log all available fields for debugging
+        if not campaign_name:
+            logger.warning("No campaign name found in any known field")
+            logger.info(f"Available fields: {list(lead_data.keys())}")
+            # Look for any field containing 'campaign' (case-insensitive)
+            campaign_related = [k for k in lead_data.keys() if 'campaign' in k.lower()]
+            if campaign_related:
+                logger.info(f"Campaign-related fields found: {campaign_related}")
+                for field in campaign_related:
+                    logger.info(f"  {field}: {lead_data[field]}")
 
         # Log what we extracted
         logger.info(f"Extracted values - Name: {name}, Email: {email}, Phone: {phone}")
@@ -4245,6 +4268,47 @@ def upload_facebook_csv():
             'error': str(e),
             'details': traceback.format_exc()
         }), 500
+
+@app.route('/debug-webhook-fields', methods=['POST'])
+def debug_webhook_fields():
+    """Debug endpoint to see exactly what fields Zapier is sending"""
+    try:
+        lead_data = request.get_json()
+        if not lead_data:
+            return jsonify({'error': 'No data received'}), 400
+        
+        # Log all fields received
+        logger.info("=== WEBHOOK DEBUG - ALL FIELDS ===")
+        logger.info(f"Total fields: {len(lead_data)}")
+        
+        # Group fields by type
+        all_fields = list(lead_data.keys())
+        campaign_fields = [k for k in all_fields if 'campaign' in k.lower()]
+        name_fields = [k for k in all_fields if 'name' in k.lower()]
+        phone_fields = [k for k in all_fields if 'phone' in k.lower()]
+        email_fields = [k for k in all_fields if 'email' in k.lower()]
+        
+        logger.info(f"All fields: {all_fields}")
+        logger.info(f"Campaign-related fields: {campaign_fields}")
+        logger.info(f"Name-related fields: {name_fields}")
+        logger.info(f"Phone-related fields: {phone_fields}")
+        logger.info(f"Email-related fields: {email_fields}")
+        
+        # Show values for campaign fields
+        for field in campaign_fields:
+            logger.info(f"Campaign field '{field}': {lead_data[field]}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Webhook fields logged for debugging',
+            'total_fields': len(all_fields),
+            'campaign_fields': campaign_fields,
+            'campaign_values': {field: lead_data[field] for field in campaign_fields}
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in debug_webhook_fields: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Initialize database on startup (but don't fail if it doesn't work)
 try:
