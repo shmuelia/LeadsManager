@@ -51,7 +51,7 @@ def init_database():
             logger.warning("Skipping database initialization - no connection")
             return False
             
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         # Auto-migrate: Add phone and email notification columns if they don't exist
         try:
@@ -74,7 +74,6 @@ def init_database():
             logger.info(f"Email notification columns migration (probably already exist): {e}")
         
         # Create leads table
-        # Create leads table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS leads (
                 id SERIAL PRIMARY KEY,
@@ -93,7 +92,8 @@ def init_database():
                 priority INTEGER DEFAULT 0,
                 raw_data JSONB,
                 notes TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                customer_id INTEGER DEFAULT 1
             );
         """)
         
@@ -109,7 +109,10 @@ def init_database():
                 department VARCHAR(100),
                 active BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                customer_id INTEGER DEFAULT 1,
+                phone VARCHAR(20),
+                whatsapp_notifications BOOLEAN DEFAULT true
             );
         """)
         

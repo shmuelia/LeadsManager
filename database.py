@@ -25,6 +25,15 @@ class DatabaseManager:
             return None
 
         try:
+            # Handle SQLite connections
+            if self.is_sqlite or self.database_url.startswith('sqlite:///'):
+                from local_config import get_local_connection
+                conn = get_local_connection()
+                if conn:
+                    logger.debug("SQLite database connection established")
+                return conn
+
+            # Handle PostgreSQL connections
             # Parse database URL for connection
             url = urlparse(self.database_url)
 
@@ -38,11 +47,11 @@ class DatabaseManager:
 
             conn = psycopg2.connect(connection_url)
             conn.autocommit = False  # Use transactions
-            logger.debug("Database connection established")
+            logger.debug("PostgreSQL database connection established")
             return conn
 
         except psycopg2.OperationalError as e:
-            logger.error(f"Database connection failed: {e}")
+            logger.error(f"PostgreSQL connection failed: {e}")
             return None
         except Exception as e:
             logger.error(f"Unexpected database error: {e}")
