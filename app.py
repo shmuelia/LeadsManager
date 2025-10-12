@@ -1711,7 +1711,14 @@ def get_single_lead(lead_id):
 @app.route('/campaign-manager')
 @campaign_manager_required
 def campaign_manager_dashboard():
-    """Campaign manager dashboard - lead management only"""
+    """Campaign manager dashboard - with mobile detection"""
+    # Detect mobile device from user agent
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(device in user_agent for device in ['mobile', 'android', 'iphone', 'ipad'])
+
+    # Use enhanced mobile template for mobile devices
+    if is_mobile:
+        return render_template('dashboard_mobile_enhanced.html')
     return render_template('campaign_manager_dashboard.html', 
                          user_name=session.get('full_name', 'מנהל קמפיין'),
                          customer_name=session.get('selected_customer_name', 'לא נבחר'))
@@ -2311,7 +2318,14 @@ def update_lead_status(lead_id):
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
-    """Admin-only dashboard - desktop design"""
+    """Admin-only dashboard - with mobile detection"""
+    # Detect mobile device from user agent
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(device in user_agent for device in ['mobile', 'android', 'iphone', 'ipad'])
+
+    # Use enhanced mobile template for mobile devices
+    if is_mobile:
+        return render_template('dashboard_mobile_enhanced.html')
     return render_template('admin_dashboard.html')
 
 @app.route('/admin/fix-phone-numbers')
