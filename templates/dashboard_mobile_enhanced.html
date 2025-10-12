@@ -912,17 +912,6 @@
             <!-- Lead cards will be dynamically generated here -->
         </div>
         
-        {% if session.get('role') in ['admin', 'campaign_manager'] %}
-        <!-- Floating Action Button -->
-        <button class="fab haptic-light" onclick="addNewLead()" aria-label="הוסף ליד חדש">
-            ➕
-        </button>
-        {% else %}
-        <!-- Placeholder for consistent layout -->
-        <div class="fab" style="visibility: hidden; pointer-events: none;">
-            ➕
-        </div>
-        {% endif %}
 
         <!-- Lead Details Modal/Bottom Sheet -->
         <div id="leadDetailsModal" class="bottom-sheet" style="display: none;">
@@ -1264,6 +1253,20 @@
                                     <div class="campaign-name" style="font-size: 12px; color: #d1d5db; margin-top: 2px; font-weight: 500;">${lead.campaign_name || 'ללא קמפיין'}</div>
                                 </div>
                                 <div class="status-badge ${statusClass}" onclick="event.stopPropagation(); console.log('🔍 DEBUGGING: Mobile status badge clicked for lead:', ${lead.id}); leadManager.updateStatus(${lead.id})" style="cursor: pointer;" title="לחץ לשינוי סטטוס">${statusLabel}</div>
+                            </div>
+
+                            <div class="card-info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">טלפון</div>
+                                    <div class="info-value ${!lead.phone ? 'empty' : ''}" style="direction: ltr; text-align: right;">
+                                        ${lead.phone || 'לא צוין'}
+                                        ${lead.phone ? `<a href="tel:${lead.phone}" style="float: left; color: var(--primary-color);">📞</a>` : ''}
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">מוקצה ל</div>
+                                    <div class="info-value ${!lead.assigned_to ? 'empty' : ''}">${lead.assigned_to || 'לא מוקצה'}</div>
+                                </div>
                             </div>
 
                             <div class="card-actions">
