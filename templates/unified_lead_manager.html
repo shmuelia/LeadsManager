@@ -32,7 +32,7 @@
     }
     
     .lead-title::before {
-        content: "📱 v3.23 ";
+        content: "📱 v3.24 ";
         font-size: 0.8em;
         color: #10b981;
     }
@@ -1097,9 +1097,9 @@ class UnifiedLeadManagerClass {
                 if (!isNotAssigned || !isNotClosed) return false;
             }
             
-            // Handle open filter from chips (exclude closed leads)
+            // Handle open filter from chips (exclude closed and rejected leads)
             if (isOpenFilter) {
-                if (lead.status === 'closed') return false;
+                if (lead.status === 'closed' || lead.status === 'rejected') return false;
             }
             
             // Date filter

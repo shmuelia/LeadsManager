@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🚀 Mobile Dashboard v3.24 - ניהול לידים מתקדם</title>
+    <title>🚀 Mobile Dashboard v3.25 - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
@@ -899,7 +899,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.24</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.25</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1330,7 +1330,7 @@
                         const username = '{{ session.get("username") }}';
                         return this.leads.filter(l => l.assigned_to === username);
                     case 'open':
-                        return this.leads.filter(l => l.status !== 'closed');
+                        return this.leads.filter(l => l.status !== 'closed' && l.status !== 'rejected');
                     case 'unassigned':
                         return this.leads.filter(l => {
                             // Must be unassigned AND not closed
