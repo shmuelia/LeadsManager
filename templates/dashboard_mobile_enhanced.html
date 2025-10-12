@@ -876,7 +876,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.15</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.16</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1001,6 +1001,8 @@
                 this.touchEndY = 0;
                 this.currentSwipedCard = null;
                 this.isRefreshing = false;
+                this.userRole = '{{ session.get("role") }}';
+                this.username = '{{ session.get("username") }}';
                 this.init();
             }
 
@@ -1272,6 +1274,11 @@
                                 <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.whatsappLead(event, '${lead.phone}')">
                                     💬 WhatsApp
                                 </button>` : ''}
+                                ${this.canAssign() ? `
+                                <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.assignLead(${lead.id})" title="הקצה למשתמש">
+                                    👤 הקצה
+                                </button>
+                                ` : ''}
                                 <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="event.stopPropagation(); leadManager.viewDetails(event, ${lead.id})">
                                     👁️ פרטים
                                 </button>
@@ -1669,6 +1676,97 @@
                 this.renderLeads();
                 this.hapticFeedback('light');
             }
+
+            canAssign() {
+                // Check if user can assign leads (admin and campaign managers)
+                return this.userRole === 'admin' || this.userRole === 'campaign_manager';
+            }
+
+            async assignLead(leadId) {
+                this.hapticFeedback('medium');
+                const lead = this.leads.find(l => l.id === leadId);
+                if (!lead) return;
+                
+                try {
+                    // Load available users for assignment
+                    const response = await fetch('/admin/users/api');
+                    if (!response.ok) {
+                        throw new Error(`Failed to load users (HTTP ${response.status})`);
+                    }
+                    
+                    const usersData = await response.json();
+                    let users;
+                    if (usersData.users && Array.isArray(usersData.users)) {
+                        users = usersData.users;
+                    } else if (Array.isArray(usersData)) {
+                        users = usersData;
+                    } else {
+                        throw new Error('Invalid users data format');
+                    }
+                    
+                    // Create assignment modal
+                    const modal = document.createElement('div');
+                    modal.className = 'modal-overlay';
+                    modal.innerHTML = `
+                        <div class="modal-content" style="max-width: 500px;">
+                            <div class="modal-header">
+                                <h3>הקצאת ליד: ${lead.name || 'לא צוין'}</h3>
+                                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                            </div>
+                            <div class="modal-body">
+                                <p style="margin-bottom: 15px;">בחר משתמש להקצאת הליד:</p>
+                                <select id="assignUserSelect" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;">
+                                    <option value="">בחר משתמש...</option>
+                                    <option value="">ביטול הקצאה (לא מוקצה)</option>
+                                    ${users.map(user => `
+                                        <option value="${user.username}" ${lead.assigned_to === user.username ? 'selected' : ''}>
+                                            ${user.full_name} (${user.username})
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="action-btn btn-primary" onclick="leadManager.performAssignment(${leadId}, document.getElementById('assignUserSelect').value, this.closest('.modal-overlay'))">
+                                    הקצה
+                                </button>
+                                <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                                    ביטול
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                } catch (error) {
+                    console.error('Error loading users for assignment:', error);
+                    this.showToast('שגיאה בטעינת רשימת המשתמשים', 'error');
+                }
+            }
+
+            async performAssignment(leadId, assignedTo, modal) {
+                try {
+                    const response = await fetch(`/leads/${leadId}/assign`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ assigned_to: assignedTo })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        this.showToast(result.message || 'הליד הוקצה בהצלחה', 'success');
+                        await this.loadLeads();
+                        this.renderLeads();
+                        modal.remove();
+                    } else {
+                        this.showToast(result.error || 'שגיאה בהקצאת הליד', 'error');
+                    }
+                } catch (error) {
+                    console.error('Assignment error:', error);
+                    this.showToast('שגיאה בהקצאת הליד', 'error');
+                }
+            }
         }
 
         // Initialize the lead manager
@@ -1709,8 +1807,106 @@
 
         function addNewLead() {
             leadManager.hapticFeedback('medium');
-            alert('➕ הוספת ליד חדש - בקרוב!');
-            // TODO: Implement add new lead modal
+            showAddLeadModal();
+        }
+        
+        function showAddLeadModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>➕ הוסף ליד חדש</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addLeadForm">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם הליד:</label>
+                                <input type="text" id="leadName" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;" placeholder="הכנס שם הליד">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">טלפון:</label>
+                                <input type="tel" id="leadPhone" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;" placeholder="הכנס מספר טלפון">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל:</label>
+                                <input type="email" id="leadEmail" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;" placeholder="הכנס כתובת אימייל">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">פלטפורמה:</label>
+                                <select id="leadPlatform" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;">
+                                    <option value="facebook">פייסבוק</option>
+                                    <option value="instagram">אינסטגרם</option>
+                                    <option value="website">אתר אינטרנט</option>
+                                    <option value="phone">טלפון</option>
+                                    <option value="other">אחר</option>
+                                </select>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם קמפיין:</label>
+                                <input type="text" id="leadCampaign" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;" placeholder="הכנס שם הקמפיין">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">הערות:</label>
+                                <textarea id="leadNotes" rows="3" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; resize: vertical;" placeholder="הכנס הערות נוספות"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="action-btn btn-primary" onclick="submitNewLead()">
+                            הוסף ליד
+                        </button>
+                        <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            ביטול
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        async function submitNewLead() {
+            const form = document.getElementById('addLeadForm');
+            const formData = new FormData(form);
+            
+            const leadData = {
+                name: document.getElementById('leadName').value.trim(),
+                phone: document.getElementById('leadPhone').value.trim(),
+                email: document.getElementById('leadEmail').value.trim(),
+                platform: document.getElementById('leadPlatform').value,
+                campaign_name: document.getElementById('leadCampaign').value.trim(),
+                notes: document.getElementById('leadNotes').value.trim()
+            };
+            
+            if (!leadData.name || !leadData.phone) {
+                alert('שם הליד ומספר הטלפון הם שדות חובה');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/leads', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(leadData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    leadManager.showToast('הליד נוסף בהצלחה!', 'success');
+                    document.querySelector('.modal-overlay').remove();
+                    await leadManager.loadLeads();
+                    leadManager.renderLeads();
+                } else {
+                    leadManager.showToast(result.error || 'שגיאה בהוספת הליד', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding lead:', error);
+                leadManager.showToast('שגיאה בהוספת הליד', 'error');
+            }
         }
 
         function toggleSearch() {
