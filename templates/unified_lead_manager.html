@@ -535,6 +535,9 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            box-sizing: border-box;
+            width: 100vw;
+            height: 100vh;
         }
         
         .modal-content {
@@ -545,6 +548,21 @@
             max-height: 70vh;
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin: 0 auto;
+            position: relative;
+            transform: translateZ(0); /* Force hardware acceleration */
+        }
+        
+        /* Ensure modal is always centered on mobile */
+        @media (max-width: 768px) {
+            .modal-overlay {
+                overflow: hidden;
+            }
+            
+            .modal-overlay .modal-content {
+                transform: none;
+                margin: 0;
+            }
         }
         
         /* Mobile status selection with large touch targets */
