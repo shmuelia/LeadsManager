@@ -32,7 +32,7 @@
     }
     
     .lead-title::before {
-        content: "📱 v3.22 ";
+        content: "📱 v3.23 ";
         font-size: 0.8em;
         color: #10b981;
     }
@@ -757,6 +757,9 @@
         <button class="filter-chip" onclick="filterLeadsByType('unassigned')" data-filter="unassigned">
             לא מוקצים
         </button>
+        <button class="filter-chip" onclick="filterLeadsByType('open')" data-filter="open">
+            פתוחים
+        </button>
     </div>
 
     <!-- Control Panel (Filters) -->
@@ -1018,6 +1021,8 @@ class UnifiedLeadManagerClass {
         } else if (type === 'unassigned') {
             statusFilter.value = '';
             // We'll handle unassigned filtering separately
+        } else if (type === 'open') {
+            statusFilter.value = 'not_closed';
         } else {
             statusFilter.value = type;
         }
@@ -1036,7 +1041,8 @@ class UnifiedLeadManagerClass {
             'hired': 'התקבלו',
             'rejected': 'נדחו',
             'closed': 'סגורים',
-            'unassigned': 'לא מוקצים'
+            'unassigned': 'לא מוקצים',
+            'open': 'פתוחים'
         };
         return labels[type] || type;
     }
@@ -1051,12 +1057,13 @@ class UnifiedLeadManagerClass {
         const dateFilter = document.getElementById('dateFilter').value;
         const campaignFilter = document.getElementById('campaignFilter').value;
         
-        // Check if we're filtering by unassigned from chips
+        // Check if we're filtering by unassigned or open from chips
         const activeChip = document.querySelector('.filter-chip.active');
         const isUnassignedFilter = activeChip && activeChip.dataset.filter === 'unassigned';
+        const isOpenFilter = activeChip && activeChip.dataset.filter === 'open';
         
         console.log('🔍 DEBUGGING: Filter values:', {
-            searchTerm, statusFilter, assignmentFilter, dateFilter, campaignFilter, isUnassignedFilter
+            searchTerm, statusFilter, assignmentFilter, dateFilter, campaignFilter, isUnassignedFilter, isOpenFilter
         });
         
         this.filteredLeads = this.leads.filter(lead => {
@@ -1088,6 +1095,11 @@ class UnifiedLeadManagerClass {
                 const isNotAssigned = !lead.assigned_to || lead.assigned_to === '' || lead.assigned_to === null;
                 const isNotClosed = lead.status !== 'closed';
                 if (!isNotAssigned || !isNotClosed) return false;
+            }
+            
+            // Handle open filter from chips (exclude closed leads)
+            if (isOpenFilter) {
+                if (lead.status === 'closed') return false;
             }
             
             // Date filter
