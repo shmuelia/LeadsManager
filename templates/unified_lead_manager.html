@@ -730,31 +730,31 @@
     
     <!-- Filter Chips (Quick Filters) -->
     <div class="filter-chips" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-        <button class="filter-chip active" onclick="UnifiedLeadManager.filterLeadsByType('all')" data-filter="all">
+        <button class="filter-chip active" onclick="filterLeadsByType('all')" data-filter="all">
             כל הלידים
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('new')" data-filter="new">
+        <button class="filter-chip" onclick="filterLeadsByType('new')" data-filter="new">
             חדשים
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('contacted')" data-filter="contacted">
+        <button class="filter-chip" onclick="filterLeadsByType('contacted')" data-filter="contacted">
             נוצר קשר
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('qualified')" data-filter="qualified">
+        <button class="filter-chip" onclick="filterLeadsByType('qualified')" data-filter="qualified">
             מוכשרים
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('interested')" data-filter="interested">
+        <button class="filter-chip" onclick="filterLeadsByType('interested')" data-filter="interested">
             מתעניינים
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('hired')" data-filter="hired">
+        <button class="filter-chip" onclick="filterLeadsByType('hired')" data-filter="hired">
             התקבלו
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('rejected')" data-filter="rejected">
+        <button class="filter-chip" onclick="filterLeadsByType('rejected')" data-filter="rejected">
             נדחו
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('closed')" data-filter="closed">
+        <button class="filter-chip" onclick="filterLeadsByType('closed')" data-filter="closed">
             סגורים
         </button>
-        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('unassigned')" data-filter="unassigned">
+        <button class="filter-chip" onclick="filterLeadsByType('unassigned')" data-filter="unassigned">
             לא מוקצים
         </button>
     </div>
@@ -886,6 +886,10 @@ class UnifiedLeadManagerClass {
         // Load initial data
         await this.loadUsers();
         await this.loadLeads();
+        
+        // Debug: Check if leads were loaded
+        console.log('🔍 DEBUGGING: After loadLeads, this.leads.length:', this.leads.length);
+        console.log('🔍 DEBUGGING: After loadLeads, this.filteredLeads.length:', this.filteredLeads.length);
         
         // Setup auto-refresh
         setInterval(() => this.refreshLeads(), 60000); // Refresh every minute
@@ -2088,13 +2092,25 @@ function toggleCampaignInfo() {
 // Initialize on page load
 let UnifiedLeadManager;
 
+// Fallback function for filter chips
+function filterLeadsByType(type) {
+    if (window.UnifiedLeadManager) {
+        window.UnifiedLeadManager.filterLeadsByType(type);
+    } else {
+        console.log('UnifiedLeadManager not ready yet, retrying in 100ms...');
+        setTimeout(() => filterLeadsByType(type), 100);
+    }
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
         window.UnifiedLeadManager = new UnifiedLeadManagerClass();
+        console.log('🔍 DEBUGGING: UnifiedLeadManager initialized on DOMContentLoaded');
     });
 } else {
     window.UnifiedLeadManager = new UnifiedLeadManagerClass();
+    console.log('🔍 DEBUGGING: UnifiedLeadManager initialized immediately');
 }
 
 // Add animations and modal styles
