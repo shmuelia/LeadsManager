@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🚀 Mobile Dashboard v3.25 - ניהול לידים מתקדם</title>
+    <title>🚀 Mobile Dashboard v3.26 - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
@@ -899,7 +899,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.25</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.26</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1456,98 +1456,123 @@
 
                     const lead = await response.json();
 
-                    // Format the details HTML
+                    // Parse raw data for Zapier information
+                    let rawData = {};
+                    try {
+                        rawData = lead.raw_data ? (typeof lead.raw_data === 'string' ? JSON.parse(lead.raw_data) : lead.raw_data) : {};
+                    } catch (e) {
+                        console.error('Error parsing raw data:', e);
+                    }
+
+                    // Format the details HTML with enhanced Zapier data display
                     content.innerHTML = `
-                        <div class="detail-section">
-                            <div class="detail-label">שם מלא</div>
-                            <div class="detail-value ${!lead.name ? 'empty' : ''}">${lead.name || 'לא צוין'}</div>
-                        </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">טלפון</div>
-                            <div class="detail-value ${!lead.phone ? 'empty' : ''}" style="direction: ltr; text-align: right;">
-                                ${lead.phone || 'לא צוין'}
-                                ${lead.phone ? `<a href="tel:${lead.phone}" style="float: left; color: var(--primary-color);">📞</a>` : ''}
+                        <!-- Basic Lead Information -->
+                        <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 15px; border-radius: 12px; margin-bottom: 15px;">
+                            <div style="display: grid; gap: 12px;">
+                                <h3 style="margin-bottom: 10px; color: #1e293b; font-size: 16px;">👤 פרטי הליד #${lead.id}</h3>
+                                <div><strong>שם מלא:</strong> ${lead.name || 'לא צוין'}</div>
+                                <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
+                                <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
+                                <div><strong>סטטוס:</strong> <span class="status-badge status-${lead.status || 'new'}">${this.getStatusLabel(lead.status)}</span></div>
+                                <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
+                                <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                             </div>
                         </div>
 
-                        <div class="detail-section">
-                            <div class="detail-label">אימייל</div>
-                            <div class="detail-value ${!lead.email ? 'empty' : ''}">${lead.email || 'לא צוין'}</div>
-                        </div>
+                        <!-- Enhanced Zapier Data Display -->
+                        ${Object.keys(rawData).length > 0 ? `
+                            <!-- Campaign & Ad Information -->
+                            <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 2px solid #0ea5e9;">
+                                <h3 style="color: #0c4a6e; margin: 0 0 15px 0; font-size: 14px;">📊 פרטי קמפיין ומודעות</h3>
+                                <div style="display: grid; gap: 8px; font-size: 12px;">
+                                    <div><strong>מזהה מודעה:</strong> ${rawData['Ad Id'] || 'לא צוין'}</div>
+                                    <div><strong>שם המודעה:</strong> ${rawData['Ad Name'] || 'לא צוין'}</div>
+                                    <div><strong>מזהה קבוצת מודעות:</strong> ${rawData['Adset Id'] || 'לא צוין'}</div>
+                                    <div><strong>שם קבוצת מודעות:</strong> ${rawData['Adset Name'] || 'לא צוין'}</div>
+                                    <div><strong>מזהה קמפיין:</strong> ${rawData['Campaign Id'] || 'לא צוין'}</div>
+                                    <div><strong>שם קמפיין:</strong> ${rawData['Campaign Name'] || 'לא צוין'}</div>
+                                    <div><strong>זמן יצירה:</strong> ${rawData['Created Time'] ? new Date(rawData['Created Time']).toLocaleString('he-IL') : 'לא צוין'}</div>
+                                    <div><strong>פלטפורמה:</strong> ${rawData['Platform'] || 'לא צוין'}</div>
+                                </div>
+                            </div>
 
-                        <div class="detail-section">
-                            <div class="detail-label">סטטוס</div>
-                            <div class="detail-value">
-                                <span class="status-badge status-${lead.status || 'new'}">${this.getStatusLabel(lead.status)}</span>
+                            <!-- Form & Page Information -->
+                            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 2px solid #22c55e;">
+                                <h3 style="color: #166534; margin: 0 0 15px 0; font-size: 14px;">📋 פרטי טופס ועמוד</h3>
+                                <div style="display: grid; gap: 8px; font-size: 12px;">
+                                    <div><strong>מזהה טופס:</strong> ${rawData['Form Id'] || 'לא צוין'}</div>
+                                    <div><strong>שם הטופס:</strong> ${rawData['Form Name'] || 'לא צוין'}</div>
+                                    <div><strong>מזהה ליד:</strong> ${rawData['Lead Id'] || 'לא צוין'}</div>
+                                    <div><strong>מזהה עמוד:</strong> ${rawData['Page Id'] || 'לא צוין'}</div>
+                                    <div><strong>שם עמוד:</strong> ${rawData['Page Name'] || 'לא צוין'}</div>
+                                    <div><strong>תגובות הצהרת סירוב:</strong> ${rawData['Custom Disclaimer Responses'] || 'לא צוין'}</div>
+                                </div>
+                            </div>
+
+                            <!-- Form Responses -->
+                            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 2px solid #f59e0b;">
+                                <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 14px;">✍️ תשובות הטופס</h3>
+                                <div style="display: grid; gap: 12px;">
+                                    ${(() => {
+                                        // Filter out system fields and show form responses
+                                        const systemFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name', 
+                                                            'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name', 
+                                                            'Form Name', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
+                                                            'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at', 'status', 'assigned_to', 'priority', 'notes', 'updated_at'];
+                                        
+                                        return Object.entries(rawData)
+                                        .filter(([key, value]) => {
+                                            return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
+                                        })
+                                        .map(([key, value]) => {
+                                            let displayValue = value;
+                                            if (typeof value === 'object') {
+                                                displayValue = JSON.stringify(value, null, 2);
+                                            }
+                                            
+                                            return `
+                                                <div style="padding: 10px; background: rgba(255,255,255,0.8); border-radius: 6px; border: 1px solid #fbbf24;">
+                                                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 13px;">
+                                                        ${key}
+                                                    </div>
+                                                    <div style="color: #4b5563; font-size: 12px; line-height: 1.4; white-space: pre-wrap;">
+                                                        ${displayValue}
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('');
+                                    })()}
+                                </div>
+                            </div>
+
+                            <!-- Additional Fields -->
+                            ${rawData['Partner Name'] || rawData['Retailer Item Id'] || rawData['Vehicle'] ? `
+                                <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 2px solid #a855f7;">
+                                    <h3 style="color: #6b21a8; margin: 0 0 15px 0; font-size: 14px;">🔧 שדות נוספים</h3>
+                                    <div style="display: grid; gap: 8px; font-size: 12px;">
+                                        ${rawData['Partner Name'] ? `<div><strong>שם שותף:</strong> ${rawData['Partner Name']}</div>` : ''}
+                                        ${rawData['Retailer Item Id'] ? `<div><strong>מזהה פריט קמעונאי:</strong> ${rawData['Retailer Item Id']}</div>` : ''}
+                                        ${rawData['Vehicle'] ? `<div><strong>רכב:</strong> ${rawData['Vehicle']}</div>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        ` : '<div style="background: #f9fafb; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; color: #6b7280; font-size: 12px;">אין נתונים מהטופס</div>'}
+
+                        <!-- Additional Lead Information -->
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px;">
+                            <h3 style="color: #1e293b; margin: 0 0 15px 0; font-size: 14px;">📊 מידע נוסף</h3>
+                            <div style="display: grid; gap: 8px; font-size: 12px;">
+                                <div><strong>מזהה חיצוני:</strong> ${lead.external_lead_id || 'לא צוין'}</div>
+                                <div><strong>שם טופס:</strong> ${lead.form_name || 'לא צוין'}</div>
+                                <div><strong>מקור ליד:</strong> ${lead.lead_source || 'לא צוין'}</div>
+                                <div><strong>עדיפות:</strong> 
+                                    <span class="priority-badge priority-${lead.priority || 0}">
+                                        ${lead.priority === 1 ? '🔴 דחוף' : lead.priority === 2 ? '🟡 בינוני' : '🟢 רגיל'}
+                                    </span>
+                                </div>
+                                ${lead.notes ? `<div><strong>הערות:</strong> ${lead.notes}</div>` : ''}
                             </div>
                         </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">פלטפורמה</div>
-                            <div class="detail-value ${!lead.platform ? 'empty' : ''}">${lead.platform || 'לא צוין'}</div>
-                        </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">קמפיין</div>
-                            <div class="detail-value ${!lead.campaign_name ? 'empty' : ''}">${lead.campaign_name || 'לא צוין'}</div>
-                        </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">מוקצה ל</div>
-                            <div class="detail-value ${!lead.assigned_to ? 'empty' : ''}">${lead.assigned_to || 'לא מוקצה'}</div>
-                        </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">תאריך יצירה</div>
-                            <div class="detail-value">${this.formatDate(lead.created_time)}</div>
-                        </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">תאריך קבלה</div>
-                            <div class="detail-value">${this.formatDate(lead.received_at)}</div>
-                        </div>
-
-                        ${lead.external_lead_id ? `
-                        <div class="detail-section">
-                            <div class="detail-label">מזהה חיצוני</div>
-                            <div class="detail-value" style="font-family: monospace; font-size: 12px;">${lead.external_lead_id}</div>
-                        </div>` : ''}
-
-                        ${lead.form_name ? `
-                        <div class="detail-section">
-                            <div class="detail-label">שם טופס</div>
-                            <div class="detail-value">${lead.form_name}</div>
-                        </div>` : ''}
-
-                        ${lead.lead_source ? `
-                        <div class="detail-section">
-                            <div class="detail-label">מקור ליד</div>
-                            <div class="detail-value">${lead.lead_source}</div>
-                        </div>` : ''}
-
-                        <div class="detail-section">
-                            <div class="detail-label">עדיפות</div>
-                            <div class="detail-value">
-                                <span class="priority-badge priority-${lead.priority || 0}">
-                                    ${lead.priority === 1 ? '🔴 דחוף' : lead.priority === 2 ? '🟡 בינוני' : '🟢 רגיל'}
-                                </span>
-                            </div>
-                        </div>
-
-                        ${lead.notes ? `
-                        <div class="detail-section">
-                            <div class="detail-label">הערות</div>
-                            <div class="detail-value">${lead.notes}</div>
-                        </div>` : ''}
-
-                        ${lead.raw_data ? `
-                        <div class="detail-section">
-                            <div class="detail-label">נתונים נוספים</div>
-                            <div class="detail-value" style="font-size: 12px; background: #f8f9fa; padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
-                                ${this.formatRawData(lead.raw_data)}
-                            </div>
-                        </div>` : ''}
                     `;
 
                     // Store current lead ID for potential actions
