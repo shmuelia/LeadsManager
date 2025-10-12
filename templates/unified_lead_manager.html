@@ -32,7 +32,7 @@
     }
     
     .lead-title::before {
-        content: "📱 v3.25 ";
+        content: "📱 v3.26 ";
         font-size: 0.8em;
         color: #10b981;
     }
@@ -1889,8 +1889,6 @@ class UnifiedLeadManagerClass {
             const result = await response.json();
             
             if (response.ok) {
-                const statusLabel = this.getStatusLabel(newStatus);
-                this.showToast(`סטטוס עודכן ל"${statusLabel}" עם הערה: "${note.trim()}"`, 'success');
                 await this.loadLeads();
                 this.applyFilters(); // Refresh the current filter view
                 if (modal) modal.remove();
