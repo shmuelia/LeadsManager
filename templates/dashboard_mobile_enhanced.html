@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🚀 Mobile Dashboard v3.26 - ניהול לידים מתקדם</title>
+    <title>🚀 Mobile Dashboard v3.27 - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
@@ -899,7 +899,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.26</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.27</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1447,14 +1447,15 @@
                 modal.style.display = 'flex';
 
                 try {
-                    const response = await fetch(`/lead/${leadId}`);
+                    const response = await fetch(`/leads/${leadId}`);
 
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.error || `HTTP ${response.status}`);
                     }
 
-                    const lead = await response.json();
+                    const data = await response.json();
+                    const lead = data.lead || data; // Handle both response formats
 
                     // Parse raw data for Zapier information
                     let rawData = {};
@@ -1771,7 +1772,7 @@
                 this.hapticFeedback('heavy');
                 if (confirm('האם אתה בטוח שברצונך למחוק את הליד?')) {
                     try {
-                        const response = await fetch(`/lead/${leadId}`, {
+                        const response = await fetch(`/leads/${leadId}`, {
                             method: 'DELETE'
                         });
                         if (response.ok) {
