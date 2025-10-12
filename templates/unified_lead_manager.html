@@ -32,7 +32,7 @@
     }
     
     .lead-title::before {
-        content: "📱 v3.20 ";
+        content: "📱 v3.22 ";
         font-size: 0.8em;
         color: #10b981;
     }
@@ -1419,136 +1419,71 @@ class UnifiedLeadManagerClass {
                 </div>
             </div>
 
-            <!-- Meta Form Responses (Meta Style Format) - Moved to Top -->
+            <!-- Enhanced Zapier Data Display -->
             ${Object.keys(rawData).length > 0 ? `
-                <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #1877f2; box-shadow: 0 4px 12px rgba(24,119,242,0.15);">
-                    <div style="border-bottom: 2px solid #1877f2; padding-bottom: 15px; margin-bottom: 20px;">
-                        <h3 style="color: #1877f2; margin: 0; font-size: 1.4em;">📋 התשובות של הטופס</h3>
-                        <div style="margin-top: 10px; color: #65676b; font-size: 0.9em;">
-                            ${leadFormId ? `
-                                <div style="margin-bottom: 5px;">
-                                    <strong>מזהה טופס לידים:</strong> <code style="background: #f0f2f5; padding: 2px 6px; border-radius: 4px;">${leadFormId}</code>
-                                </div>
-                            ` : ''}
-                            <div><strong>נשלח ב-</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                <!-- Campaign & Ad Information -->
+                <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #0ea5e9; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);">
+                    <h3 style="color: #0c4a6e; margin: 0 0 20px 0; font-size: 1.4em;">📊 פרטי קמפיין ומודעות</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <div style="margin-bottom: 12px;"><strong>מזהה מודעה:</strong> ${rawData['Ad Id'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>שם המודעה:</strong> ${rawData['Ad Name'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>מזהה קבוצת מודעות:</strong> ${rawData['Adset Id'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>שם קבוצת מודעות:</strong> ${rawData['Adset Name'] || 'לא צוין'}</div>
+                        </div>
+                        <div>
+                            <div style="margin-bottom: 12px;"><strong>מזהה קמפיין:</strong> ${rawData['Campaign Id'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>שם קמפיין:</strong> ${rawData['Campaign Name'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>זמן יצירה:</strong> ${rawData['Created Time'] ? new Date(rawData['Created Time']).toLocaleString('he-IL') : 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>פלטפורמה:</strong> ${rawData['Platform'] || 'לא צוין'}</div>
                         </div>
                     </div>
-                    
-                    
-                    <div style="display: grid; gap: 18px;">
+                </div>
+
+                <!-- Form & Page Information -->
+                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #22c55e; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);">
+                    <h3 style="color: #166534; margin: 0 0 20px 0; font-size: 1.4em;">📋 פרטי טופס ועמוד</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <div style="margin-bottom: 12px;"><strong>מזהה טופס:</strong> ${rawData['Form Id'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>שם הטופס:</strong> ${rawData['Form Name'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>מזהה ליד:</strong> ${rawData['Lead Id'] || 'לא צוין'}</div>
+                        </div>
+                        <div>
+                            <div style="margin-bottom: 12px;"><strong>מזהה עמוד:</strong> ${rawData['Page Id'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>שם עמוד:</strong> ${rawData['Page Name'] || 'לא צוין'}</div>
+                            <div style="margin-bottom: 12px;"><strong>תגובות הצהרת סירוב:</strong> ${rawData['Custom Disclaimer Responses'] || 'לא צוין'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Responses -->
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);">
+                    <h3 style="color: #92400e; margin: 0 0 20px 0; font-size: 1.4em;">✍️ תשובות הטופס</h3>
+                    <div style="display: grid; gap: 16px;">
                         ${(() => {
-                            // First, handle numbered custom question/answer pairs from Zapier
-                            let formResponses = [];
-                            for (let i = 0; i < 20; i++) {
-                                const questionKey = `custom_question_${i}`;
-                                const answerKey = `custom_answer_${i}`;
-                                
-                                if (rawData[questionKey] && rawData[answerKey]) {
-                                    formResponses.push(`
-                                        <div style="border-bottom: 1px solid #dadde1; padding-bottom: 12px;">
-                                            <div style="font-weight: 600; color: #1c1e21; margin-bottom: 6px; font-size: 15px;">
-                                                ${rawData[questionKey]}
-                                            </div>
-                                            <div style="color: #65676b; font-size: 14px; line-height: 1.4;">
-                                                ${rawData[answerKey]}
-                                            </div>
-                                        </div>
-                                    `);
-                                }
-                            }
-                            
-                            // If we found numbered fields, return them
-                            if (formResponses.length > 0) {
-                                return formResponses.join('');
-                            }
-                            
-                            // Otherwise, show other non-system fields
-                            const systemFields = ['מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id', 
-                                                'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at',
-                                                'custom_question_0', 'custom_question_1', 'custom_question_2', 'custom_question_3',
-                                                'custom_answer_0', 'custom_answer_1', 'custom_answer_2', 'custom_answer_3'];
+                            // Filter out system fields and show form responses
+                            const systemFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name', 
+                                                'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name', 
+                                                'Form Name', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
+                                                'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at', 'status', 'assigned_to', 'priority', 'notes', 'updated_at'];
                             
                             return Object.entries(rawData)
                             .filter(([key, value]) => {
-                                return value != null && value !== '' && value !== 'null' && !systemFields.includes(key) && 
-                                       !key.startsWith('custom_question_') && !key.startsWith('custom_answer_');
+                                return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
                             })
                             .map(([key, value]) => {
-                                // Handle different data types
                                 let displayValue = value;
-                                let displayKey = key;
-                                
                                 if (typeof value === 'object') {
                                     displayValue = JSON.stringify(value, null, 2);
                                 }
                                 
-                                // Handle Zapier's numbered custom fields
-                                let customQuestions = {};
-                                let formResponses = [];
-                                
-                                // First, extract numbered custom questions/answers from Zapier
-                                for (let i = 0; i < 20; i++) {
-                                    const questionKey = `custom_question_${i}`;
-                                    const answerKey = `custom_answer_${i}`;
-                                    
-                                    if (rawData[questionKey] && rawData[answerKey]) {
-                                        customQuestions[rawData[questionKey]] = rawData[answerKey];
-                                        formResponses.push({
-                                            question: rawData[questionKey],
-                                            answer: rawData[answerKey]
-                                        });
-                                    }
-                                }
-                                
-                                // Common Zapier/Meta field mappings for Hebrew forms
-                                const fieldMappings = {
-                                    // English variations
-                                    'whatIsTheDesiredDateForHoldingTheEvent': 'מה התאריך הרצוי לקיום האירוע?',
-                                    'howManyPeopleAreExpectedToAttend': 'כמות האנשים שצפויה להגיע?',
-                                    'eventType': 'סוג האירוע',
-                                    'budget': 'תקציב',
-                                    'specialRequests': 'בקשות מיוחדות',
-                                    'contactTime': 'זמן מועדף לקשר',
-                                    'location': 'מיקום האירוע',
-                                    'details': 'פרטים נוספים',
-                                    'event_date': 'תאריך האירוע',
-                                    'guest_count': 'מספר אורחים',
-                                    'additional_details': 'פרטים נוספים',
-                                    
-                                    // Hebrew variations (keys might come in Hebrew)
-                                    'מה התאריך הרצוי לקיום האירוע': 'מה התאריך הרצוי לקיום האירוע?',
-                                    'כמות האנשים שצפויה להגיע': 'כמות האנשים שצפויה להגיע?',
-                                    'תאריך האירוע': 'תאריך האירוע',
-                                    'מספר אורחים': 'מספר אורחים',
-                                    'סוג האירוע': 'סוג האירוע',
-                                    'בקשות מיוחדות': 'בקשות מיוחדות',
-                                    'הערות': 'הערות',
-                                    'פרטים נוספים': 'פרטים נוספים'
-                                };
-                                
-                                // Try to find Hebrew mapping
-                                if (fieldMappings[key]) {
-                                    displayKey = fieldMappings[key];
-                                }
-                                
-                                // Handle potential direct Hebrew keys or question format
-                                else if (key.includes('?') || key.includes('מה') || key.includes('כמה') || key.includes('איך') || key.includes('האירוע') || key.includes('אנשים')) {
-                                    displayKey = key; // Already a question or contains Hebrew keywords
-                                }
-                                
-                                // Handle camelCase fields by adding spaces and question mark
-                                else if (/^[a-z]+[A-Z]/.test(key)) {
-                                    // Convert camelCase to spaced format if no mapping found
-                                    const spaced = key.replace(/([A-Z])/g, ' $1').toLowerCase();
-                                    displayKey = spaced.charAt(0).toUpperCase() + spaced.slice(1) + '?';
-                                }
-                                
                                 return `
-                                    <div style="border-bottom: 1px solid #dadde1; padding-bottom: 12px;">
-                                        <div style="font-weight: 600; color: #1c1e21; margin-bottom: 6px; font-size: 15px;">
-                                            ${displayKey}
+                                    <div style="padding: 15px; background: rgba(255,255,255,0.8); border-radius: 8px; border: 1px solid #fbbf24;">
+                                        <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px; font-size: 16px;">
+                                            ${key}
                                         </div>
-                                        <div style="color: #65676b; font-size: 14px; line-height: 1.4; white-space: pre-wrap;">
+                                        <div style="color: #4b5563; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
                                             ${displayValue}
                                         </div>
                                     </div>
@@ -1556,17 +1491,19 @@ class UnifiedLeadManagerClass {
                             }).join('');
                         })()}
                     </div>
-                    
-                    ${leadFormId ? `
-                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dadde1;">
-                            <a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" 
-                               target="_blank" 
-                               style="display: inline-block; background: #1877f2; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                                🔍 להצגת הטופס במטא
-                            </a>
-                        </div>
-                    ` : ''}
                 </div>
+
+                <!-- Additional Fields -->
+                ${rawData['Partner Name'] || rawData['Retailer Item Id'] || rawData['Vehicle'] ? `
+                    <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #a855f7; box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);">
+                        <h3 style="color: #6b21a8; margin: 0 0 20px 0; font-size: 1.4em;">🔧 שדות נוספים</h3>
+                        <div style="display: grid; gap: 12px;">
+                            ${rawData['Partner Name'] ? `<div><strong>שם שותף:</strong> ${rawData['Partner Name']}</div>` : ''}
+                            ${rawData['Retailer Item Id'] ? `<div><strong>מזהה פריט קמעונאי:</strong> ${rawData['Retailer Item Id']}</div>` : ''}
+                            ${rawData['Vehicle'] ? `<div><strong>רכב:</strong> ${rawData['Vehicle']}</div>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
             ` : '<div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; color: #6b7280;">אין נתונים מהטופס</div>'}
 
             <!-- Campaign & Source Information Button -->
