@@ -856,6 +856,29 @@
             font-style: italic;
         }
 
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .priority-badge.priority-1 {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .priority-badge.priority-2 {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .priority-badge.priority-0 {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -876,7 +899,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.17</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.18</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1330,6 +1353,32 @@
                 return labels[filter] || '';
             }
 
+            formatRawData(rawData) {
+                if (!rawData) return 'אין נתונים נוספים';
+                
+                try {
+                    // If it's already a string, try to parse it
+                    const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+                    
+                    // Filter out standard fields that are already shown elsewhere
+                    const standardFields = ['name', 'email', 'phone', 'campaign_name', 'form_name', 'lead_source', 'platform', 'status', 'assigned_to', 'priority', 'notes', 'created_time', 'received_at', 'external_lead_id'];
+                    
+                    const customFields = Object.entries(data)
+                        .filter(([key, value]) => !standardFields.includes(key) && value !== null && value !== undefined && value !== '')
+                        .map(([key, value]) => {
+                            // Format the key nicely
+                            const formattedKey = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+                            return `<div style="margin-bottom: 8px;"><strong>${formattedKey}:</strong> ${value}</div>`;
+                        })
+                        .join('');
+                    
+                    return customFields || 'אין נתונים נוספים';
+                } catch (error) {
+                    console.error('Error formatting raw data:', error);
+                    return 'שגיאה בעיבוד הנתונים';
+                }
+            }
+
             getStatusLabel(status) {
                 const labels = {
                     'new': 'חדש',
@@ -1452,10 +1501,50 @@
                             <div class="detail-value">${this.formatDate(lead.created_time)}</div>
                         </div>
 
+                        <div class="detail-section">
+                            <div class="detail-label">תאריך קבלה</div>
+                            <div class="detail-value">${this.formatDate(lead.received_at)}</div>
+                        </div>
+
+                        ${lead.external_lead_id ? `
+                        <div class="detail-section">
+                            <div class="detail-label">מזהה חיצוני</div>
+                            <div class="detail-value" style="font-family: monospace; font-size: 12px;">${lead.external_lead_id}</div>
+                        </div>` : ''}
+
+                        ${lead.form_name ? `
+                        <div class="detail-section">
+                            <div class="detail-label">שם טופס</div>
+                            <div class="detail-value">${lead.form_name}</div>
+                        </div>` : ''}
+
+                        ${lead.lead_source ? `
+                        <div class="detail-section">
+                            <div class="detail-label">מקור ליד</div>
+                            <div class="detail-value">${lead.lead_source}</div>
+                        </div>` : ''}
+
+                        <div class="detail-section">
+                            <div class="detail-label">עדיפות</div>
+                            <div class="detail-value">
+                                <span class="priority-badge priority-${lead.priority || 0}">
+                                    ${lead.priority === 1 ? '🔴 דחוף' : lead.priority === 2 ? '🟡 בינוני' : '🟢 רגיל'}
+                                </span>
+                            </div>
+                        </div>
+
                         ${lead.notes ? `
                         <div class="detail-section">
                             <div class="detail-label">הערות</div>
                             <div class="detail-value">${lead.notes}</div>
+                        </div>` : ''}
+
+                        ${lead.raw_data ? `
+                        <div class="detail-section">
+                            <div class="detail-label">נתונים נוספים</div>
+                            <div class="detail-value" style="font-size: 12px; background: #f8f9fa; padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                                ${this.formatRawData(lead.raw_data)}
+                            </div>
                         </div>` : ''}
                     `;
 
