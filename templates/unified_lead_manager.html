@@ -32,7 +32,7 @@
     }
     
     .lead-title::before {
-        content: "📱 v3.24 ";
+        content: "📱 v3.25 ";
         font-size: 0.8em;
         color: #10b981;
     }
@@ -730,7 +730,7 @@
     
     <!-- Filter Chips (Quick Filters) -->
     <div class="filter-chips" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-        <button class="filter-chip active" onclick="filterLeadsByType('all')" data-filter="all">
+        <button class="filter-chip" onclick="filterLeadsByType('all')" data-filter="all">
             כל הלידים
         </button>
         <button class="filter-chip" onclick="filterLeadsByType('new')" data-filter="new">
@@ -757,7 +757,7 @@
         <button class="filter-chip" onclick="filterLeadsByType('unassigned')" data-filter="unassigned">
             לא מוקצים
         </button>
-        <button class="filter-chip" onclick="filterLeadsByType('open')" data-filter="open">
+        <button class="filter-chip active" onclick="filterLeadsByType('open')" data-filter="open">
             פתוחים
         </button>
     </div>
@@ -889,6 +889,9 @@ class UnifiedLeadManagerClass {
         // Load initial data
         await this.loadUsers();
         await this.loadLeads();
+        
+        // Set default filter to 'open'
+        this.filterLeadsByType('open');
         
         // Debug: Check if leads were loaded
         console.log('🔍 DEBUGGING: After loadLeads, this.leads.length:', this.leads.length);
@@ -1889,6 +1892,7 @@ class UnifiedLeadManagerClass {
                 const statusLabel = this.getStatusLabel(newStatus);
                 this.showToast(`סטטוס עודכן ל"${statusLabel}" עם הערה: "${note.trim()}"`, 'success');
                 await this.loadLeads();
+                this.applyFilters(); // Refresh the current filter view
                 if (modal) modal.remove();
             } else {
                 this.showToast(result.error || 'שגיאה בעדכון סטטוס הליד', 'error');

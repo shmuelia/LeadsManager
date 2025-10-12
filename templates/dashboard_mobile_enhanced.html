@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🚀 Mobile Dashboard v3.27 - ניהול לידים מתקדם</title>
+    <title>🚀 Mobile Dashboard v3.28 - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
@@ -899,7 +899,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.27</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.28</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -919,13 +919,13 @@
         
         <!-- Quick Filters -->
         <div class="quick-filters">
-            <div class="filter-chip active haptic-light" onclick="filterLeads('all')">
+            <div class="filter-chip haptic-light" onclick="filterLeads('all')">
                 🌟 הכל
             </div>
             <div class="filter-chip haptic-light" onclick="filterLeads('new')">
                 🆕 חדש
             </div>
-            <div class="filter-chip haptic-light" onclick="filterLeads('open')">
+            <div class="filter-chip active haptic-light" onclick="filterLeads('open')">
                 🔓 פתוחים
             </div>
             {% if session.get('role') in ['admin', 'campaign_manager'] %}
@@ -1011,7 +1011,7 @@
             constructor() {
                 this.leads = [];
                 this.filteredLeads = [];
-                this.currentFilter = 'all';
+                this.currentFilter = 'open';
                 this.touchStartX = 0;
                 this.touchStartY = 0;
                 this.touchEndX = 0;
@@ -1751,6 +1751,7 @@
                         const statusLabel = this.getStatusLabel(newStatus);
                         alert(`סטטוס עודכן ל"${statusLabel}" עם הערה: "${note.trim()}"`);
                         await this.loadLeads();
+                        this.renderLeads(); // Refresh the current filter view
                         if (modal) modal.remove();
                     } else {
                         alert(result.error || 'שגיאה בעדכון סטטוס הליד');
