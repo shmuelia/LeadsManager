@@ -32,7 +32,7 @@
     }
     
     .lead-title::before {
-        content: "📱 v1.6 ";
+        content: "📱 v3.20 ";
         font-size: 0.8em;
         color: #10b981;
     }
@@ -120,6 +120,49 @@
         font-weight: 600;
     }
     
+    /* Filter Chips */
+    .filter-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    
+    .filter-chip {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border: 2px solid #e2e8f0;
+        color: #6b7280;
+        padding: 10px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        user-select: none;
+        white-space: nowrap;
+    }
+    
+    .filter-chip:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .filter-chip.active {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        border-color: #059669;
+        color: white;
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+    }
+    
+    .filter-chip.active:hover {
+        background: linear-gradient(135deg, #047857 0%, #059669 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4);
+    }
+
     /* Action Buttons */
     .action-btn {
         padding: 10px 16px;
@@ -685,6 +728,37 @@
         </div>
     </div>
     
+    <!-- Filter Chips (Quick Filters) -->
+    <div class="filter-chips" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+        <button class="filter-chip active" onclick="UnifiedLeadManager.filterLeadsByType('all')" data-filter="all">
+            כל הלידים
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('new')" data-filter="new">
+            חדשים
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('contacted')" data-filter="contacted">
+            נוצר קשר
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('qualified')" data-filter="qualified">
+            מוכשרים
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('interested')" data-filter="interested">
+            מתעניינים
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('hired')" data-filter="hired">
+            התקבלו
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('rejected')" data-filter="rejected">
+            נדחו
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('closed')" data-filter="closed">
+            סגורים
+        </button>
+        <button class="filter-chip" onclick="UnifiedLeadManager.filterLeadsByType('unassigned')" data-filter="unassigned">
+            לא מוקצים
+        </button>
+    </div>
+
     <!-- Control Panel (Filters) -->
     <div class="control-panel">
         <!-- Customer Selector (Admin Only) -->
@@ -924,6 +998,45 @@ class UnifiedLeadManagerClass {
         }
     }
     
+    filterLeadsByType(type) {
+        console.log('🔍 DEBUGGING: filterLeadsByType called with type:', type);
+        
+        // Update active chip
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.classList.remove('active');
+        });
+        document.querySelector(`[data-filter="${type}"]`).classList.add('active');
+        
+        // Update status filter dropdown to match
+        const statusFilter = document.getElementById('statusFilter');
+        if (type === 'all') {
+            statusFilter.value = '';
+        } else if (type === 'unassigned') {
+            statusFilter.value = '';
+            // We'll handle unassigned filtering separately
+        } else {
+            statusFilter.value = type;
+        }
+        
+        // Apply the filter
+        this.applyFilters();
+    }
+    
+    getFilterLabel(type) {
+        const labels = {
+            'all': 'כל הלידים',
+            'new': 'חדשים',
+            'contacted': 'נוצר קשר',
+            'qualified': 'מוכשרים',
+            'interested': 'מתעניינים',
+            'hired': 'התקבלו',
+            'rejected': 'נדחו',
+            'closed': 'סגורים',
+            'unassigned': 'לא מוקצים'
+        };
+        return labels[type] || type;
+    }
+
     applyFilters() {
         console.log('🔍 DEBUGGING: applyFilters called');
         console.log('🔍 DEBUGGING: Total leads before filtering:', this.leads.length);
@@ -934,8 +1047,12 @@ class UnifiedLeadManagerClass {
         const dateFilter = document.getElementById('dateFilter').value;
         const campaignFilter = document.getElementById('campaignFilter').value;
         
+        // Check if we're filtering by unassigned from chips
+        const activeChip = document.querySelector('.filter-chip.active');
+        const isUnassignedFilter = activeChip && activeChip.dataset.filter === 'unassigned';
+        
         console.log('🔍 DEBUGGING: Filter values:', {
-            searchTerm, statusFilter, assignmentFilter, dateFilter, campaignFilter
+            searchTerm, statusFilter, assignmentFilter, dateFilter, campaignFilter, isUnassignedFilter
         });
         
         this.filteredLeads = this.leads.filter(lead => {
@@ -960,6 +1077,13 @@ class UnifiedLeadManagerClass {
                 if (assignmentFilter === 'unassigned' && lead.assigned_to) return false;
                 if (assignmentFilter === 'assigned' && !lead.assigned_to) return false;
                 if (assignmentFilter === 'mine' && lead.assigned_to !== this.username) return false;
+            }
+            
+            // Handle unassigned filter from chips
+            if (isUnassignedFilter) {
+                const isNotAssigned = !lead.assigned_to || lead.assigned_to === '' || lead.assigned_to === null;
+                const isNotClosed = lead.status !== 'closed';
+                if (!isNotAssigned || !isNotClosed) return false;
             }
             
             // Date filter
