@@ -876,7 +876,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.16</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.17</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -905,6 +905,11 @@
             <div class="filter-chip haptic-light" onclick="filterLeads('today')">
                 📅 היום
             </div>
+            {% if session.get('role') in ['admin', 'campaign_manager'] %}
+            <div class="filter-chip haptic-light" onclick="filterLeads('unassigned')">
+                👤 לא מוקצה
+            </div>
+            {% endif %}
         </div>
         
         <!-- Enhanced Lead Cards Section -->
@@ -1306,6 +1311,8 @@
                             const leadDate = new Date(l.created_time);
                             return leadDate.toDateString() === today;
                         });
+                    case 'unassigned':
+                        return this.leads.filter(l => !l.assigned_to || l.assigned_to === '' || l.assigned_to === null);
                     default:
                         return this.leads;
                 }
@@ -1317,6 +1324,7 @@
                     'mine': 'שהוקצו לי',
                     'urgent': 'דחופים',
                     'today': 'מהיום',
+                    'unassigned': 'לא מוקצים',
                     'all': ''
                 };
                 return labels[filter] || '';
