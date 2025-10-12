@@ -899,7 +899,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.18</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.19</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
@@ -1335,7 +1335,12 @@
                             return leadDate.toDateString() === today;
                         });
                     case 'unassigned':
-                        return this.leads.filter(l => !l.assigned_to || l.assigned_to === '' || l.assigned_to === null);
+                        return this.leads.filter(l => {
+                            // Must be unassigned AND not closed
+                            const isUnassigned = !l.assigned_to || l.assigned_to === '' || l.assigned_to === null;
+                            const isNotClosed = l.status !== 'closed';
+                            return isUnassigned && isNotClosed;
+                        });
                     default:
                         return this.leads;
                 }
