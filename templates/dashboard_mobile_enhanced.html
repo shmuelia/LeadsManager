@@ -47,11 +47,7 @@
             max-width: 100vw;
             margin: 0;
             padding: 0;
-            {% if session.get('role') in ['admin', 'campaign_manager'] %}
-            padding-bottom: 80px; /* Space for bottom navigation */
-            {% else %}
-            padding-bottom: 20px; /* No navigation for simple users */
-            {% endif %}
+            padding-bottom: 80px; /* Consistent spacing for all roles */
             min-height: 100vh;
             position: relative;
         }
@@ -886,6 +882,11 @@
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
                     🔍
                 </button>
+                {% else %}
+                <!-- Placeholder for consistent spacing -->
+                <div class="header-btn" style="visibility: hidden; pointer-events: none;">
+                    🔍
+                </div>
                 {% endif %}
                 <button class="header-btn haptic-light" onclick="showProfile()" aria-label="יציאה">
                     🚪
@@ -916,6 +917,11 @@
         <button class="fab haptic-light" onclick="addNewLead()" aria-label="הוסף ליד חדש">
             ➕
         </button>
+        {% else %}
+        <!-- Placeholder for consistent layout -->
+        <div class="fab" style="visibility: hidden; pointer-events: none;">
+            ➕
+        </div>
         {% endif %}
 
         <!-- Lead Details Modal/Bottom Sheet -->
@@ -952,6 +958,28 @@
                     <div class="nav-label">דוחות</div>
                 </div>
                 <div class="nav-item haptic-light" onclick="navigateTo('profile')">
+                    <div class="nav-icon">👤</div>
+                    <div class="nav-label">פרופיל</div>
+                </div>
+            </div>
+        </nav>
+        {% else %}
+        <!-- Placeholder for consistent spacing -->
+        <nav class="bottom-nav" style="visibility: hidden; pointer-events: none;">
+            <div class="nav-items">
+                <div class="nav-item">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">בית</div>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📋</div>
+                    <div class="nav-label">לידים</div>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📊</div>
+                    <div class="nav-label">דוחות</div>
+                </div>
+                <div class="nav-item">
                     <div class="nav-icon">👤</div>
                     <div class="nav-label">פרופיל</div>
                 </div>
