@@ -821,6 +821,18 @@ def webhook():
                 'note': 'Full lead fetch requires Graph API access'
             }), 200
         
+        
+        # Handle Google Sheets webhook format
+        if lead_data.get('source') == 'google_sheets':
+            logger.info("=== GOOGLE SHEETS WEBHOOK RECEIVED ===")
+            logger.info(f"Row number: {lead_data.get('row_number')}")
+            logger.info(f"Total fields: {len(lead_data)}")
+            logger.info(f"Field names: {list(lead_data.keys())}")
+            
+            # Google Sheets data is already in the correct format
+            # Continue processing with the existing lead extraction logic below
+            logger.info("Processing Google Sheets lead data...")
+        
         # Otherwise, process as Zapier format (existing code continues...)
         
         # Log ALL fields received from Zapier for debugging
@@ -850,7 +862,7 @@ def webhook():
             'phone_number', 'Page Id', 'Page Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Form Id',
             'Ad Name', 'נוצר', 'שם', 'דוא"ל', 'טלפון', 'Raw Full Name', 'Raw Email', 'Raw מספר טלפון',
             'Email', 'Email:', 'מספר טלפון', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id',
-            'Vehicle', 'form_id', 'lead_form_id', 'מזהה טופס לידים'
+            'Vehicle', 'form_id', 'lead_form_id', 'מזהה טופס לידים', 'source', 'row_number', 'timestamp'
         }
 
         # Check if data already has custom_question_X format (from Zapier)
