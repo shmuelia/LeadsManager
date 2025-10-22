@@ -829,6 +829,37 @@ def webhook():
             logger.info(f"Total fields: {len(lead_data)}")
             logger.info(f"Field names: {list(lead_data.keys())}")
             
+            # Look up campaign from database based on sheet_id
+            sheet_id = lead_data.get('sheet_id')
+            if sheet_id:
+                try:
+                    conn_campaign = get_db_connection()
+                    if conn_campaign:
+                        cur_campaign = conn_campaign.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                        cur_campaign.execute("""
+                            SELECT campaign_name, customer_id 
+                            FROM campaigns 
+                            WHERE sheet_id = %s AND active = true
+                            LIMIT 1
+                        """, (sheet_id,))
+                        campaign_info = cur_campaign.fetchone()
+                        cur_campaign.close()
+                        conn_campaign.close()
+                        
+                        if campaign_info:
+                            campaign_from_sheet = campaign_info['campaign_name']
+                            customer_id_from_sheet = campaign_info['customer_id']
+                            logger.info(f"Found campaign from database: {campaign_from_sheet} (Customer: {customer_id_from_sheet})")
+                            
+                            # Set campaign name and customer_id
+                            lead_data['campaign_name'] = campaign_from_sheet
+                            lead_data['קמפיין'] = campaign_from_sheet
+                            lead_data['_customer_id'] = customer_id_from_sheet  # Store for later use
+                        else:
+                            logger.warning(f"No campaign found for sheet_id: {sheet_id}")
+                except Exception as e:
+                    logger.error(f"Error looking up campaign: {e}")
+            
             # Google Sheets data is already in the correct format
             # Continue processing with the existing lead extraction logic below
             logger.info("Processing Google Sheets lead data...")
@@ -3154,6 +3185,12 @@ def assign_lead_campaign_manager(lead_id):
 def customer_management():
     """Admin-only customer management page"""
     return render_template('customer_management.html')
+
+@app.route('/admin/campaigns')
+@admin_required
+def campaigns_management():
+    """Admin-only campaigns management page"""
+    return render_template('campaigns_management.html')
 
 @app.route('/admin/customers/api')
 @admin_required
