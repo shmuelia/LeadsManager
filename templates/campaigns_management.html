@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ניהול קמפיינים</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f1f5f9; direction: rtl; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header h1 { color: white; font-size: 2rem; text-align: center; }
+        .nav-links { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+        .nav-link { background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; }
+        .table-wrapper { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 12px; text-align: right; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        tr:hover { background: #f9fafb; }
+        .btn { background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+        .btn-danger { background: #ef4444; }
+        .badge-active { background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+        .badge-inactive { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 ניהול קמפיינים</h1>
+            <div class="nav-links">
+                <a href="/admin" class="nav-link">דשבורד</a>
+                <a href="/admin/customers" class="nav-link">לקוחות</a>
+                <a href="/logout" class="nav-link">התנתקות</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>פעולות</th>
+                        <th>סטטוס</th>
+                        <th>Sheet ID</th>
+                        <th>קישור</th>
+                        <th>סוג</th>
+                        <th>שם קמפיין</th>
+                        <th>לקוח</th>
+                        <th>מזהה</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"><tr><td colspan="8" style="text-align:center;">טוען...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        async function load() {
+            try {
+                const r = await fetch('/admin/campaigns/api');
+                const d = await r.json();
+                const c = d.campaigns || [];
+                document.getElementById('tbody').innerHTML = c.length ? c.map(i => `
+                    <tr>
+                        <td><button class="btn btn-danger" onclick="del(${i.id})">מחק</button></td>
+                        <td><span class="${i.active ? 'badge-active' : 'badge-inactive'}">${i.active ? 'פעיל' : 'לא פעיל'}</span></td>
+                        <td><code>${i.sheet_id || '-'}</code></td>
+                        <td>${i.sheet_url ? `<a href="${i.sheet_url}" target="_blank">פתח</a>` : '-'}</td>
+                        <td>${i.campaign_type || 'google_sheets'}</td>
+                        <td><strong>${i.campaign_name}</strong></td>
+                        <td>${i.customer_name || '-'}</td>
+                        <td>${i.id}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="8" style="text-align:center;">אין קמפיינים</td></tr>';
+            } catch(e) {
+                document.getElementById('tbody').innerHTML = '<tr><td colspan="8" style="text-align:center; color:red;">שגיאה: ' + e.message + '</td></tr>';
+            }
+        }
+        async function del(id) {
+            if (!confirm('מחיקה?')) return;
+            await fetch(`/admin/campaigns/delete/${id}`, { method: 'DELETE' });
+            load();
+        }
+        load();
+    </script>
+</body>
+</html>
