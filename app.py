@@ -856,7 +856,42 @@ def webhook():
                             lead_data['קמפיין'] = campaign_from_sheet
                             lead_data['_customer_id'] = customer_id_from_sheet  # Store for later use
                         else:
-                            logger.warning(f"No campaign found for sheet_id: {sheet_id}")
+                            # Auto-create campaign if it doesn't exist
+                            logger.info(f"No campaign found for sheet_id: {sheet_id}, creating automatically...")
+                            try:
+                                conn_create = get_db_connection()
+                                if conn_create:
+                                    cur_create = conn_create.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                                    
+                                    # Create campaign with sheet_id as the name (user can rename later)
+                                    default_campaign_name = f"Google Sheet: {sheet_id}"
+                                    default_customer_id = 1  # Default to customer #1
+                                    
+                                    cur_create.execute("""
+                                        INSERT INTO campaigns (customer_id, campaign_name, campaign_type, sheet_id, active)
+                                        VALUES (%s, %s, 'google_sheets', %s, true)
+                                        ON CONFLICT (customer_id, campaign_name) DO NOTHING
+                                        RETURNING id, campaign_name, customer_id
+                                    """, (default_customer_id, default_campaign_name, sheet_id))
+                                    
+                                    new_campaign = cur_create.fetchone()
+                                    conn_create.commit()
+                                    cur_create.close()
+                                    conn_create.close()
+                                    
+                                    if new_campaign:
+                                        campaign_from_sheet = new_campaign['campaign_name']
+                                        customer_id_from_sheet = new_campaign['customer_id']
+                                        logger.info(f"✅ Auto-created campaign: {campaign_from_sheet} (ID: {new_campaign['id']})")
+                                        
+                                        # Set campaign name and customer_id
+                                        lead_data['campaign_name'] = campaign_from_sheet
+                                        lead_data['קמפיין'] = campaign_from_sheet
+                                        lead_data['_customer_id'] = customer_id_from_sheet
+                                    else:
+                                        logger.warning(f"Campaign creation returned no result for sheet_id: {sheet_id}")
+                            except Exception as create_error:
+                                logger.error(f"Error auto-creating campaign: {create_error}")
                 except Exception as e:
                     logger.error(f"Error looking up campaign: {e}")
             
