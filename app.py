@@ -3227,6 +3227,49 @@ def campaigns_management():
     """Admin-only campaigns management page"""
     return render_template('campaigns_management.html')
 
+@app.route('/admin/campaigns/create', methods=['POST'])
+@admin_required
+def create_campaign():
+    """API: Create new campaign"""
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if not data.get('customer_id'):
+            return jsonify({'error': 'חסר מזהה לקוח'}), 400
+        if not data.get('campaign_name'):
+            return jsonify({'error': 'חסר שם קמפיין'}), 400
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Insert new campaign
+        cur.execute("""
+            INSERT INTO campaigns (customer_id, campaign_name, campaign_type, sheet_id, sheet_url, active)
+            VALUES (%s, %s, 'google_sheets', %s, %s, %s)
+            RETURNING id, campaign_name, customer_id
+        """, (
+            data['customer_id'],
+            data['campaign_name'],
+            data.get('sheet_id'),
+            data.get('sheet_url'),
+            data.get('active', True)
+        ))
+
+        new_campaign = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'success': True, 'campaign': new_campaign})
+
+    except Exception as e:
+        logger.error(f"Error creating campaign: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/campaigns/api')
 @admin_required
 def get_campaigns_api():
