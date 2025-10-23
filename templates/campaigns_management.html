@@ -16,16 +16,29 @@
         th { background: #f8fafc; padding: 12px; text-align: right; border-bottom: 2px solid #e5e7eb; }
         td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
         tr:hover { background: #f9fafb; }
-        .btn { background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+        .btn { background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 5px; }
         .btn-danger { background: #ef4444; }
+        .btn-edit { background: #3b82f6; }
         .badge-active { background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
         .badge-inactive { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 30px; border-radius: 16px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { font-size: 1.5rem; margin-bottom: 20px; color: #10b981; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #374151; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #10b981; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn-modal { padding: 10px 20px; font-size: 14px; }
+        .btn-cancel { background: #6b7280; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">v1.2</span></h1>
+            <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">v1.3</span></h1>
             <div class="nav-links">
                 <a href="/admin" class="nav-link">דשבורד</a>
                 <a href="/admin/customers" class="nav-link">לקוחות</a>
@@ -50,15 +63,54 @@
             </table>
         </div>
     </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">✏️ עריכת קמפיין</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>שם קמפיין</label>
+                    <input type="text" id="editCampaignName" required>
+                </div>
+                <div class="form-group">
+                    <label>Sheet ID</label>
+                    <input type="text" id="editSheetId">
+                </div>
+                <div class="form-group">
+                    <label>קישור ל-Sheet</label>
+                    <input type="url" id="editSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+                </div>
+                <div class="form-group">
+                    <label>סטטוס</label>
+                    <select id="editActive">
+                        <option value="true">פעיל</option>
+                        <option value="false">לא פעיל</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel btn-modal" onclick="closeModal()">ביטול</button>
+                    <button type="submit" class="btn btn-modal">שמור</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        let campaigns = [];
+
         async function load() {
             try {
                 const r = await fetch('/admin/campaigns/api');
                 const d = await r.json();
-                const c = d.campaigns || [];
-                document.getElementById('tbody').innerHTML = c.length ? c.map(i => `
+                campaigns = d.campaigns || [];
+                document.getElementById('tbody').innerHTML = campaigns.length ? campaigns.map(i => `
                     <tr>
-                        <td><button class="btn btn-danger" onclick="del(${i.id})">מחק</button></td>
+                        <td>
+                            <button class="btn btn-edit" onclick="edit(${i.id})">ערוך</button>
+                            <button class="btn btn-danger" onclick="del(${i.id})">מחק</button>
+                        </td>
                         <td><span class="${i.active ? 'badge-active' : 'badge-inactive'}">${i.active ? 'פעיל' : 'לא פעיל'}</span></td>
                         <td><code>${i.sheet_id || '-'}</code></td>
                         <td>${i.sheet_url ? `<a href="${i.sheet_url}" target="_blank">פתח</a>` : '-'}</td>
@@ -72,11 +124,68 @@
                 document.getElementById('tbody').innerHTML = '<tr><td colspan="8" style="text-align:center; color:red;">שגיאה: ' + e.message + '</td></tr>';
             }
         }
+
+        function edit(id) {
+            const campaign = campaigns.find(c => c.id === id);
+            if (!campaign) return;
+
+            document.getElementById('editId').value = campaign.id;
+            document.getElementById('editCampaignName').value = campaign.campaign_name;
+            document.getElementById('editSheetId').value = campaign.sheet_id || '';
+            document.getElementById('editSheetUrl').value = campaign.sheet_url || '';
+            document.getElementById('editActive').value = campaign.active ? 'true' : 'false';
+
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('editId').value;
+            const data = {
+                campaign_name: document.getElementById('editCampaignName').value,
+                sheet_id: document.getElementById('editSheetId').value,
+                sheet_url: document.getElementById('editSheetUrl').value,
+                active: document.getElementById('editActive').value === 'true'
+            };
+
+            try {
+                const response = await fetch(`/admin/campaigns/update/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    closeModal();
+                    load();
+                } else {
+                    const error = await response.json();
+                    alert('שגיאה: ' + (error.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('שגיאה: ' + e.message);
+            }
+        });
+
         async function del(id) {
             if (!confirm('מחיקה?')) return;
             await fetch(`/admin/campaigns/delete/${id}`, { method: 'DELETE' });
             load();
         }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
         load();
     </script>
 </body>
