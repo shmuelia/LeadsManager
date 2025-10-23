@@ -3283,6 +3283,57 @@ def delete_campaign(campaign_id):
         logger.error(f"Error deleting campaign: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/campaigns/update/<int:campaign_id>', methods=['PUT'])
+@admin_required
+def update_campaign(campaign_id):
+    """API: Update a campaign"""
+    try:
+        data = request.get_json()
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor()
+
+        # Build update query dynamically based on provided fields
+        update_fields = []
+        params = []
+
+        if 'campaign_name' in data:
+            update_fields.append("campaign_name = %s")
+            params.append(data['campaign_name'])
+
+        if 'sheet_id' in data:
+            update_fields.append("sheet_id = %s")
+            params.append(data['sheet_id'] if data['sheet_id'] else None)
+
+        if 'sheet_url' in data:
+            update_fields.append("sheet_url = %s")
+            params.append(data['sheet_url'] if data['sheet_url'] else None)
+
+        if 'active' in data:
+            update_fields.append("active = %s")
+            params.append(data['active'])
+
+        if not update_fields:
+            return jsonify({'error': 'No fields to update'}), 400
+
+        # Add campaign_id to params
+        params.append(campaign_id)
+
+        query = f"UPDATE campaigns SET {', '.join(update_fields)} WHERE id = %s"
+        cur.execute(query, params)
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Campaign updated'})
+
+    except Exception as e:
+        logger.error(f"Error updating campaign: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/customers/api')
 @admin_required
 def get_customers():
