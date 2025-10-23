@@ -3227,6 +3227,62 @@ def campaigns_management():
     """Admin-only campaigns management page"""
     return render_template('campaigns_management.html')
 
+@app.route('/admin/campaigns/api')
+@admin_required
+def get_campaigns_api():
+    """API: Get all campaigns with customer names"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT
+                c.id,
+                c.customer_id,
+                c.campaign_name,
+                c.campaign_type,
+                c.sheet_id,
+                c.sheet_url,
+                c.active,
+                cu.name as customer_name
+            FROM campaigns c
+            LEFT JOIN customers cu ON c.customer_id = cu.id
+            ORDER BY c.id DESC
+        """)
+        campaigns = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return jsonify({'campaigns': campaigns})
+
+    except Exception as e:
+        logger.error(f"Error fetching campaigns: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/campaigns/delete/<int:campaign_id>', methods=['DELETE'])
+@admin_required
+def delete_campaign(campaign_id):
+    """API: Delete a campaign"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor()
+        cur.execute("DELETE FROM campaigns WHERE id = %s", (campaign_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Campaign deleted'})
+
+    except Exception as e:
+        logger.error(f"Error deleting campaign: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/customers/api')
 @admin_required
 def get_customers():
