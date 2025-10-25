@@ -41,7 +41,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">v1.4</span></h1>
+            <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">v1.5</span></h1>
             <div class="nav-links">
                 <a href="/admin" class="nav-link">דשבורד</a>
                 <a href="/admin/customers" class="nav-link">לקוחות</a>
@@ -178,6 +178,7 @@
                 document.getElementById('tbody').innerHTML = campaigns.length ? campaigns.map(i => `
                     <tr>
                         <td>
+                            ${i.sheet_url ? `<button class="btn" onclick="sync(${i.id})" title="סנכרן ליד">🔄 סנכרן</button>` : ''}
                             <button class="btn btn-edit" onclick="edit(${i.id})">ערוך</button>
                             <button class="btn btn-danger" onclick="del(${i.id})">מחק</button>
                         </td>
@@ -287,6 +288,45 @@
             if (!confirm('מחיקה?')) return;
             await fetch(`/admin/campaigns/delete/${id}`, { method: 'DELETE' });
             load();
+        }
+
+        async function sync(id) {
+            const campaign = campaigns.find(c => c.id === id);
+            if (!campaign) return;
+
+            if (!confirm(`האם לסנכרן ליד מקמפיין "${campaign.campaign_name}"?`)) return;
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן...';
+
+            try {
+                const response = await fetch(`/admin/campaigns/sync/${id}`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(
+                        `✅ סנכרון הושלם!\n\n` +
+                        `קמפיין: ${result.campaign_name}\n` +
+                        `שורות שנבדקו: ${result.total_rows_checked}\n` +
+                        `לידים חדשים: ${result.new_leads}\n` +
+                        `כפילויות שדולגו: ${result.duplicates}\n` +
+                        `שגיאות: ${result.errors}\n` +
+                        `שורה אחרונה: ${result.last_synced_row}`
+                    );
+                    load(); // Reload table to show updated last_synced info
+                } else {
+                    alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 סנכרן';
+            }
         }
 
         // Close modal when clicking outside

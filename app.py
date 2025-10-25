@@ -18,6 +18,9 @@ from email.mime.multipart import MIMEMultipart
 import psycopg2
 import psycopg2.extras
 from database import db_manager
+import gspread
+from google.oauth2.service_account import Credentials
+import re
 
 # Database configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -3379,6 +3382,211 @@ def update_campaign(campaign_id):
 
     except Exception as e:
         logger.error(f"Error updating campaign: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/campaigns/sync/<int:campaign_id>', methods=['POST'])
+@admin_required
+def sync_campaign(campaign_id):
+    """Sync leads from Google Sheet for a specific campaign"""
+    try:
+        import requests
+        import csv
+        from io import StringIO
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get campaign details
+        cur.execute("""
+            SELECT * FROM campaigns
+            WHERE id = %s
+        """, (campaign_id,))
+        campaign = cur.fetchone()
+
+        if not campaign:
+            return jsonify({'error': 'Campaign not found'}), 404
+
+        if not campaign['sheet_url']:
+            return jsonify({'error': 'No sheet URL configured for this campaign'}), 400
+
+        logger.info(f"=== Starting sync for campaign: {campaign['campaign_name']} ===")
+
+        # Extract spreadsheet ID from URL
+        sheet_url = campaign['sheet_url']
+        sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+        if not sheet_id_match:
+            return jsonify({'error': 'Invalid Google Sheet URL'}), 400
+
+        spreadsheet_id = sheet_id_match.group(1)
+
+        # Extract gid (sheet/tab ID) from URL if present
+        gid_match = re.search(r'gid=(\d+)', sheet_url)
+        gid = gid_match.group(1) if gid_match else '0'
+
+        # Build CSV export URL
+        csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+
+        logger.info(f"Fetching sheet data from: {csv_url}")
+
+        # Fetch the CSV data
+        response = requests.get(csv_url, timeout=30)
+        response.raise_for_status()
+
+        # Parse CSV
+        csv_data = StringIO(response.text)
+        reader = csv.DictReader(csv_data)
+
+        # Get headers
+        headers = reader.fieldnames
+        logger.info(f"Sheet headers: {headers}")
+
+        # Get starting row (last synced + 1)
+        last_synced_row = campaign.get('last_synced_row') or 1
+
+        new_leads = 0
+        duplicates = 0
+        errors = 0
+        current_row = 1  # CSV row counter (header is row 0)
+
+        for row_data in reader:
+            current_row += 1
+
+            # Skip rows we've already processed
+            if current_row <= last_synced_row:
+                continue
+
+            try:
+                # Skip empty rows
+                if not any(row_data.values()):
+                    logger.info(f"Row {current_row}: Empty, skipping")
+                    continue
+
+                # Extract lead data with Hebrew field mapping
+                name = (row_data.get('שם מלא') or row_data.get('שם') or
+                       row_data.get('name') or row_data.get('Name') or '')
+
+                phone = (row_data.get('מס פלאפון') or row_data.get('טלפון') or
+                        row_data.get('מספר טלפון') or row_data.get('phone') or
+                        row_data.get('Phone Number') or row_data.get('טלפון:') or '')
+
+                email = (row_data.get('מייל') or row_data.get('אימייל') or
+                        row_data.get('דוא"ל') or row_data.get('email') or
+                        row_data.get('Email') or row_data.get('אימייל:') or '')
+
+                # Clean phone number
+                if phone:
+                    phone = str(phone).strip().replace('-', '').replace(' ', '')
+
+                # Skip if no name or contact info
+                if not name and not phone and not email:
+                    logger.info(f"Row {current_row}: No name/phone/email, skipping")
+                    continue
+
+                logger.info(f"Row {current_row}: {name}, {phone}, {email}")
+
+                # Check for duplicate by phone or email
+                duplicate_check_sql = """
+                    SELECT id FROM leads
+                    WHERE customer_id = %s
+                    AND (
+                        (phone IS NOT NULL AND phone = %s)
+                        OR (email IS NOT NULL AND email = %s)
+                    )
+                    LIMIT 1
+                """
+                cur.execute(duplicate_check_sql, (campaign['customer_id'], phone or '', email or ''))
+                existing_lead = cur.fetchone()
+
+                if existing_lead:
+                    logger.info(f"Row {current_row}: Duplicate found (Lead ID: {existing_lead['id']}), skipping")
+                    duplicates += 1
+                    continue
+
+                # Build raw_data JSONB with all fields
+                raw_data = {
+                    'source': 'google_sheets',
+                    'sheet_id': campaign['sheet_id'],
+                    'campaign_name': campaign['campaign_name'],
+                    'row_number': current_row
+                }
+
+                # Add all CSV fields to raw_data
+                for key, value in row_data.items():
+                    if value:
+                        raw_data[key] = value
+
+                # Insert the lead
+                cur.execute("""
+                    INSERT INTO leads (
+                        customer_id, name, email, phone, status,
+                        campaign, raw_data, received_at
+                    ) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP)
+                    RETURNING id
+                """, (
+                    campaign['customer_id'],
+                    name or 'Unknown',
+                    email if email else None,
+                    phone if phone else None,
+                    campaign['campaign_name'],
+                    json.dumps(raw_data)
+                ))
+
+                lead_id = cur.fetchone()['id']
+
+                # Log the activity
+                cur.execute("""
+                    INSERT INTO lead_activities (
+                        lead_id, customer_id, user_id, activity_type, description
+                    ) VALUES (%s, %s, NULL, 'lead_received', %s)
+                """, (
+                    lead_id,
+                    campaign['customer_id'],
+                    f"Lead imported from Google Sheet: {campaign['campaign_name']}, Row {current_row}"
+                ))
+
+                new_leads += 1
+                logger.info(f"Row {current_row}: Created lead ID {lead_id}")
+
+            except Exception as row_error:
+                logger.error(f"Row {current_row}: Error processing - {str(row_error)}")
+                errors += 1
+                continue
+
+        # Update last_synced_row and last_synced_at
+        cur.execute("""
+            UPDATE campaigns
+            SET last_synced_row = %s, last_synced_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (current_row, campaign_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        result = {
+            'success': True,
+            'campaign_name': campaign['campaign_name'],
+            'total_rows_checked': current_row - last_synced_row,
+            'new_leads': new_leads,
+            'duplicates': duplicates,
+            'errors': errors,
+            'last_synced_row': current_row
+        }
+
+        logger.info(f"=== Sync complete: {result} ===")
+
+        return jsonify(result)
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching Google Sheet: {str(e)}")
+        return jsonify({'error': f'Failed to fetch Google Sheet: {str(e)}'}), 500
+    except Exception as e:
+        logger.error(f"Error syncing campaign: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/customers/api')

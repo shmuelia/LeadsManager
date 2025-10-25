@@ -38,10 +38,31 @@ def migrate_campaigns_table():
                 active BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_synced_row INTEGER DEFAULT 1,
+                last_synced_at TIMESTAMP,
                 UNIQUE(customer_id, campaign_name)
             );
         """)
         print("✅ Campaigns table created/verified")
+
+        # Add last_synced_row column if it doesn't exist
+        cur.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'campaigns'
+            AND column_name = 'last_synced_row';
+        """)
+
+        if not cur.fetchone():
+            print("🔧 Adding last_synced_row column...")
+            cur.execute("""
+                ALTER TABLE campaigns
+                ADD COLUMN last_synced_row INTEGER DEFAULT 1,
+                ADD COLUMN last_synced_at TIMESTAMP;
+            """)
+            print("✅ Sync tracking columns added")
+        else:
+            print("✅ Sync tracking columns already exist")
 
         # Check if foreign key constraint exists
         cur.execute("""
