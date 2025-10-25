@@ -1,7 +1,9 @@
-# Google Sheets Auto-Sync Setup Guide
+# Google Sheets Auto-Sync Setup Guide (Zapier Method)
+
+> **⚠️ NOTE**: This is the Zapier integration method. However, campaign #1 (drushim_sheet) uses **Google Apps Script** instead (see `GOOGLE_APPS_SCRIPT_SETUP.md`). Apps Script is faster, free, and recommended for most use cases.
 
 ## Overview
-This guide shows how to set up automatic lead import from Google Sheets (like campaign #1 "drushim_sheet" that's already working).
+This guide shows how to set up automatic lead import from Google Sheets using Zapier.
 
 ## How It Works
 1. You add a new row to your Google Sheet
