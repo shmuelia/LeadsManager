@@ -45,24 +45,57 @@ def migrate_campaigns_table():
         """)
         print("✅ Campaigns table created/verified")
 
-        # Add last_synced_row column if it doesn't exist
+        # Check if last_synced_row column exists and its type
         cur.execute("""
-            SELECT column_name
+            SELECT column_name, data_type
             FROM information_schema.columns
             WHERE table_name = 'campaigns'
             AND column_name = 'last_synced_row';
         """)
 
-        if not cur.fetchone():
-            print("🔧 Adding last_synced_row column...")
+        sync_col = cur.fetchone()
+
+        if not sync_col:
+            print("🔧 Adding last_synced_row column as JSONB...")
             cur.execute("""
                 ALTER TABLE campaigns
-                ADD COLUMN last_synced_row INTEGER DEFAULT 1,
+                ADD COLUMN last_synced_row JSONB DEFAULT '{}'::jsonb,
                 ADD COLUMN last_synced_at TIMESTAMP;
             """)
-            print("✅ Sync tracking columns added")
+            print("✅ Sync tracking columns added (JSONB)")
+        elif sync_col[1] == 'integer':
+            print("🔧 Converting last_synced_row from INTEGER to JSONB for multi-tab support...")
+
+            # Get current data before conversion
+            cur.execute("""
+                SELECT id, last_synced_row
+                FROM campaigns
+                WHERE last_synced_row IS NOT NULL
+            """)
+            existing_data = cur.fetchall()
+
+            # Drop and recreate as JSONB
+            cur.execute("""
+                ALTER TABLE campaigns
+                DROP COLUMN last_synced_row;
+            """)
+            cur.execute("""
+                ALTER TABLE campaigns
+                ADD COLUMN last_synced_row JSONB DEFAULT '{}'::jsonb;
+            """)
+
+            # Restore data in new format: INTEGER -> {"gid_0": value}
+            for row_id, old_value in existing_data:
+                if old_value and old_value > 1:
+                    cur.execute("""
+                        UPDATE campaigns
+                        SET last_synced_row = %s::jsonb
+                        WHERE id = %s
+                    """, (f'{{"gid_0": {old_value}}}', row_id))
+
+            print(f"✅ Converted {len(existing_data)} campaigns to JSONB format")
         else:
-            print("✅ Sync tracking columns already exist")
+            print("✅ Sync tracking columns already exist (JSONB)")
 
         # Check if foreign key constraint exists
         cur.execute("""
