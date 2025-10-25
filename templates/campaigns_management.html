@@ -11,6 +11,9 @@
         .header h1 { color: white; font-size: 2rem; text-align: center; }
         .nav-links { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
         .nav-link { background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; }
+        .actions-bar { display: flex; justify-content: flex-start; margin-bottom: 15px; }
+        .btn-create { background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-create:hover { background: #059669; }
         .table-wrapper { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; }
         th { background: #f8fafc; padding: 12px; text-align: right; border-bottom: 2px solid #e5e7eb; }
@@ -38,13 +41,18 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">v1.3</span></h1>
+            <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">v1.5</span></h1>
             <div class="nav-links">
                 <a href="/admin" class="nav-link">דשבורד</a>
                 <a href="/admin/customers" class="nav-link">לקוחות</a>
                 <a href="/logout" class="nav-link">התנתקות</a>
             </div>
         </div>
+
+        <div class="actions-bar">
+            <button class="btn-create" onclick="openCreateModal()">+ קמפיין חדש</button>
+        </div>
+
         <div class="table-wrapper">
             <table>
                 <thead>
@@ -64,12 +72,56 @@
         </div>
     </div>
 
+    <!-- Create Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">➕ קמפיין חדש</h2>
+            <form id="createForm">
+                <div class="form-group">
+                    <label>לקוח <span style="color:red;">*</span></label>
+                    <select id="createCustomerId" required>
+                        <option value="">בחר לקוח...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>שם קמפיין <span style="color:red;">*</span></label>
+                    <input type="text" id="createCampaignName" required>
+                </div>
+                <div class="form-group">
+                    <label>Sheet ID</label>
+                    <input type="text" id="createSheetId">
+                </div>
+                <div class="form-group">
+                    <label>קישור ל-Sheet</label>
+                    <input type="url" id="createSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+                </div>
+                <div class="form-group">
+                    <label>סטטוס</label>
+                    <select id="createActive">
+                        <option value="true">פעיל</option>
+                        <option value="false">לא פעיל</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel btn-modal" onclick="closeCreateModal()">ביטול</button>
+                    <button type="submit" class="btn btn-modal">צור קמפיין</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <h2 class="modal-header">✏️ עריכת קמפיין</h2>
             <form id="editForm">
                 <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>לקוח</label>
+                    <select id="editCustomerId" required>
+                        <option value="">בחר לקוח...</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>שם קמפיין</label>
                     <input type="text" id="editCampaignName" required>
@@ -90,7 +142,7 @@
                     </select>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-cancel btn-modal" onclick="closeModal()">ביטול</button>
+                    <button type="button" class="btn btn-cancel btn-modal" onclick="closeEditModal()">ביטול</button>
                     <button type="submit" class="btn btn-modal">שמור</button>
                 </div>
             </form>
@@ -99,6 +151,24 @@
 
     <script>
         let campaigns = [];
+        let customers = [];
+
+        async function loadCustomers() {
+            try {
+                const r = await fetch('/admin/customers/api');
+                const data = await r.json();
+                customers = data || [];
+
+                // Populate customer dropdowns (both create and edit)
+                const customerOptions = '<option value="">בחר לקוח...</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+                document.getElementById('createCustomerId').innerHTML = customerOptions;
+                document.getElementById('editCustomerId').innerHTML = customerOptions;
+            } catch(e) {
+                console.error('Error loading customers:', e);
+            }
+        }
 
         async function load() {
             try {
@@ -108,6 +178,7 @@
                 document.getElementById('tbody').innerHTML = campaigns.length ? campaigns.map(i => `
                     <tr>
                         <td>
+                            ${i.sheet_url ? `<button class="btn" onclick="sync(${i.id})" title="סנכרן ליד">🔄 סנכרן</button>` : ''}
                             <button class="btn btn-edit" onclick="edit(${i.id})">ערוך</button>
                             <button class="btn btn-danger" onclick="del(${i.id})">מחק</button>
                         </td>
@@ -125,11 +196,51 @@
             }
         }
 
+        function openCreateModal() {
+            document.getElementById('createForm').reset();
+            document.getElementById('createModal').style.display = 'block';
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+        }
+
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                customer_id: parseInt(document.getElementById('createCustomerId').value),
+                campaign_name: document.getElementById('createCampaignName').value,
+                sheet_id: document.getElementById('createSheetId').value,
+                sheet_url: document.getElementById('createSheetUrl').value,
+                active: document.getElementById('createActive').value === 'true'
+            };
+
+            try {
+                const response = await fetch('/admin/campaigns/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    closeCreateModal();
+                    load();
+                } else {
+                    const error = await response.json();
+                    alert('שגיאה: ' + (error.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('שגיאה: ' + e.message);
+            }
+        });
+
         function edit(id) {
             const campaign = campaigns.find(c => c.id === id);
             if (!campaign) return;
 
             document.getElementById('editId').value = campaign.id;
+            document.getElementById('editCustomerId').value = campaign.customer_id;
             document.getElementById('editCampaignName').value = campaign.campaign_name;
             document.getElementById('editSheetId').value = campaign.sheet_id || '';
             document.getElementById('editSheetUrl').value = campaign.sheet_url || '';
@@ -138,7 +249,7 @@
             document.getElementById('editModal').style.display = 'block';
         }
 
-        function closeModal() {
+        function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
 
@@ -147,6 +258,7 @@
 
             const id = document.getElementById('editId').value;
             const data = {
+                customer_id: parseInt(document.getElementById('editCustomerId').value),
                 campaign_name: document.getElementById('editCampaignName').value,
                 sheet_id: document.getElementById('editSheetId').value,
                 sheet_url: document.getElementById('editSheetUrl').value,
@@ -161,7 +273,7 @@
                 });
 
                 if (response.ok) {
-                    closeModal();
+                    closeEditModal();
                     load();
                 } else {
                     const error = await response.json();
@@ -178,14 +290,59 @@
             load();
         }
 
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('editModal');
-            if (event.target === modal) {
-                closeModal();
+        async function sync(id) {
+            const campaign = campaigns.find(c => c.id === id);
+            if (!campaign) return;
+
+            if (!confirm(`האם לסנכרן ליד מקמפיין "${campaign.campaign_name}"?`)) return;
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן...';
+
+            try {
+                const response = await fetch(`/admin/campaigns/sync/${id}`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(
+                        `✅ סנכרון הושלם!\n\n` +
+                        `קמפיין: ${result.campaign_name}\n` +
+                        `שורות שנבדקו: ${result.total_rows_checked}\n` +
+                        `לידים חדשים: ${result.new_leads}\n` +
+                        `כפילויות שדולגו: ${result.duplicates}\n` +
+                        `שגיאות: ${result.errors}\n` +
+                        `שורה אחרונה: ${result.last_synced_row}`
+                    );
+                    load(); // Reload table to show updated last_synced info
+                } else {
+                    alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 סנכרן';
             }
         }
 
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const editModal = document.getElementById('editModal');
+            const createModal = document.getElementById('createModal');
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+            if (event.target === createModal) {
+                closeCreateModal();
+            }
+        }
+
+        // Initialize
+        loadCustomers();
         load();
     </script>
 </body>
