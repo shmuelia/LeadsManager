@@ -1,7 +1,7 @@
-# Google Apps Script Setup for Automatic Lead Import
+# Google Sheets Automatic Lead Import Setup
 
 ## Overview
-This is the correct method for automatically importing leads from Google Sheets (used by campaign #1 "drushim_sheet").
+This guide shows how to automatically import leads from Google Sheets using Google Apps Script (used by campaign #1 "drushim_sheet").
 
 ## Debugging Existing Script (drushim_sheet)
 
@@ -238,14 +238,10 @@ if (header === 'תאריך') {
 - Use time-based trigger instead of edit-based
 - Upgrade to Google Workspace if needed
 
-## Comparison: Apps Script vs Zapier
+## Benefits of Google Apps Script
 
-| Feature | Google Apps Script | Zapier |
-|---------|-------------------|--------|
-| **Cost** | Free (within quotas) | Paid after 100 tasks/month |
-| **Speed** | Instant | 1-15 minute delay |
-| **Reliability** | High (if authorized) | Very High |
-| **Setup Complexity** | Medium (requires coding) | Easy (visual interface) |
-| **Customization** | Full control | Limited to Zapier's options |
-
-Your current setup with Apps Script is actually better for real-time lead capture!
+- ✅ **Free** - No subscription costs (within Google's quotas)
+- ✅ **Instant** - Triggers immediately when rows are added
+- ✅ **Direct** - No third-party service required
+- ✅ **Customizable** - Full control over data mapping and logic
+- ✅ **Reliable** - Runs directly in Google's infrastructure
