@@ -3343,6 +3343,10 @@ def update_campaign(campaign_id):
         update_fields = []
         params = []
 
+        if 'customer_id' in data:
+            update_fields.append("customer_id = %s")
+            params.append(data['customer_id'])
+
         if 'campaign_name' in data:
             update_fields.append("campaign_name = %s")
             params.append(data['campaign_name'])

@@ -117,6 +117,12 @@
             <form id="editForm">
                 <input type="hidden" id="editId">
                 <div class="form-group">
+                    <label>לקוח</label>
+                    <select id="editCustomerId" required>
+                        <option value="">בחר לקוח...</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>שם קמפיין</label>
                     <input type="text" id="editCampaignName" required>
                 </div>
@@ -153,10 +159,12 @@
                 const data = await r.json();
                 customers = data || [];
 
-                // Populate customer dropdown
-                const select = document.getElementById('createCustomerId');
-                select.innerHTML = '<option value="">בחר לקוח...</option>' +
+                // Populate customer dropdowns (both create and edit)
+                const customerOptions = '<option value="">בחר לקוח...</option>' +
                     customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+                document.getElementById('createCustomerId').innerHTML = customerOptions;
+                document.getElementById('editCustomerId').innerHTML = customerOptions;
             } catch(e) {
                 console.error('Error loading customers:', e);
             }
@@ -231,6 +239,7 @@
             if (!campaign) return;
 
             document.getElementById('editId').value = campaign.id;
+            document.getElementById('editCustomerId').value = campaign.customer_id;
             document.getElementById('editCampaignName').value = campaign.campaign_name;
             document.getElementById('editSheetId').value = campaign.sheet_id || '';
             document.getElementById('editSheetUrl').value = campaign.sheet_url || '';
@@ -248,6 +257,7 @@
 
             const id = document.getElementById('editId').value;
             const data = {
+                customer_id: parseInt(document.getElementById('editCustomerId').value),
                 campaign_name: document.getElementById('editCampaignName').value,
                 sheet_id: document.getElementById('editSheetId').value,
                 sheet_url: document.getElementById('editSheetUrl').value,
