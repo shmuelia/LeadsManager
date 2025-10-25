@@ -28,6 +28,19 @@ Your script at: https://script.google.com/u/0/home/projects/1ZrSVIrlTtFR2iXZ30dA
 3. Check if it prompts for authorization
 4. Look at the **Execution log** for errors
 
+## Important: Multi-Tab Support
+
+If your Google Sheet has **multiple tabs** (e.g., one tab per job title), the script automatically handles all tabs:
+
+- ✅ The trigger works for **all tabs** in the spreadsheet
+- ✅ The **tab name** is captured and sent as `job_title`, `sheet_name`, and `tab_name`
+- ✅ Each tab can represent a different job position (e.g., "טבח", "מלצר", "ברמן")
+- ✅ The tab name is stored in the lead's `raw_data` for filtering and reporting
+
+**Example**: If your sheet has tabs named "טבח", "מלצר", "ברמן":
+- Lead from "טבח" tab → `job_title: "טבח"` in the lead data
+- Lead from "מלצר" tab → `job_title: "מלצר"` in the lead data
+
 ## Complete Google Apps Script Code
 
 Here's the script that should be in your Google Sheet:
@@ -67,6 +80,9 @@ function sendLatestRowManually() {
 // Main function that sends data to webhook
 function sendNewRowToWebhook(sheet, rowNumber) {
   try {
+    // Get the sheet/tab name (represents job title or category)
+    const sheetName = sheet.getName();
+
     // Get headers from first row
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
@@ -77,6 +93,9 @@ function sendNewRowToWebhook(sheet, rowNumber) {
     const payload = {
       source: 'google_sheets',
       sheet_id: SHEET_ID,
+      sheet_name: sheetName,  // Include tab name for job title tracking
+      tab_name: sheetName,     // Alias for clarity
+      job_title: sheetName,    // The tab name is the job title
       row_number: rowNumber,
       timestamp: new Date().toISOString()
     };
@@ -186,9 +205,24 @@ Open the sheet you want to sync (drushim or the new events/parties sheet)
 4. Click **Save**
 
 ### Step 6: Test It
+
+**Option A - Manual Test (Recommended First):**
+1. In the script editor, select `sendLatestRowManually` function
+2. Click **Run** ▶️
+3. Check **Execution log** (View → Logs) for "✅ Successfully sent"
+4. Verify in LeadsManager: https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/check-recent-webhooks
+
+**Option B - Live Test:**
 1. Add a new row to your sheet (or submit a form)
-2. Check **Executions** to see if it ran successfully
-3. Check LeadsManager: https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/check-recent-webhooks
+2. If you have multiple tabs, try adding a row to **each tab**
+3. Wait 10-20 seconds
+4. Check **Executions** to see if it ran successfully (should show one execution per tab)
+5. Check LeadsManager to verify leads arrived with correct `job_title`
+
+**For Multi-Tab Sheets:**
+- Test each tab separately to confirm all tabs are working
+- Each lead should have the tab name in `raw_data` → `job_title` field
+- You can filter leads by job title in LeadsManager
 
 ## For Events/Parties Sheet
 
