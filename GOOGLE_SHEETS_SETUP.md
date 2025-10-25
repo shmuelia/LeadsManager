@@ -50,17 +50,22 @@ Here's the script that should be in your Google Sheet:
 const WEBHOOK_URL = 'https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/webhook';
 const SHEET_ID = 'drushim_sheet'; // Change this for each campaign
 
-// This function triggers when a form is submitted or row is edited
-function onEdit(e) {
-  // Only trigger for new rows (not edits to existing rows)
+// This function triggers when a row is edited (your existing trigger uses this name)
+function onSheetEdit(e) {
+  // Get the sheet and row from the edit event
   const sheet = e.source.getActiveSheet();
   const row = e.range.getRow();
 
   // Skip header row
   if (row === 1) return;
 
-  // Get the entire row data
+  // Get the entire row data and send to webhook
   sendNewRowToWebhook(sheet, row);
+}
+
+// Alternative function name (for standard onEdit triggers)
+function onEdit(e) {
+  onSheetEdit(e);
 }
 
 // Alternative: This triggers only on form submissions (more reliable)
@@ -139,7 +144,7 @@ function sendNewRowToWebhook(sheet, rowNumber) {
     Logger.log('Response Body: ' + responseBody);
 
     if (responseCode === 200) {
-      Logger.log('✅ Successfully sent row ' + rowNumber + ' to LeadsManager');
+      Logger.log('✅ Successfully sent row ' + rowNumber + ' from tab "' + sheetName + '" to LeadsManager');
 
       // Optional: Mark the row as sent (add a column "Sent" with checkmark)
       // sheet.getRange(rowNumber, sheet.getLastColumn() + 1).setValue('✓');
