@@ -3425,11 +3425,12 @@ def sync_campaign(campaign_id):
         # Extract gid (sheet/tab ID) from URL if present
         gid_match = re.search(r'gid=(\d+)', sheet_url)
         gid = gid_match.group(1) if gid_match else '0'
+        gid_key = f'gid_{gid}'  # e.g., "gid_0" or "gid_123456"
 
         # Build CSV export URL
         csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
 
-        logger.info(f"Fetching sheet data from: {csv_url}")
+        logger.info(f"Fetching tab gid={gid} from: {csv_url}")
 
         # Fetch the CSV data
         response = requests.get(csv_url, timeout=30)
@@ -3443,8 +3444,13 @@ def sync_campaign(campaign_id):
         headers = reader.fieldnames
         logger.info(f"Sheet headers: {headers}")
 
-        # Get starting row (last synced + 1)
-        last_synced_row = campaign.get('last_synced_row') or 1
+        # Get starting row for THIS specific tab (from JSONB)
+        last_synced_data = campaign.get('last_synced_row') or {}
+        if isinstance(last_synced_data, int):
+            # Handle old INTEGER format: convert to JSONB format
+            last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
+        last_synced_row = last_synced_data.get(gid_key, 1)
+        logger.info(f"Last synced row for {gid_key}: {last_synced_row}")
 
         new_leads = 0
         duplicates = 0
@@ -3555,12 +3561,15 @@ def sync_campaign(campaign_id):
                 errors += 1
                 continue
 
-        # Update last_synced_row and last_synced_at
+        # Update last_synced_row JSONB with this tab's progress
+        # Merge with existing data to preserve other tabs' tracking
+        last_synced_data[gid_key] = current_row
+
         cur.execute("""
             UPDATE campaigns
-            SET last_synced_row = %s, last_synced_at = CURRENT_TIMESTAMP
+            SET last_synced_row = %s::jsonb, last_synced_at = CURRENT_TIMESTAMP
             WHERE id = %s
-        """, (current_row, campaign_id))
+        """, (json.dumps(last_synced_data), campaign_id))
 
         conn.commit()
         cur.close()
@@ -3569,11 +3578,13 @@ def sync_campaign(campaign_id):
         result = {
             'success': True,
             'campaign_name': campaign['campaign_name'],
+            'tab_gid': gid,
             'total_rows_checked': current_row - last_synced_row,
             'new_leads': new_leads,
             'duplicates': duplicates,
             'errors': errors,
-            'last_synced_row': current_row
+            'last_synced_row': current_row,
+            'last_synced_data': last_synced_data
         }
 
         logger.info(f"=== Sync complete: {result} ===")
@@ -3666,6 +3677,7 @@ def sync_all_campaigns():
                 spreadsheet_id = sheet_id_match.group(1)
                 gid_match = re.search(r'gid=(\d+)', sheet_url)
                 gid = gid_match.group(1) if gid_match else '0'
+                gid_key = f'gid_{gid}'
 
                 # Build CSV export URL
                 csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
@@ -3678,7 +3690,11 @@ def sync_all_campaigns():
                 csv_data = StringIO(response.text)
                 reader = csv.DictReader(csv_data)
 
-                last_synced_row = full_campaign.get('last_synced_row') or 1
+                # Get starting row for THIS specific tab (from JSONB)
+                last_synced_data = full_campaign.get('last_synced_row') or {}
+                if isinstance(last_synced_data, int):
+                    last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
+                last_synced_row = last_synced_data.get(gid_key, 1)
 
                 new_leads = 0
                 duplicates = 0
@@ -3768,11 +3784,13 @@ def sync_all_campaigns():
                         errors += 1
                         continue
 
-                # Update last_synced_row
+                # Update last_synced_row JSONB with this tab's progress
+                last_synced_data[gid_key] = current_row
+
                 cur.execute("""
-                    UPDATE campaigns SET last_synced_row = %s, last_synced_at = CURRENT_TIMESTAMP
+                    UPDATE campaigns SET last_synced_row = %s::jsonb, last_synced_at = CURRENT_TIMESTAMP
                     WHERE id = %s
-                """, (current_row, campaign['id']))
+                """, (json.dumps(last_synced_data), campaign['id']))
 
                 conn.commit()
                 cur.close()
@@ -3785,6 +3803,7 @@ def sync_all_campaigns():
                 results.append({
                     'campaign_id': campaign['id'],
                     'campaign_name': campaign['campaign_name'],
+                    'tab_gid': gid,
                     'success': True,
                     'new_leads': new_leads,
                     'duplicates': duplicates,
