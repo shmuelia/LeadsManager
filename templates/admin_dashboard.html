@@ -90,6 +90,12 @@
                 <button class="nav-btn success" onclick="location.href='/admin/customers'">
                     🏢 ניהול לקוחות
                 </button>
+                <button class="nav-btn" onclick="location.href='/admin/campaigns'">
+                    🎯 ניהול קמפיינים
+                </button>
+                <button class="nav-btn success" onclick="syncAllCampaigns()" id="syncAllBtn">
+                    🔄 סנכרן הכל
+                </button>
                 <button class="nav-btn warning" onclick="location.href='/admin/reports'">
                     📊 דוחות
                 </button>
@@ -131,13 +137,61 @@
         function hideLeadManager() {
             const container = document.getElementById('lead-manager-container');
             const welcome = document.getElementById('welcome-message');
-            
+
             container.style.display = 'none';
             welcome.style.display = 'block';
-            
+
             // Update button text
             event.target.innerHTML = '📋 צפה בלידים';
             event.target.onclick = showLeadManager;
+        }
+
+        async function syncAllCampaigns() {
+            const btn = document.getElementById('syncAllBtn');
+
+            if (!confirm('האם לסנכרן את כל הקמפיינים הפעילים?')) return;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן...';
+
+            try {
+                const response = await fetch('/admin/campaigns/sync-all', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    let message = `✅ סנכרון הושלם!\n\n`;
+                    message += `סה"כ קמפיינים: ${result.total_campaigns}\n`;
+                    message += `לידים חדשים: ${result.total_new_leads}\n`;
+                    message += `כפילויות שדולגו: ${result.total_duplicates}\n`;
+                    message += `שגיאות: ${result.total_errors}\n\n`;
+
+                    message += `פירוט לפי קמפיין:\n`;
+                    result.results.forEach(r => {
+                        if (r.success) {
+                            message += `\n${r.campaign_name}: ${r.new_leads} חדשים, ${r.duplicates} כפילויות`;
+                        } else {
+                            message += `\n${r.campaign_name}: ❌ ${r.error}`;
+                        }
+                    });
+
+                    alert(message);
+
+                    // Reload the page to show new leads
+                    if (result.total_new_leads > 0) {
+                        location.reload();
+                    }
+                } else {
+                    alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 סנכרן הכל';
+            }
         }
     </script>
 </body>
