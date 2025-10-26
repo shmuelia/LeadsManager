@@ -3584,13 +3584,22 @@ def sync_campaign(campaign_id):
         response = requests.get(csv_url, timeout=30)
         response.raise_for_status()
 
+        # Ensure proper UTF-8 decoding
+        response.encoding = 'utf-8'
+        csv_text = response.text
+        
+        # Remove BOM if present
+        if csv_text.startswith('\ufeff'):
+            csv_text = csv_text[1:]
+        
         # Parse CSV
-        csv_data = StringIO(response.text)
+        csv_data = StringIO(csv_text)
         reader = csv.DictReader(csv_data)
 
-        # Get headers
+        # Get headers and normalize them
         headers = reader.fieldnames
-        logger.info(f"Sheet headers: {headers}")
+        logger.info(f"Sheet headers (raw): {headers}")
+        logger.info(f"Sheet headers (repr): {[repr(h) for h in headers][:3]}")
 
         # Get starting row for THIS specific tab (from JSONB)
         last_synced_data = campaign.get('last_synced_row') or {}
