@@ -32,6 +32,17 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-product
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Version tracking - shows Git commit + timestamp
+try:
+    import subprocess
+    git_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+except:
+    git_hash = 'unknown'
+
+APP_VERSION = f"v{git_hash}"
+BUILD_TIME = datetime.now().strftime('%Y-%m-%d %H:%M')
+logger.info(f"🚀 LeadsManager starting - Version: {APP_VERSION} | Build: {BUILD_TIME}")
+
 # Email configuration
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
