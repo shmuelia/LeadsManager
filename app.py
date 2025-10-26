@@ -3529,9 +3529,17 @@ def sync_campaign(campaign_id):
         gid_key = f'gid_{gid}'  # e.g., "gid_0" or "gid_123456"
 
         # Try to fetch the actual tab name from Google Sheets API
-        tab_name = get_tab_name_for_gid(spreadsheet_id, gid)
+        logger.info(f"DEBUG: About to fetch tab name for spreadsheet_id={spreadsheet_id}, gid={gid}")
+        try:
+            tab_name = get_tab_name_for_gid(spreadsheet_id, gid)
+            logger.info(f"DEBUG: get_tab_name_for_gid returned: {tab_name}")
+        except Exception as tab_error:
+            logger.error(f"DEBUG: Exception in get_tab_name_for_gid: {tab_error}")
+            tab_name = None
+        
         if not tab_name:
             tab_name = f"gid_{gid}"  # Fallback if API not configured
+            logger.info(f"DEBUG: Using fallback tab name: {tab_name}")
 
         logger.info(f"Syncing tab: {tab_name} (gid={gid})")
 
