@@ -86,6 +86,122 @@
             border-color: #10b981;
             color: #065f46;
         }
+        
+        .sync-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .sync-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .sync-header h2 {
+            color: #1e293b;
+            font-size: 1.5em;
+        }
+        
+        .btn-sync-all {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-sync-all:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-sync-all:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .campaigns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .campaign-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .campaign-card:hover {
+            border-color: #10b981;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .campaign-info h3 {
+            color: #1e293b;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        
+        .campaign-info p {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+        
+        .btn-sync {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .btn-sync:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .btn-sync:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 30px; border-radius: 16px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { font-size: 1.5rem; margin-bottom: 20px; color: #10b981; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn-modal { padding: 10px 20px; font-size: 14px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        
+        /* Sync Result Modal styles */
+        .result-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin: 15px 0; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; user-select: text; max-height: 400px; overflow-y: auto; }
+        .result-success { border-color: #10b981; background: #ecfdf5; }
+        .result-error { border-color: #ef4444; background: #fef2f2; }
+        .copy-btn { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-top: 10px; }
+        .copy-btn:hover { background: #2563eb; }
+        .copy-btn:active { background: #1d4ed8; }
     </style>
 </head>
 <body>
@@ -101,9 +217,22 @@
         <!-- Include User Management Component for Campaign Managers -->
         {% include 'user_management_component.html' %}
         
+        <!-- Sync Campaigns Section -->
+        <div class="sync-section">
+            <div class="sync-header">
+                <h2>🔄 סנכרון קמפיינים מ-Google Sheets</h2>
+                <button class="btn-sync-all" onclick="syncAllCampaigns()" id="syncAllBtn">
+                    ⚡ סנכרן הכל
+                </button>
+            </div>
+            <div id="campaignsGrid" class="campaigns-grid">
+                <p style="text-align: center; color: #64748b;">טוען קמפיינים...</p>
+            </div>
+        </div>
+        
         <!-- Header moved to bottom for mobile optimization -->
         <div class="header">
-            <h1>📊 מנהל קמפיין - ניהול לידים</h1>
+            <h1>📊 מנהל קמפיין - ניהול לידים <span style="font-size:0.6em; opacity:0.8;">v1.6</span></h1>
             <div class="user-info">
                 <div class="user-badge">
                     {{ session.get('full_name', session.get('username')) }}
@@ -116,7 +245,184 @@
         </div>
     </div>
 
+    <!-- Sync Result Modal -->
+    <div id="syncResultModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header" id="syncResultTitle">📊 תוצאות סנכרון</h2>
+            <div id="syncResultContent" class="result-box"></div>
+            <button class="copy-btn" onclick="copySyncResult()">📋 העתק לשליחה</button>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal" onclick="closeSyncResultModal()">סגור</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let campaigns = [];
+        
+        // Load campaigns
+        async function loadCampaigns() {
+            try {
+                const response = await fetch('/admin/campaigns/api');
+                const data = await response.json();
+                campaigns = data.campaigns || [];
+                
+                // Filter active campaigns with sheet URLs
+                const syncableCampaigns = campaigns.filter(c => c.active && c.sheet_url);
+                
+                const grid = document.getElementById('campaignsGrid');
+                if (syncableCampaigns.length === 0) {
+                    grid.innerHTML = '<p style="text-align: center; color: #64748b;">אין קמפיינים פעילים עם קישור Google Sheets</p>';
+                    document.getElementById('syncAllBtn').disabled = true;
+                } else {
+                    grid.innerHTML = syncableCampaigns.map(c => `
+                        <div class="campaign-card">
+                            <div class="campaign-info">
+                                <h3>${c.campaign_name}</h3>
+                                <p>${c.customer_name || 'ללא לקוח'}</p>
+                            </div>
+                            <button class="btn-sync" onclick="syncCampaign(${c.id}, '${c.campaign_name.replace(/'/g, "\\'")}')">🔄 סנכרן</button>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {
+                console.error('Error loading campaigns:', e);
+                document.getElementById('campaignsGrid').innerHTML = '<p style="text-align: center; color: #ef4444;">שגיאה בטעינת קמפיינים</p>';
+            }
+        }
+        
+        // Sync single campaign
+        async function syncCampaign(campaignId, campaignName) {
+            if (!confirm(`האם לסנכרן ליד מקמפיין "${campaignName}"?`)) return;
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן...';
+            
+            try {
+                const response = await fetch(`/admin/campaigns/sync/${campaignId}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSyncResult(result, true);
+                } else {
+                    showSyncResult(result, false);
+                }
+            } catch(e) {
+                showSyncResult({ error: e.message }, false);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 סנכרן';
+            }
+        }
+        
+        // Sync all campaigns
+        async function syncAllCampaigns() {
+            if (!confirm('האם לסנכרן את כל הקמפיינים הפעילים?')) return;
+            
+            const btn = document.getElementById('syncAllBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן הכל...';
+            
+            try {
+                const response = await fetch('/admin/campaigns/sync-all', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const summaryText = 
+                        `✅ סנכרון כללי הושלם\n\n` +
+                        `קמפיינים שסונכרנו: ${result.results.length}\n` +
+                        `סה"כ לידים חדשים: ${result.summary.total_new_leads}\n` +
+                        `סה"כ כפילויות: ${result.summary.total_duplicates}\n` +
+                        `סה"כ שגיאות: ${result.summary.total_errors}\n\n` +
+                        `פירוט לפי קמפיין:\n` +
+                        result.results.map(r => 
+                            `\n${r.campaign_name}:\n` +
+                            `  לידים חדשים: ${r.new_leads}\n` +
+                            `  כפילויות: ${r.duplicates}\n` +
+                            `  שגיאות: ${r.errors}`
+                        ).join('');
+                    
+                    showSyncResult({ text: summaryText }, true, 'תוצאות סנכרון כללי');
+                } else {
+                    showSyncResult(result, false);
+                }
+            } catch(e) {
+                showSyncResult({ error: e.message }, false);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⚡ סנכרן הכל';
+            }
+        }
+        
+        function showSyncResult(result, isSuccess, customTitle = null) {
+            const modal = document.getElementById('syncResultModal');
+            const title = document.getElementById('syncResultTitle');
+            const content = document.getElementById('syncResultContent');
+            
+            if (isSuccess) {
+                title.textContent = customTitle || '✅ סנכרון הושלם בהצלחה';
+                content.className = 'result-box result-success';
+                
+                if (result.text) {
+                    content.textContent = result.text;
+                } else {
+                    content.textContent = 
+                        `קמפיין: ${result.campaign_name}\n` +
+                        `Tab GID: ${result.tab_gid}\n` +
+                        `שורות שנבדקו: ${result.total_rows_checked}\n` +
+                        `לידים חדשים: ${result.new_leads}\n` +
+                        `כפילויות שדולגו: ${result.duplicates}\n` +
+                        `שגיאות: ${result.errors}\n` +
+                        `שורה אחרונה שסונכרנה: ${result.last_synced_row}\n\n` +
+                        `מעקב מלא:\n${JSON.stringify(result.last_synced_data, null, 2)}`;
+                }
+            } else {
+                title.textContent = '❌ שגיאה בסנכרון';
+                content.className = 'result-box result-error';
+                content.textContent = result.error || 'שגיאה לא ידועה';
+            }
+            
+            modal.style.display = 'block';
+        }
+        
+        function closeSyncResultModal() {
+            document.getElementById('syncResultModal').style.display = 'none';
+        }
+        
+        function copySyncResult() {
+            const content = document.getElementById('syncResultContent').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ הועתק!';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#3b82f6';
+                }, 2000);
+            }).catch(err => {
+                alert('שגיאה בהעתקה: ' + err.message);
+            });
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const syncResultModal = document.getElementById('syncResultModal');
+            if (event.target === syncResultModal) {
+                closeSyncResultModal();
+            }
+        }
+        
+        // Load campaigns on page load
+        loadCampaigns();
+        
         // Check email notification status
         fetch('/email-status')
             .then(response => response.json())
