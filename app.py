@@ -33,11 +33,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Version tracking - shows Git commit + timestamp
-try:
-    import subprocess
-    git_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
-except:
-    git_hash = 'unknown'
+# Priority: 1. GIT_COMMIT env var (set by deploy script), 2. git command, 3. timestamp
+git_hash = None
+
+# Try environment variable first (set during deployment)
+git_hash = os.environ.get('GIT_COMMIT', '').strip()
+
+# If not set, try git command
+if not git_hash:
+    try:
+        import subprocess
+        git_hash = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL,
+            timeout=2
+        ).decode('ascii').strip()
+        logger.info(f"✅ Git version detected: {git_hash}")
+    except Exception as e:
+        logger.warning(f"⚠️ Git command failed: {e}")
+        git_hash = None
+
+# Fallback to timestamp-based version
+if not git_hash:
+    git_hash = datetime.now().strftime('%Y%m%d-%H%M')
+    logger.info(f"📅 Using timestamp version: {git_hash}")
 
 APP_VERSION = f"v{git_hash}"
 BUILD_TIME = datetime.now().strftime('%Y-%m-%d %H:%M')
