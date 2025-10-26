@@ -3619,6 +3619,11 @@ def sync_campaign(campaign_id):
                     continue
 
                 # Extract lead data with Hebrew field mapping
+                # DEBUG: Log available keys in first few rows
+                if current_row <= 5:
+                    logger.info(f"Row {current_row} keys: {list(row_data.keys())}")
+                    logger.info(f"Row {current_row} values sample: {dict(list(row_data.items())[:3])}")
+                
                 name = (row_data.get('שם מלא') or row_data.get('שם') or
                        row_data.get('name') or row_data.get('Name') or '')
 
@@ -3629,6 +3634,10 @@ def sync_campaign(campaign_id):
                 email = (row_data.get('מייל') or row_data.get('אימייל') or
                         row_data.get('דוא"ל') or row_data.get('email') or
                         row_data.get('Email') or row_data.get('אימייל:') or '')
+                
+                # DEBUG: Log extraction results for first few rows
+                if current_row <= 5:
+                    logger.info(f"Row {current_row} extracted - Name: '{name}', Phone: '{phone}', Email: '{email}'")
 
                 # Clean phone number
                 if phone:
