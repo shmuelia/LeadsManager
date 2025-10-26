@@ -1875,7 +1875,9 @@ def campaign_manager_dashboard():
         return render_template('dashboard_mobile_enhanced.html')
     return render_template('campaign_manager_dashboard.html', 
                          user_name=session.get('full_name', 'מנהל קמפיין'),
-                         customer_name=session.get('selected_customer_name', 'לא נבחר'))
+                         customer_name=session.get('selected_customer_name', 'לא נבחר'),
+                         version=APP_VERSION,
+                         build_time=BUILD_TIME)
 
 @app.route('/pull-history', methods=['POST'])
 def pull_history():
