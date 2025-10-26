@@ -1812,8 +1812,8 @@ def dashboard():
 
     # Use enhanced mobile template for mobile devices
     if is_mobile:
-        return render_template('dashboard_mobile_enhanced.html')
-    return render_template('dashboard.html')
+        return render_template('dashboard_mobile_enhanced.html', version=APP_VERSION, build_time=BUILD_TIME)
+    return render_template('dashboard.html', version=APP_VERSION, build_time=BUILD_TIME)
 
 @app.route('/lead/<int:lead_id>')
 @login_required
@@ -2492,8 +2492,8 @@ def admin_dashboard():
 
     # Use enhanced mobile template for mobile devices
     if is_mobile:
-        return render_template('dashboard_mobile_enhanced.html')
-    return render_template('admin_dashboard.html')
+        return render_template('dashboard_mobile_enhanced.html', version=APP_VERSION, build_time=BUILD_TIME)
+    return render_template('admin_dashboard.html', version=APP_VERSION, build_time=BUILD_TIME)
 
 @app.route('/admin/fix-phone-numbers')
 @admin_required
