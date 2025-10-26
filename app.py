@@ -3274,7 +3274,7 @@ def create_campaign():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/campaigns/api')
-@admin_required
+@campaign_manager_required
 def get_campaigns_api():
     """API: Get all campaigns with customer names"""
     try:
