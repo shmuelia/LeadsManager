@@ -5242,6 +5242,96 @@ def debug_lead(lead_id):
         logger.error(f"Error in debug_lead: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/debug/sheet-preview/<int:campaign_id>')
+@login_required
+def debug_sheet_preview(campaign_id):
+    """Debug: Preview what the sync sees from Google Sheet CSV export"""
+    try:
+        import requests
+        import csv
+        from io import StringIO
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM campaigns WHERE id = %s", (campaign_id,))
+        campaign = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not campaign:
+            return jsonify({'error': 'Campaign not found'}), 404
+        
+        if not campaign['sheet_url']:
+            return jsonify({'error': 'No sheet URL'}), 400
+        
+        # Extract spreadsheet ID and gid
+        sheet_url = campaign['sheet_url']
+        sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+        if not sheet_id_match:
+            return jsonify({'error': 'Invalid URL'}), 400
+        
+        spreadsheet_id = sheet_id_match.group(1)
+        gid_match = re.search(r'gid=(\d+)', sheet_url)
+        gid = gid_match.group(1) if gid_match else '0'
+        
+        # Fetch CSV
+        csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+        response = requests.get(csv_url, timeout=30)
+        response.raise_for_status()
+        
+        # Parse CSV
+        csv_data = StringIO(response.text)
+        reader = csv.DictReader(csv_data)
+        
+        # Get headers
+        headers = reader.fieldnames
+        
+        # Get first 3 data rows
+        sample_rows = []
+        for i, row in enumerate(reader):
+            if i >= 3:
+                break
+            # Show which fields have values
+            row_summary = {k: v[:50] if v else '[empty]' for k, v in row.items()}
+            sample_rows.append(row_summary)
+        
+        # Check field mapping
+        name_fields_found = [h for h in headers if h and any(x in h for x in ['שם', 'name', 'Name'])]
+        phone_fields_found = [h for h in headers if h and any(x in h for x in ['טלפון', 'phone', 'פלאפון'])]
+        email_fields_found = [h for h in headers if h and any(x in h for x in ['מייל', 'email', 'אימייל'])]
+        
+        return jsonify({
+            'campaign_name': campaign['campaign_name'],
+            'tab_gid': gid,
+            'csv_export_url': csv_url,
+            'total_headers': len(headers) if headers else 0,
+            'headers': headers,
+            'headers_repr': [repr(h) for h in headers] if headers else [],
+            'sample_rows': sample_rows,
+            'field_mapping_check': {
+                'name_fields_detected': name_fields_found,
+                'phone_fields_detected': phone_fields_found,
+                'email_fields_detected': email_fields_found
+            },
+            'expected_fields': {
+                'name': ['שם מלא', 'שם', 'name', 'Name'],
+                'phone': ['מס פלאפון', 'טלפון', 'מספר טלפון', 'phone', 'Phone Number', 'טלפון:'],
+                'email': ['מייל', 'אימייל', 'דוא"ל', 'email', 'Email', 'אימייל:']
+            },
+            'note': 'Rows are skipped if they have NO name AND NO phone AND NO email'
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug sheet preview error: {str(e)}")
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 # Initialize database on startup (but don't fail if it doesn't work)
 try:
     init_database()
