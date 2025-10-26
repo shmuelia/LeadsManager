@@ -3413,7 +3413,7 @@ def update_campaign(campaign_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/campaigns/sync/<int:campaign_id>', methods=['POST'])
-@admin_required
+@campaign_manager_required
 def sync_campaign(campaign_id):
     """Sync leads from Google Sheet for a specific campaign"""
     try:
@@ -3629,7 +3629,7 @@ def sync_campaign(campaign_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/campaigns/sync-all', methods=['POST'])
-@admin_required
+@campaign_manager_required
 def sync_all_campaigns():
     """Sync all active campaigns that have sheet URLs"""
     try:
