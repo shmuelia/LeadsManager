@@ -206,18 +206,21 @@
 </head>
 <body>
     <div class="container">
-        <!-- Email Notification Status -->
-        <div class="email-status" id="email-status">
-            📧 התראות אימייל: בודק הגדרות...
+        <!-- Header at TOP with v3.29 -->
+        <div class="header">
+            <h1>� מנהל קמפיין - ניהול לידים <span style="font-size:0.6em; opacity:0.8;">v3.29</span></h1>
+            <div class="user-info">
+                <div class="user-badge">
+                    {{ session.get('full_name', session.get('username')) }}
+                    (מנהל קמפיין)
+                </div>
+                <button class="logout-btn" onclick="window.location.href='/logout'">
+                    🚪 יציאה
+                </button>
+            </div>
         </div>
         
-        <!-- Include Unified Lead Manager Component -->
-        {% include 'unified_lead_manager.html' %}
-        
-        <!-- Include User Management Component for Campaign Managers -->
-        {% include 'user_management_component.html' %}
-        
-        <!-- Sync Campaigns Section -->
+        <!-- Sync Campaigns Section - RIGHT AFTER HEADER -->
         <div class="sync-section">
             <div class="sync-header">
                 <h2>🔄 סנכרון קמפיינים מ-Google Sheets</h2>
@@ -230,19 +233,16 @@
             </div>
         </div>
         
-        <!-- Header moved to bottom for mobile optimization -->
-        <div class="header">
-            <h1>📊 מנהל קמפיין - ניהול לידים <span style="font-size:0.6em; opacity:0.8;">v1.6</span></h1>
-            <div class="user-info">
-                <div class="user-badge">
-                    {{ session.get('full_name', session.get('username')) }}
-                    (מנהל קמפיין)
-                </div>
-                <button class="logout-btn" onclick="window.location.href='/logout'">
-                    🚪 יציאה
-                </button>
-            </div>
+        <!-- Email Notification Status -->
+        <div class="email-status" id="email-status">
+            � התראות אימייל: בודק הגדרות...
         </div>
+        
+        <!-- Include Unified Lead Manager Component -->
+        {% include 'unified_lead_manager.html' %}
+        
+        <!-- Include User Management Component for Campaign Managers -->
+        {% include 'user_management_component.html' %}
     </div>
 
     <!-- Sync Result Modal -->
