@@ -94,8 +94,10 @@ def migrate_campaigns_table():
                     """, (f'{{"gid_0": {old_value}}}', row_id))
 
             print(f"✅ Converted {len(existing_data)} campaigns to JSONB format")
-        else:
+        elif sync_col[1] == 'jsonb':
             print("✅ Sync tracking columns already exist (JSONB)")
+        else:
+            print(f"⚠️  Unexpected column type: {sync_col[1]}")
 
         # Check if foreign key constraint exists
         cur.execute("""
