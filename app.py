@@ -3314,7 +3314,7 @@ def customer_management():
 @admin_required
 def campaigns_management():
     """Admin-only campaigns management page"""
-    return render_template('campaigns_management.html')
+    return render_template('campaigns_management.html', version=APP_VERSION, build_time=BUILD_TIME)
 
 @app.route('/admin/campaigns/create', methods=['POST'])
 @admin_required
