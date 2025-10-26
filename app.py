@@ -42,6 +42,79 @@ FROM_EMAIL = os.environ.get('FROM_EMAIL', SMTP_USERNAME)
 # Notification system for real-time updates
 notification_queues = {}  # Dictionary to store notification queues by customer_id
 
+# Google Sheets API helper functions
+def get_google_sheets_client():
+    """Initialize Google Sheets client with service account credentials"""
+    try:
+        # Get credentials from environment variable (JSON string)
+        creds_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
+        if not creds_json:
+            logger.warning("GOOGLE_SHEETS_CREDENTIALS not set, tab names won't be fetched")
+            return None
+        
+        # Parse JSON credentials
+        creds_dict = json.loads(creds_json)
+        
+        # Define the scopes
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
+            'https://www.googleapis.com/auth/drive.readonly'
+        ]
+        
+        # Create credentials
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        
+        # Return gspread client
+        return gspread.authorize(credentials)
+    except Exception as e:
+        logger.error(f"Error initializing Google Sheets client: {e}")
+        return None
+
+def get_sheet_tab_names(spreadsheet_id):
+    """Fetch all tab names from a Google Spreadsheet
+    
+    Args:
+        spreadsheet_id: The spreadsheet ID from the URL
+    
+    Returns:
+        dict: {gid: tab_name} mapping, or None if failed
+    """
+    try:
+        client = get_google_sheets_client()
+        if not client:
+            return None
+        
+        # Open spreadsheet
+        spreadsheet = client.open_by_key(spreadsheet_id)
+        
+        # Get all worksheets and create gid -> name mapping
+        tab_names = {}
+        for worksheet in spreadsheet.worksheets():
+            gid = worksheet.id
+            name = worksheet.title
+            tab_names[str(gid)] = name
+            logger.info(f"Found tab: {name} (gid={gid})")
+        
+        return tab_names
+    except Exception as e:
+        logger.error(f"Error fetching sheet tab names: {e}")
+        return None
+
+def get_tab_name_for_gid(spreadsheet_id, gid):
+    """Get the tab name for a specific gid
+    
+    Args:
+        spreadsheet_id: The spreadsheet ID
+        gid: The tab gid
+    
+    Returns:
+        str: Tab name, or None if not found
+    """
+    tab_names = get_sheet_tab_names(spreadsheet_id)
+    if tab_names:
+        return tab_names.get(str(gid), f"gid_{gid}")
+    return f"gid_{gid}"
+
 def get_db_connection():
     """Get database connection using centralized DatabaseManager"""
     return db_manager.get_connection()
@@ -3454,6 +3527,13 @@ def sync_campaign(campaign_id):
         gid_match = re.search(r'gid=(\d+)', sheet_url)
         gid = gid_match.group(1) if gid_match else '0'
         gid_key = f'gid_{gid}'  # e.g., "gid_0" or "gid_123456"
+
+        # Try to fetch the actual tab name from Google Sheets API
+        tab_name = get_tab_name_for_gid(spreadsheet_id, gid)
+        if not tab_name:
+            tab_name = f"gid_{gid}"  # Fallback if API not configured
+
+        logger.info(f"Syncing tab: {tab_name} (gid={gid})")
 
         # Build CSV export URL
         csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
