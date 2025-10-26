@@ -3276,27 +3276,55 @@ def create_campaign():
 @app.route('/admin/campaigns/api')
 @campaign_manager_required
 def get_campaigns_api():
-    """API: Get all campaigns with customer names"""
+    """API: Get campaigns with customer names (filtered by user's customer for campaign managers)"""
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
 
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT
-                c.id,
-                c.customer_id,
-                c.campaign_name,
-                c.campaign_type,
-                c.sheet_id,
-                c.sheet_url,
-                c.active,
-                cu.name as customer_name
-            FROM campaigns c
-            LEFT JOIN customers cu ON c.customer_id = cu.id
-            ORDER BY c.id DESC
-        """)
+        
+        # Get user role and customer context
+        user_role = session.get('role')
+        user_customer_id = session.get('selected_customer_id') or session.get('customer_id')
+        
+        # Campaign managers only see their customer's campaigns, admins see all
+        if user_role == 'campaign_manager':
+            if not user_customer_id:
+                return jsonify({'error': 'No customer assigned to your account'}), 400
+            
+            cur.execute("""
+                SELECT
+                    c.id,
+                    c.customer_id,
+                    c.campaign_name,
+                    c.campaign_type,
+                    c.sheet_id,
+                    c.sheet_url,
+                    c.active,
+                    cu.name as customer_name
+                FROM campaigns c
+                LEFT JOIN customers cu ON c.customer_id = cu.id
+                WHERE c.customer_id = %s
+                ORDER BY c.id DESC
+            """, (user_customer_id,))
+        else:
+            # Admin sees all campaigns
+            cur.execute("""
+                SELECT
+                    c.id,
+                    c.customer_id,
+                    c.campaign_name,
+                    c.campaign_type,
+                    c.sheet_id,
+                    c.sheet_url,
+                    c.active,
+                    cu.name as customer_name
+                FROM campaigns c
+                LEFT JOIN customers cu ON c.customer_id = cu.id
+                ORDER BY c.id DESC
+            """)
+        
         campaigns = cur.fetchall()
 
         cur.close()
