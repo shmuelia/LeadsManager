@@ -3583,7 +3583,7 @@ def sync_campaign(campaign_id):
                 raw_data = {'source': 'google_sheets', 'sheet_id': campaign['sheet_id'], 'campaign_name': campaign['campaign_name'], 'row_number': current_row}
                 raw_data.update({k: v for k, v in row_data.items() if v})
                 
-                cur.execute("INSERT INTO leads (customer_id, name, email, phone, status, campaign, raw_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP) RETURNING id",
+                cur.execute("INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP) RETURNING id",
                            (campaign['customer_id'], name or 'Unknown', email or None, phone or None, campaign['campaign_name'], json.dumps(raw_data)))
                 lead_id = cur.fetchone()['id']
                 cur.execute("INSERT INTO lead_activities (lead_id, customer_id, user_id, activity_type, description) VALUES (%s, %s, NULL, 'lead_received', %s)",
