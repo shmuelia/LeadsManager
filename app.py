@@ -3605,7 +3605,8 @@ def sync_campaign(campaign_id):
             'duplicates': duplicates, 
             'errors': errors,
             'total_rows_checked': current_row - 1,
-            'last_synced_row': current_row
+            'last_synced_row': current_row,
+            'last_synced_data': last_synced_data
         })
         
     except Exception as e:
