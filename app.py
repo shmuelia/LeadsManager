@@ -3597,7 +3597,16 @@ def sync_campaign(campaign_id):
         cur.execute("UPDATE campaigns SET last_synced_row = %s::jsonb, last_synced_at = CURRENT_TIMESTAMP WHERE id = %s", (json.dumps(last_synced_data), campaign_id))
         conn.commit()
         
-        return jsonify({'success': True, 'campaign_name': campaign['campaign_name'], 'tab_gid': gid, 'new_leads': new_leads, 'duplicates': duplicates, 'errors': errors})
+        return jsonify({
+            'success': True, 
+            'campaign_name': campaign['campaign_name'], 
+            'tab_gid': gid, 
+            'new_leads': new_leads, 
+            'duplicates': duplicates, 
+            'errors': errors,
+            'total_rows_checked': current_row - 1,
+            'last_synced_row': current_row
+        })
         
     except Exception as e:
         logger.error(f"Sync error: {str(e)}")
