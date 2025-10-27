@@ -3521,6 +3521,8 @@ def update_campaign(campaign_id):
 @campaign_manager_required
 def sync_campaign(campaign_id):
     """Sync leads from Google Sheet for a specific campaign"""
+    conn = None
+    cur = None
     try:
         import requests
         import csv
@@ -3759,12 +3761,34 @@ def sync_campaign(campaign_id):
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Error fetching Google Sheet: {str(e)}")
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
         return jsonify({'error': f'Failed to fetch Google Sheet: {str(e)}'}), 500
     except Exception as e:
         logger.error(f"Error syncing campaign: {str(e)}")
         import traceback
         traceback.print_exc()
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
         return jsonify({'error': str(e)}), 500
+    finally:
+        # Always cleanup database resources
+        if cur:
+            try:
+                cur.close()
+            except:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 @app.route('/admin/campaigns/sync-all', methods=['POST'])
 @campaign_manager_required
