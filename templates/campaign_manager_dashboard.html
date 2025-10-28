@@ -326,6 +326,50 @@
         </div>
     </div>
 
+    <!-- Sync Configuration Modal -->
+    <div id="syncConfigModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">⚙️ הגדרות סנכרון</h2>
+            <form id="syncConfigForm">
+                <div class="form-group">
+                    <label>קמפיין</label>
+                    <input type="text" id="syncCampaignName" readonly style="background: #f3f4f6;">
+                </div>
+                <div class="form-group">
+                    <label>Google Sheet URL <span style="color:red;">*</span></label>
+                    <input type="text" id="syncSheetUrl" readonly style="background: #f3f4f6; font-size: 12px;">
+                </div>
+                <div class="form-group">
+                    <label>Tab GID (מזהה טאב)</label>
+                    <input type="text" id="syncTabGid" placeholder="0" value="0">
+                    <small style="color: #6b7280; display: block; margin-top: 5px;">
+                        נמצא ב-URL אחרי gid= (ברירת מחדל: 0)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label>התחל מהשורה <span style="color:red;">*</span></label>
+                    <input type="number" id="syncStartRow" min="1" value="1" required>
+                    <small style="color: #6b7280; display: block; margin-top: 5px;">
+                        שורה 1 = כותרות, שורה 2 = נתונים ראשונים
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="syncResetTracking">
+                        <span>אפס מעקב סנכרון (התעלם מ-last_synced_row)</span>
+                    </label>
+                    <small style="color: #dc2626; display: block; margin-top: 5px;">
+                        ⚠️ סימון אפשרות זו יסנכרן מחדש שורות שכבר סונכרנו
+                    </small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-cancel" onclick="closeSyncConfigModal()">ביטול</button>
+                    <button type="submit" class="btn-modal">▶️ התחל סנכרון</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Sync Result Modal -->
     <div id="syncResultModal" class="modal">
         <div class="modal-content">
@@ -470,11 +514,15 @@
         window.onclick = function(event) {
             const addLeadModal = document.getElementById('addLeadModal');
             const syncResultModal = document.getElementById('syncResultModal');
+            const syncConfigModal = document.getElementById('syncConfigModal');
             if (event.target === addLeadModal) {
                 closeAddLeadModal();
             }
             if (event.target === syncResultModal) {
                 closeSyncResultModal();
+            }
+            if (event.target === syncConfigModal) {
+                closeSyncConfigModal();
             }
         }
         
@@ -509,33 +557,96 @@
             }
         }
         
-        // Sync single campaign
-        async function syncCampaign(campaignId, campaignName) {
-            if (!confirm(`האם לסנכרן ליד מקמפיין "${campaignName}"?`)) return;
-            
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = '⏳ מסנכרן...';
-            
-            try {
-                const response = await fetch(`/admin/campaigns/sync/${campaignId}`, {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showSyncResult(result, true);
-                } else {
-                    showSyncResult(result, false);
-                }
-            } catch(e) {
-                showSyncResult({ error: e.message }, false);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🔄 סנכרן';
+        // Store current sync context
+        let currentSyncCampaignId = null;
+        let currentSyncButton = null;
+
+        // Open sync configuration modal
+        function syncCampaign(campaignId, campaignName) {
+            const campaign = campaigns.find(c => c.id === campaignId);
+            if (!campaign) {
+                alert('קמפיין לא נמצא');
+                return;
             }
+
+            currentSyncCampaignId = campaignId;
+            currentSyncButton = event.target;
+
+            // Pre-fill modal
+            document.getElementById('syncCampaignName').value = campaign.campaign_name;
+            document.getElementById('syncSheetUrl').value = campaign.sheet_url || '';
+
+            // Extract GID from URL if exists
+            const gidMatch = campaign.sheet_url ? campaign.sheet_url.match(/gid=(\d+)/) : null;
+            document.getElementById('syncTabGid').value = gidMatch ? gidMatch[1] : '0';
+
+            // Set start row from last synced data
+            let startRow = 1;
+            if (campaign.last_synced_row) {
+                const gid = gidMatch ? gidMatch[1] : '0';
+                const gidKey = `gid_${gid}`;
+                if (typeof campaign.last_synced_row === 'object' && campaign.last_synced_row[gidKey]) {
+                    startRow = campaign.last_synced_row[gidKey];
+                } else if (typeof campaign.last_synced_row === 'number') {
+                    startRow = campaign.last_synced_row;
+                }
+            }
+            document.getElementById('syncStartRow').value = startRow;
+            document.getElementById('syncResetTracking').checked = false;
+
+            document.getElementById('syncConfigModal').style.display = 'block';
         }
+
+        function closeSyncConfigModal() {
+            document.getElementById('syncConfigModal').style.display = 'none';
+            currentSyncCampaignId = null;
+            currentSyncButton = null;
+        }
+
+        // Handle sync config form submission
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('syncConfigForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const startRow = parseInt(document.getElementById('syncStartRow').value);
+                const tabGid = document.getElementById('syncTabGid').value;
+                const resetTracking = document.getElementById('syncResetTracking').checked;
+
+                closeSyncConfigModal();
+
+                if (currentSyncButton) {
+                    currentSyncButton.disabled = true;
+                    currentSyncButton.textContent = '⏳ מסנכרן...';
+                }
+
+                try {
+                    const response = await fetch(`/admin/campaigns/sync/${currentSyncCampaignId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            start_row: startRow,
+                            tab_gid: tabGid,
+                            reset_tracking: resetTracking
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showSyncResult(result, true);
+                    } else {
+                        showSyncResult(result, false);
+                    }
+                } catch(e) {
+                    showSyncResult({ error: e.message }, false);
+                } finally {
+                    if (currentSyncButton) {
+                        currentSyncButton.disabled = false;
+                        currentSyncButton.textContent = '🔄 סנכרן';
+                    }
+                }
+            });
+        });
         
         // Sync all campaigns
         async function syncAllCampaigns() {

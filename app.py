@@ -3524,40 +3524,60 @@ def sync_campaign(campaign_id):
     import requests
     import csv
     from io import StringIO
-    
+
+    # Get optional parameters from request body
+    request_data = request.get_json() or {}
+    manual_start_row = request_data.get('start_row')
+    manual_tab_gid = request_data.get('tab_gid')
+    reset_tracking = request_data.get('reset_tracking', False)
+
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Database not available'}), 500
-    
+
     cur = None
     try:
         conn.autocommit = False
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
+
         cur.execute("SELECT * FROM campaigns WHERE id = %s", (campaign_id,))
         campaign = cur.fetchone()
         if not campaign or not campaign['sheet_url']:
             return jsonify({'error': 'Campaign not found or no sheet URL'}), 404
-            
+
         sheet_url = campaign['sheet_url']
         sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
         if not sheet_id_match:
             return jsonify({'error': 'Invalid Sheet URL'}), 400
         spreadsheet_id = sheet_id_match.group(1)
-        gid = re.search(r'gid=(\d+)', sheet_url)
-        gid = gid.group(1) if gid else '0'
+
+        # Use manual GID if provided, otherwise extract from URL
+        if manual_tab_gid is not None:
+            gid = str(manual_tab_gid)
+        else:
+            gid_match = re.search(r'gid=(\d+)', sheet_url)
+            gid = gid_match.group(1) if gid_match else '0'
         gid_key = f'gid_{gid}'
         
         csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
         response = requests.get(csv_url, timeout=30)
         response.raise_for_status()
         reader = csv.DictReader(StringIO(response.text))
-        
-        last_synced_data = campaign.get('last_synced_row') or {}
-        if isinstance(last_synced_data, int):
-            last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
-        last_synced_row = last_synced_data.get(gid_key, 1)
-        
+
+        # Determine starting row
+        if manual_start_row is not None:
+            # User manually specified start row
+            last_synced_row = manual_start_row - 1  # -1 because we increment before processing
+        elif reset_tracking:
+            # User wants to reset tracking and start from beginning
+            last_synced_row = 1
+        else:
+            # Use stored last_synced_row from database
+            last_synced_data = campaign.get('last_synced_row') or {}
+            if isinstance(last_synced_data, int):
+                last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
+            last_synced_row = last_synced_data.get(gid_key, 1)
+
         new_leads, duplicates, errors, current_row = 0, 0, 0, 1
         
         for row_data in reader:
@@ -3603,20 +3623,30 @@ def sync_campaign(campaign_id):
                 logger.error(f"Row {current_row} error: {str(row_error)}")
                 errors += 1
         
-        last_synced_data[gid_key] = current_row
-        cur.execute("UPDATE campaigns SET last_synced_row = %s::jsonb, last_synced_at = CURRENT_TIMESTAMP WHERE id = %s", (json.dumps(last_synced_data), campaign_id))
+        # Update last_synced_row only if not manually overridden
+        if not reset_tracking:
+            if manual_start_row is None:
+                # Normal sync - update tracking
+                last_synced_data = campaign.get('last_synced_row') or {}
+                if isinstance(last_synced_data, int):
+                    last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
+                last_synced_data[gid_key] = current_row
+                cur.execute("UPDATE campaigns SET last_synced_row = %s::jsonb, last_synced_at = CURRENT_TIMESTAMP WHERE id = %s", (json.dumps(last_synced_data), campaign_id))
+
         conn.commit()
-        
+
         return jsonify({
-            'success': True, 
-            'campaign_name': campaign['campaign_name'], 
-            'tab_gid': gid, 
-            'new_leads': new_leads, 
-            'duplicates': duplicates, 
+            'success': True,
+            'campaign_name': campaign['campaign_name'],
+            'tab_gid': gid,
+            'start_row_used': last_synced_row + 1,
+            'manual_override': manual_start_row is not None or reset_tracking,
+            'new_leads': new_leads,
+            'duplicates': duplicates,
             'errors': errors,
             'total_rows_checked': current_row - 1,
             'last_synced_row': current_row,
-            'last_synced_data': last_synced_data
+            'last_synced_data': last_synced_data if not reset_tracking and manual_start_row is None else None
         })
         
     except Exception as e:
