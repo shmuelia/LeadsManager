@@ -3960,17 +3960,17 @@ def sync_all_campaigns():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/customers/api')
-@admin_required
+@campaign_manager_required
 def get_customers():
-    """API: Get all customers"""
+    """API: Get all customers - accessible by admins and campaign managers"""
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
-            
+
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            SELECT c.*, 
+            SELECT c.*,
                    COUNT(l.id) as lead_count,
                    COUNT(u.id) as user_count
             FROM customers c
@@ -3980,12 +3980,12 @@ def get_customers():
             ORDER BY c.id
         """)
         customers = cur.fetchall()
-        
+
         cur.close()
         conn.close()
-        
+
         return jsonify(customers)
-        
+
     except Exception as e:
         logger.error(f"Error fetching customers: {str(e)}")
         return jsonify({'error': str(e)}), 500
