@@ -489,6 +489,17 @@
                             })
                         });
 
+                        // Check content type before parsing
+                        const contentType = response.headers.get('content-type');
+                        console.log('Response status:', response.status);
+                        console.log('Content-Type:', contentType);
+
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            console.error('Non-JSON response:', text.substring(0, 500));
+                            throw new Error(`Server returned ${contentType || 'unknown type'} instead of JSON. Status: ${response.status}`);
+                        }
+
                         const result = await response.json();
 
                         if (response.ok) {
@@ -497,6 +508,7 @@
                             showSyncResult(result, false);
                         }
                     } catch(e) {
+                        console.error('Sync error:', e);
                         showSyncResult({ error: e.message }, false);
                     } finally {
                         if (currentSyncButton) {
