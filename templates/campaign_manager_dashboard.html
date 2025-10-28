@@ -356,10 +356,10 @@
             }
         }
         
-        function openAddLeadModal() {
+        async function openAddLeadModal() {
             document.getElementById('addLeadForm').reset();
+            await loadCustomerName();
             document.getElementById('addLeadModal').style.display = 'block';
-            loadCustomerName();
         }
         
         async function loadCustomerName() {
