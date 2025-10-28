@@ -364,12 +364,22 @@
         
         async function loadCustomerName() {
             try {
+                console.log('Loading customer name...');
                 const r = await fetch('/admin/customers/api');
+                if (!r.ok) {
+                    console.error('API returned error:', r.status);
+                    return;
+                }
                 const data = await r.json();
+                console.log('Customers data:', data);
                 const customer = data.find(c => c.id === 1);
-                if (customer) {
+                console.log('Customer 1:', customer);
+                if (customer && customer.name) {
                     const select = document.getElementById('addLeadCustomerId');
                     select.innerHTML = `<option value="1" selected>${customer.name}</option>`;
+                    console.log('Customer name loaded:', customer.name);
+                } else {
+                    console.warn('Customer with ID 1 not found or has no name');
                 }
             } catch(e) {
                 console.error('Error loading customer:', e);
