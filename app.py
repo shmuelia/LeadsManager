@@ -287,6 +287,9 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session or session.get('role') != 'admin':
+            # Check if this is an AJAX/JSON request
+            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                return jsonify({'error': 'Unauthorized - admin access required'}), 401
             flash('נדרשות הרשאות מנהל לצפייה בדף זה')
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
@@ -296,6 +299,9 @@ def campaign_manager_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session or session.get('role') not in ['admin', 'campaign_manager']:
+            # Check if this is an AJAX/JSON request
+            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                return jsonify({'error': 'Unauthorized - campaign manager access required'}), 401
             flash('גישה מוגבלת למנהלי קמפיין ומנהלים בלבד')
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
