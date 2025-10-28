@@ -359,6 +359,21 @@
         function openAddLeadModal() {
             document.getElementById('addLeadForm').reset();
             document.getElementById('addLeadModal').style.display = 'block';
+            loadCustomerName();
+        }
+        
+        async function loadCustomerName() {
+            try {
+                const r = await fetch('/admin/customers/api');
+                const data = await r.json();
+                const customer = data.find(c => c.id === 1);
+                if (customer) {
+                    const select = document.getElementById('addLeadCustomerId');
+                    select.innerHTML = `<option value="1" selected>${customer.name}</option>`;
+                }
+            } catch(e) {
+                console.error('Error loading customer:', e);
+            }
         }
         
         function closeAddLeadModal() {
