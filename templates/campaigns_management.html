@@ -59,6 +59,7 @@
 
         <div class="actions-bar">
             <button class="btn-create" onclick="openCreateModal()">+ קמפיין חדש</button>
+            <button class="btn-create" onclick="openAddLeadModal()" style="margin-right: 10px; background: #3b82f6;">➕ הוסף ליד ידנית</button>
         </div>
 
         <div class="table-wrapper">
@@ -130,6 +131,55 @@
         </div>
     </div>
 
+    <!-- Add Lead Modal -->
+    <div id="addLeadModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">➕ הוסף ליד ידנית</h2>
+            <form id="addLeadForm">
+                <div class="form-group">
+                    <label>לקוח <span style="color:red;">*</span></label>
+                    <select id="addLeadCustomerId" required>
+                        <option value="">בחר לקוח...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>שם קמפיין <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadCampaignName" placeholder="אירועים" required>
+                </div>
+                <div class="form-group">
+                    <label>שם מלא <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadName" placeholder="שם הליד" required>
+                </div>
+                <div class="form-group">
+                    <label>טלפון <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadPhone" placeholder="972501234567">
+                </div>
+                <div class="form-group">
+                    <label>אימייל</label>
+                    <input type="email" id="addLeadEmail" placeholder="example@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>סטטוס</label>
+                    <select id="addLeadStatus">
+                        <option value="new">חדש</option>
+                        <option value="contacted">נוצר קשר</option>
+                        <option value="qualified">מתאים</option>
+                        <option value="converted">הומר</option>
+                        <option value="lost">אבוד</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>הערות</label>
+                    <input type="text" id="addLeadNotes" placeholder="הערות נוספות...">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel btn-modal" onclick="closeAddLeadModal()">ביטול</button>
+                    <button type="submit" class="btn btn-modal">הוסף ליד</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
@@ -185,6 +235,7 @@
 
                 document.getElementById('createCustomerId').innerHTML = customerOptions;
                 document.getElementById('editCustomerId').innerHTML = customerOptions;
+                document.getElementById('addLeadCustomerId').innerHTML = customerOptions;
             } catch(e) {
                 console.error('Error loading customers:', e);
             }
@@ -387,11 +438,62 @@
             }
         }
 
+        function openAddLeadModal() {
+            document.getElementById('addLeadForm').reset();
+            document.getElementById('addLeadModal').style.display = 'block';
+        }
+
+        function closeAddLeadModal() {
+            document.getElementById('addLeadModal').style.display = 'none';
+        }
+
+        document.getElementById('addLeadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const phone = document.getElementById('addLeadPhone').value.trim();
+            const email = document.getElementById('addLeadEmail').value.trim();
+
+            if (!phone && !email) {
+                alert('נדרש לפחות טלפון או אימייל');
+                return;
+            }
+
+            const data = {
+                customer_id: parseInt(document.getElementById('addLeadCustomerId').value),
+                campaign_name: document.getElementById('addLeadCampaignName').value,
+                name: document.getElementById('addLeadName').value,
+                phone: phone || null,
+                email: email || null,
+                status: document.getElementById('addLeadStatus').value,
+                notes: document.getElementById('addLeadNotes').value
+            };
+
+            try {
+                const response = await fetch('/admin/leads/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('✅ הליד נוסף בהצלחה! ID: ' + result.lead_id);
+                    closeAddLeadModal();
+                } else {
+                    alert('❌ שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            }
+        });
+
         // Close modal when clicking outside
         window.onclick = function(event) {
             const editModal = document.getElementById('editModal');
             const createModal = document.getElementById('createModal');
             const syncResultModal = document.getElementById('syncResultModal');
+            const addLeadModal = document.getElementById('addLeadModal');
             if (event.target === editModal) {
                 closeEditModal();
             }
@@ -400,6 +502,9 @@
             }
             if (event.target === syncResultModal) {
                 closeSyncResultModal();
+            }
+            if (event.target === addLeadModal) {
+                closeAddLeadModal();
             }
         }
 

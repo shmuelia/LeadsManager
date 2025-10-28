@@ -3625,6 +3625,101 @@ def sync_campaign(campaign_id):
         except:
             pass
 
+@app.route('/admin/leads/create', methods=['POST'])
+@campaign_manager_required
+def create_lead_manual():
+    """Manually create a lead - for campaign managers"""
+    import json
+    
+    data = request.get_json()
+    
+    # Required fields
+    required = ['customer_id', 'campaign_name', 'name']
+    missing = [f for f in required if not data.get(f)]
+    if missing:
+        return jsonify({'error': f'Missing fields: {", ".join(missing)}'}), 400
+    
+    # At least phone or email required
+    if not data.get('phone') and not data.get('email'):
+        return jsonify({'error': 'Phone or email required'}), 400
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    cur = None
+    try:
+        conn.autocommit = False
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Check for duplicates
+        phone = data.get('phone', '').strip()
+        email = data.get('email', '').strip()
+        
+        if phone or email:
+            cur.execute(
+                "SELECT id FROM leads WHERE customer_id = %s AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s)) LIMIT 1",
+                (data['customer_id'], phone or '', email or '')
+            )
+            if cur.fetchone():
+                return jsonify({'error': 'Lead already exists with this phone/email'}), 409
+        
+        # Prepare raw data
+        raw_data = {
+            'source': 'manual_entry',
+            'campaign_name': data['campaign_name'],
+            'created_by': session.get('name', 'Unknown'),
+            'notes': data.get('notes', '')
+        }
+        
+        # Insert lead
+        cur.execute(
+            """INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, received_at) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) RETURNING id""",
+            (
+                data['customer_id'],
+                data['name'],
+                email or None,
+                phone or None,
+                data.get('status', 'new'),
+                data['campaign_name'],
+                json.dumps(raw_data)
+            )
+        )
+        
+        lead_id = cur.fetchone()['id']
+        
+        # Add activity log
+        cur.execute(
+            """INSERT INTO lead_activities (lead_id, customer_id, user_id, activity_type, description) 
+               VALUES (%s, %s, NULL, 'lead_received', %s)""",
+            (
+                lead_id,
+                data['customer_id'],
+                f"Lead manually added by {session.get('name', 'Unknown')} - Campaign: {data['campaign_name']}"
+            )
+        )
+        
+        conn.commit()
+        
+        return jsonify({'success': True, 'lead_id': lead_id, 'message': 'Lead created successfully'}), 201
+        
+    except Exception as e:
+        logger.error(f"Manual lead creation error: {str(e)}")
+        try:
+            conn.rollback()
+        except:
+            pass
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+        except:
+            pass
+
 @app.route('/admin/campaigns/sync-all', methods=['POST'])
 @campaign_manager_required
 def sync_all_campaigns():
