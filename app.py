@@ -3526,10 +3526,16 @@ def sync_campaign(campaign_id):
     from io import StringIO
 
     # Get optional parameters from request body
-    request_data = request.get_json() or {}
+    try:
+        request_data = request.get_json(silent=True) or {}
+    except Exception:
+        request_data = {}
+
     manual_start_row = request_data.get('start_row')
     manual_tab_gid = request_data.get('tab_gid')
     reset_tracking = request_data.get('reset_tracking', False)
+
+    logger.info(f"Sync campaign {campaign_id} - start_row: {manual_start_row}, gid: {manual_tab_gid}, reset: {reset_tracking}")
 
     conn = get_db_connection()
     if not conn:

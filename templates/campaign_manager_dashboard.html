@@ -453,11 +453,58 @@
             document.getElementById('addLeadModal').style.display = 'block';
         }
 
-        // Reload campaigns when customer changes
+        // Initialize all event listeners when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
+            // Reload campaigns when customer changes
             const customerSelect = document.getElementById('addLeadCustomerId');
             if (customerSelect) {
                 customerSelect.addEventListener('change', loadCampaignsForLead);
+            }
+
+            // Handle sync config form submission
+            const syncConfigForm = document.getElementById('syncConfigForm');
+            if (syncConfigForm) {
+                syncConfigForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const startRow = parseInt(document.getElementById('syncStartRow').value);
+                    const tabGid = document.getElementById('syncTabGid').value;
+                    const resetTracking = document.getElementById('syncResetTracking').checked;
+
+                    closeSyncConfigModal();
+
+                    if (currentSyncButton) {
+                        currentSyncButton.disabled = true;
+                        currentSyncButton.textContent = '⏳ מסנכרן...';
+                    }
+
+                    try {
+                        const response = await fetch(`/admin/campaigns/sync/${currentSyncCampaignId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                start_row: startRow,
+                                tab_gid: tabGid,
+                                reset_tracking: resetTracking
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            showSyncResult(result, true);
+                        } else {
+                            showSyncResult(result, false);
+                        }
+                    } catch(e) {
+                        showSyncResult({ error: e.message }, false);
+                    } finally {
+                        if (currentSyncButton) {
+                            currentSyncButton.disabled = false;
+                            currentSyncButton.textContent = '🔄 סנכרן';
+                        }
+                    }
+                });
             }
         });
         
@@ -602,51 +649,6 @@
             currentSyncCampaignId = null;
             currentSyncButton = null;
         }
-
-        // Handle sync config form submission
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('syncConfigForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                const startRow = parseInt(document.getElementById('syncStartRow').value);
-                const tabGid = document.getElementById('syncTabGid').value;
-                const resetTracking = document.getElementById('syncResetTracking').checked;
-
-                closeSyncConfigModal();
-
-                if (currentSyncButton) {
-                    currentSyncButton.disabled = true;
-                    currentSyncButton.textContent = '⏳ מסנכרן...';
-                }
-
-                try {
-                    const response = await fetch(`/admin/campaigns/sync/${currentSyncCampaignId}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            start_row: startRow,
-                            tab_gid: tabGid,
-                            reset_tracking: resetTracking
-                        })
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok) {
-                        showSyncResult(result, true);
-                    } else {
-                        showSyncResult(result, false);
-                    }
-                } catch(e) {
-                    showSyncResult({ error: e.message }, false);
-                } finally {
-                    if (currentSyncButton) {
-                        currentSyncButton.disabled = false;
-                        currentSyncButton.textContent = '🔄 סנכרן';
-                    }
-                }
-            });
-        });
         
         // Sync all campaigns
         async function syncAllCampaigns() {
