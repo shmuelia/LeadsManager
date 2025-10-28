@@ -3566,11 +3566,21 @@ def sync_campaign(campaign_id):
                 continue
             
             try:
-                name = row_data.get('שם מלא') or row_data.get('שם') or row_data.get('name') or row_data.get('Name') or ''
-                phone = row_data.get('מס פלאפון') or row_data.get('טלפון') or row_data.get('phone') or row_data.get('Phone Number') or ''
-                email = row_data.get('מייל') or row_data.get('אימייל') or row_data.get('email') or row_data.get('Email') or ''
+                # Extract fields with comprehensive Hebrew/English support
+                name = (row_data.get('שם מלא') or row_data.get('שם') or
+                       row_data.get('name') or row_data.get('Name') or '')
+                phone = (row_data.get('מס פלאפון') or row_data.get('טלפון') or
+                        row_data.get('מספר טלפון') or row_data.get('phone') or
+                        row_data.get('Phone Number') or row_data.get('טלפון:') or '')
+                email = (row_data.get('מייל') or row_data.get('אימייל') or
+                        row_data.get('דוא"ל') or row_data.get('email') or
+                        row_data.get('Email') or row_data.get('אימייל:') or '')
+
+                # Clean phone number
                 if phone:
                     phone = str(phone).strip().replace('-', '').replace(' ', '')
+
+                # Skip if no valid data
                 if not (name or phone or email):
                     continue
                 
@@ -3872,7 +3882,7 @@ def sync_all_campaigns():
                         # Insert lead
                         cur.execute("""
                             INSERT INTO leads (
-                                customer_id, name, email, phone, status, campaign, raw_data, received_at
+                                customer_id, name, email, phone, status, campaign_name, raw_data, received_at
                             ) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP)
                             RETURNING id
                         """, (

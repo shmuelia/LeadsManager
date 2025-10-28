@@ -288,7 +288,9 @@
                 </div>
                 <div class="form-group">
                     <label>שם קמפיין <span style="color:red;">*</span></label>
-                    <input type="text" id="addLeadCampaignName" placeholder="אירועים" required>
+                    <select id="addLeadCampaignName" required>
+                        <option value="">בחר קמפיין...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>שם מלא <span style="color:red;">*</span></label>
@@ -364,11 +366,56 @@
             }
         }
 
+        // Load campaigns for the add lead form
+        async function loadCampaignsForLead() {
+            try {
+                const selectedCustomerId = document.getElementById('addLeadCustomerId').value;
+                if (!selectedCustomerId) {
+                    document.getElementById('addLeadCampaignName').innerHTML = '<option value="">בחר לקוח תחילה...</option>';
+                    return;
+                }
+
+                const r = await fetch('/admin/campaigns/api');
+                const data = await r.json();
+                const allCampaigns = data.campaigns || [];
+
+                // Filter campaigns by selected customer
+                const customerCampaigns = allCampaigns.filter(c =>
+                    c.customer_id == selectedCustomerId && c.active
+                );
+
+                if (customerCampaigns.length === 0) {
+                    document.getElementById('addLeadCampaignName').innerHTML = '<option value="">אין קמפיינים זמינים ללקוח זה</option>';
+                    return;
+                }
+
+                // Build campaign options
+                const campaignOptions = '<option value="">בחר קמפיין...</option>' +
+                    customerCampaigns.map(c =>
+                        `<option value="${c.campaign_name}">${c.campaign_name}</option>`
+                    ).join('');
+
+                document.getElementById('addLeadCampaignName').innerHTML = campaignOptions;
+            } catch(e) {
+                console.error('Error loading campaigns:', e);
+                document.getElementById('addLeadCampaignName').innerHTML = '<option value="">שגיאה בטעינת קמפיינים</option>';
+            }
+        }
+
         async function openAddLeadModal() {
             document.getElementById('addLeadForm').reset();
             await loadCustomers();
+            await loadCampaignsForLead();
             document.getElementById('addLeadModal').style.display = 'block';
         }
+
+        // Reload campaigns when customer changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const customerSelect = document.getElementById('addLeadCustomerId');
+            if (customerSelect) {
+                customerSelect.addEventListener('change', loadCampaignsForLead);
+            }
+        });
         
         function closeAddLeadModal() {
             document.getElementById('addLeadModal').style.display = 'none';
