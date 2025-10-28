@@ -221,8 +221,10 @@
                 return;
             }
             
+            const customerId = parseInt(document.getElementById('addLeadCustomerId').value) || 1; // Default to customer 1
+            
             const data = {
-                customer_id: parseInt(document.getElementById('addLeadCustomerId').value),
+                customer_id: customerId,
                 campaign_name: document.getElementById('addLeadCampaignName').value,
                 name: document.getElementById('addLeadName').value,
                 phone: phone || null,
