@@ -834,6 +834,14 @@
                 title="ייצא את הלידים המפולטרים לקובץ אקסל">
             📥 ייצא לאקסל
         </button>
+        
+        <!-- Add Lead Button (Campaign Manager & Admin only) -->
+        {% if session.get('role') in ['admin', 'campaign_manager'] %}
+        <button class="action-btn btn-add-lead" onclick="openAddLeadModal()" 
+                title="הוסף ליד חדש באופן ידני">
+            ➕ הוסף ליד ידנית
+        </button>
+        {% endif %}
     </div>
     
     <!-- Header moved to bottom to save mobile space -->

@@ -117,9 +117,152 @@
             <p>לצפייה בלידים לחץ על "📋 צפה בלידים"</p>
         </div>
         
+        <!-- Add Lead Modal -->
+        <div id="addLeadModal" class="modal" style="display: none;">
+            <div class="modal-content" style="background: white; margin: 5% auto; padding: 30px; border-radius: 16px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <h2 style="font-size: 1.5rem; margin-bottom: 20px; color: #10b981;">➕ הוסף ליד ידנית</h2>
+                <form id="addLeadForm">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">לקוח <span style="color:red;">*</span></label>
+                        <select id="addLeadCustomerId" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            <option value="">בחר לקוח...</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">שם קמפיין <span style="color:red;">*</span></label>
+                        <input type="text" id="addLeadCampaignName" placeholder="אירועים" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">שם מלא <span style="color:red;">*</span></label>
+                        <input type="text" id="addLeadName" placeholder="שם הליד" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">טלפון <span style="color:red;">*</span></label>
+                        <input type="text" id="addLeadPhone" placeholder="972501234567" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">אימייל</label>
+                        <input type="email" id="addLeadEmail" placeholder="example@gmail.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">סטטוס</label>
+                        <select id="addLeadStatus" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            <option value="new">חדש</option>
+                            <option value="contacted">נוצר קשר</option>
+                            <option value="qualified">מתאים</option>
+                            <option value="converted">הומר</option>
+                            <option value="lost">אבוד</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">הערות</label>
+                        <input type="text" id="addLeadNotes" placeholder="הערות נוספות..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" onclick="closeAddLeadModal()" style="padding: 10px 20px; font-size: 14px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer;">ביטול</button>
+                        <button type="submit" style="padding: 10px 20px; font-size: 14px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">הוסף ליד</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+            }
+        </style>
+        
     </div>
     
     <script>
+        let customers = [];
+        
+        // Load customers for the add lead form
+        async function loadCustomers() {
+            try {
+                const r = await fetch('/admin/customers/api');
+                const data = await r.json();
+                customers = data || [];
+                
+                const customerOptions = '<option value="">בחר לקוח...</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                
+                document.getElementById('addLeadCustomerId').innerHTML = customerOptions;
+            } catch(e) {
+                console.error('Error loading customers:', e);
+            }
+        }
+        
+        function openAddLeadModal() {
+            loadCustomers();
+            document.getElementById('addLeadForm').reset();
+            document.getElementById('addLeadModal').style.display = 'block';
+        }
+        
+        function closeAddLeadModal() {
+            document.getElementById('addLeadModal').style.display = 'none';
+        }
+        
+        document.getElementById('addLeadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const phone = document.getElementById('addLeadPhone').value.trim();
+            const email = document.getElementById('addLeadEmail').value.trim();
+            
+            if (!phone && !email) {
+                alert('נדרש לפחות טלפון או אימייל');
+                return;
+            }
+            
+            const data = {
+                customer_id: parseInt(document.getElementById('addLeadCustomerId').value),
+                campaign_name: document.getElementById('addLeadCampaignName').value,
+                name: document.getElementById('addLeadName').value,
+                phone: phone || null,
+                email: email || null,
+                status: document.getElementById('addLeadStatus').value,
+                notes: document.getElementById('addLeadNotes').value
+            };
+            
+            try {
+                const response = await fetch('/admin/leads/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ הליד נוסף בהצלחה! ID: ' + result.lead_id);
+                    closeAddLeadModal();
+                    // Reload the leads table if it exists
+                    if (typeof window.UnifiedLeadManager !== 'undefined') {
+                        window.UnifiedLeadManager.loadLeads();
+                    }
+                } else {
+                    alert('❌ שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            }
+        });
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const addLeadModal = document.getElementById('addLeadModal');
+            if (event.target === addLeadModal) {
+                closeAddLeadModal();
+            }
+        }
+        
         function showLeadManager() {
             const container = document.getElementById('lead-manager-container');
             const welcome = document.getElementById('welcome-message');

@@ -131,6 +131,31 @@
             transform: none;
         }
         
+        .btn-add-lead {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+            margin-left: 10px;
+        }
+        
+        .btn-add-lead:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #374151; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #10b981; }
+        .btn-cancel { background: #6b7280; }
+        
         .campaigns-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -224,9 +249,14 @@
         <div class="sync-section">
             <div class="sync-header">
                 <h2>🔄 סנכרון קמפיינים מ-Google Sheets</h2>
-                <button class="btn-sync-all" onclick="syncAllCampaigns()" id="syncAllBtn">
-                    ⚡ סנכרן הכל
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-add-lead" onclick="openAddLeadModal()">
+                        ➕ הוסף ליד ידנית
+                    </button>
+                    <button class="btn-sync-all" onclick="syncAllCampaigns()" id="syncAllBtn">
+                        ⚡ סנכרן הכל
+                    </button>
+                </div>
             </div>
             <div id="campaignsGrid" class="campaigns-grid">
                 <p style="text-align: center; color: #64748b;">טוען קמפיינים...</p>
@@ -245,6 +275,55 @@
         {% include 'user_management_component.html' %}
     </div>
 
+    <!-- Add Lead Modal -->
+    <div id="addLeadModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">➕ הוסף ליד ידנית</h2>
+            <form id="addLeadForm">
+                <div class="form-group">
+                    <label>לקוח <span style="color:red;">*</span></label>
+                    <select id="addLeadCustomerId" required>
+                        <option value="">בחר לקוח...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>שם קמפיין <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadCampaignName" placeholder="אירועים" required>
+                </div>
+                <div class="form-group">
+                    <label>שם מלא <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadName" placeholder="שם הליד" required>
+                </div>
+                <div class="form-group">
+                    <label>טלפון <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadPhone" placeholder="972501234567">
+                </div>
+                <div class="form-group">
+                    <label>אימייל</label>
+                    <input type="email" id="addLeadEmail" placeholder="example@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>סטטוס</label>
+                    <select id="addLeadStatus">
+                        <option value="new">חדש</option>
+                        <option value="contacted">נוצר קשר</option>
+                        <option value="qualified">מתאים</option>
+                        <option value="converted">הומר</option>
+                        <option value="lost">אבוד</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>הערות</label>
+                    <input type="text" id="addLeadNotes" placeholder="הערות נוספות...">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-cancel" onclick="closeAddLeadModal()">ביטול</button>
+                    <button type="submit" class="btn-modal">הוסף ליד</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Sync Result Modal -->
     <div id="syncResultModal" class="modal">
         <div class="modal-content">
@@ -259,6 +338,89 @@
 
     <script>
         let campaigns = [];
+        let customers = [];
+        
+        // Load customers for the add lead form
+        async function loadCustomers() {
+            try {
+                const r = await fetch('/admin/customers/api');
+                const data = await r.json();
+                customers = data || [];
+                
+                const customerOptions = '<option value="">בחר לקוח...</option>' +
+                    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                
+                document.getElementById('addLeadCustomerId').innerHTML = customerOptions;
+            } catch(e) {
+                console.error('Error loading customers:', e);
+            }
+        }
+        
+        function openAddLeadModal() {
+            document.getElementById('addLeadForm').reset();
+            document.getElementById('addLeadModal').style.display = 'block';
+        }
+        
+        function closeAddLeadModal() {
+            document.getElementById('addLeadModal').style.display = 'none';
+        }
+        
+        document.getElementById('addLeadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const phone = document.getElementById('addLeadPhone').value.trim();
+            const email = document.getElementById('addLeadEmail').value.trim();
+            
+            if (!phone && !email) {
+                alert('נדרש לפחות טלפון או אימייל');
+                return;
+            }
+            
+            const data = {
+                customer_id: parseInt(document.getElementById('addLeadCustomerId').value),
+                campaign_name: document.getElementById('addLeadCampaignName').value,
+                name: document.getElementById('addLeadName').value,
+                phone: phone || null,
+                email: email || null,
+                status: document.getElementById('addLeadStatus').value,
+                notes: document.getElementById('addLeadNotes').value
+            };
+            
+            try {
+                const response = await fetch('/admin/leads/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ הליד נוסף בהצלחה! ID: ' + result.lead_id);
+                    closeAddLeadModal();
+                    // Reload the leads table if it exists
+                    if (typeof refreshLeadsTable === 'function') {
+                        refreshLeadsTable();
+                    }
+                } else {
+                    alert('❌ שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            }
+        });
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const addLeadModal = document.getElementById('addLeadModal');
+            const syncResultModal = document.getElementById('syncResultModal');
+            if (event.target === addLeadModal) {
+                closeAddLeadModal();
+            }
+            if (event.target === syncResultModal) {
+                closeSyncResultModal();
+            }
+        }
         
         // Load campaigns
         async function loadCampaigns() {
@@ -420,8 +582,9 @@
             }
         }
         
-        // Load campaigns on page load
+        // Load campaigns and customers on page load
         loadCampaigns();
+        loadCustomers();
         
         // Check email notification status
         fetch('/email-status')
