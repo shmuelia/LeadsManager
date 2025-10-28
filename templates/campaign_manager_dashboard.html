@@ -346,44 +346,28 @@
                 const r = await fetch('/admin/customers/api');
                 const data = await r.json();
                 customers = data || [];
-                
-                const customerOptions = '<option value="">בחר לקוח...</option>' +
-                    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-                
+
+                if (customers.length === 0) {
+                    document.getElementById('addLeadCustomerId').innerHTML = '<option value="">אין לקוחות זמינים</option>';
+                    return;
+                }
+
+                // Build options with customer ID 1 as default (selected)
+                const customerOptions = customers.map(c =>
+                    `<option value="${c.id}" ${c.id === 1 ? 'selected' : ''}>${c.name}</option>`
+                ).join('');
+
                 document.getElementById('addLeadCustomerId').innerHTML = customerOptions;
             } catch(e) {
                 console.error('Error loading customers:', e);
+                document.getElementById('addLeadCustomerId').innerHTML = '<option value="">שגיאה בטעינת לקוחות</option>';
             }
         }
-        
+
         async function openAddLeadModal() {
             document.getElementById('addLeadForm').reset();
-            await loadCustomerName();
+            await loadCustomers();
             document.getElementById('addLeadModal').style.display = 'block';
-        }
-        
-        async function loadCustomerName() {
-            try {
-                console.log('Loading customer name...');
-                const r = await fetch('/admin/customers/api');
-                if (!r.ok) {
-                    console.error('API returned error:', r.status);
-                    return;
-                }
-                const data = await r.json();
-                console.log('Customers data:', data);
-                const customer = data.find(c => c.id === 1);
-                console.log('Customer 1:', customer);
-                if (customer && customer.name) {
-                    const select = document.getElementById('addLeadCustomerId');
-                    select.innerHTML = `<option value="1" selected>${customer.name}</option>`;
-                    console.log('Customer name loaded:', customer.name);
-                } else {
-                    console.warn('Customer with ID 1 not found or has no name');
-                }
-            } catch(e) {
-                console.error('Error loading customer:', e);
-            }
         }
         
         function closeAddLeadModal() {
