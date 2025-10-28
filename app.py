@@ -3586,8 +3586,8 @@ def sync_campaign(campaign_id):
                 cur.execute("INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP) RETURNING id",
                            (campaign['customer_id'], name or 'Unknown', email or None, phone or None, campaign['campaign_name'], json.dumps(raw_data)))
                 lead_id = cur.fetchone()['id']
-                cur.execute("INSERT INTO lead_activities (lead_id, customer_id, user_id, activity_type, description) VALUES (%s, %s, NULL, 'lead_received', %s)",
-                           (lead_id, campaign['customer_id'], f"Lead imported from Google Sheet: {campaign['campaign_name']}, Row {current_row}"))
+                cur.execute("INSERT INTO lead_activities (lead_id, user_name, activity_type, description) VALUES (%s, %s, 'lead_received', %s)",
+                           (lead_id, 'system', f"Lead imported from Google Sheet: {campaign['campaign_name']}, Row {current_row}"))
                 new_leads += 1
             except Exception as row_error:
                 logger.error(f"Row {current_row} error: {str(row_error)}")
@@ -3691,12 +3691,12 @@ def create_lead_manual():
         
         # Add activity log
         cur.execute(
-            """INSERT INTO lead_activities (lead_id, customer_id, user_id, activity_type, description) 
-               VALUES (%s, %s, NULL, 'lead_received', %s)""",
+            """INSERT INTO lead_activities (lead_id, user_name, activity_type, description)
+               VALUES (%s, %s, 'lead_received', %s)""",
             (
                 lead_id,
-                data['customer_id'],
-                f"Lead manually added by {session.get('name', 'Unknown')} - Campaign: {data['campaign_name']}"
+                session.get('full_name', session.get('username', 'Unknown')),
+                f"Lead manually added by {session.get('full_name', 'Unknown')} - Campaign: {data['campaign_name']}"
             )
         )
         
@@ -3889,11 +3889,11 @@ def sync_all_campaigns():
                         # Log activity
                         cur.execute("""
                             INSERT INTO lead_activities (
-                                lead_id, customer_id, user_id, activity_type, description
-                            ) VALUES (%s, %s, NULL, 'lead_received', %s)
+                                lead_id, user_name, activity_type, description
+                            ) VALUES (%s, %s, 'lead_received', %s)
                         """, (
                             lead_id,
-                            full_campaign['customer_id'],
+                            'system',
                             f"Lead imported from Google Sheet: {full_campaign['campaign_name']}, Row {current_row}"
                         ))
 
