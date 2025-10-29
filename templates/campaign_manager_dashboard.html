@@ -468,23 +468,27 @@
                     const endRow = document.getElementById('syncEndRow').value;
                     const resetTracking = document.getElementById('syncResetTracking').checked;
 
+                    // Save campaign ID before closing modal (which clears it)
+                    const campaignId = currentSyncCampaignId;
+                    const syncButton = currentSyncButton;
+
                     closeSyncConfigModal();
 
-                    if (!currentSyncCampaignId) {
+                    if (!campaignId) {
                         alert('שגיאה: מזהה קמפיין חסר');
-                        console.error('currentSyncCampaignId is:', currentSyncCampaignId);
+                        console.error('campaignId is:', campaignId);
                         return;
                     }
 
-                    console.log('Syncing campaign ID:', currentSyncCampaignId);
+                    console.log('Syncing campaign ID:', campaignId);
 
-                    if (currentSyncButton) {
-                        currentSyncButton.disabled = true;
-                        currentSyncButton.textContent = '⏳ מסנכרן...';
+                    if (syncButton) {
+                        syncButton.disabled = true;
+                        syncButton.textContent = '⏳ מסנכרן...';
                     }
 
                     try {
-                        const response = await fetch(`/admin/campaigns/sync/${currentSyncCampaignId}`, {
+                        const response = await fetch(`/admin/campaigns/sync/${campaignId}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -515,9 +519,9 @@
                         console.error('Sync error:', e);
                         showSyncResult({ error: e.message }, false);
                     } finally {
-                        if (currentSyncButton) {
-                            currentSyncButton.disabled = false;
-                            currentSyncButton.textContent = '🔄 סנכרן';
+                        if (syncButton) {
+                            syncButton.disabled = false;
+                            syncButton.textContent = '🔄 סנכרן';
                         }
                     }
                 });
