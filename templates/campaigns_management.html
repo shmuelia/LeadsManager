@@ -101,12 +101,11 @@
                     <input type="text" id="createCampaignName" required>
                 </div>
                 <div class="form-group">
-                    <label>Sheet ID</label>
-                    <input type="text" id="createSheetId">
-                </div>
-                <div class="form-group">
                     <label>קישור ל-Sheet</label>
                     <input type="text" id="createSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...#gid=...">
+                    <small style="color: #6b7280; display: block; margin-top: 5px;">
+                        ה-Sheet ID וה-Tab GID מזוהים אוטומטית מהקישור
+                    </small>
                 </div>
                 <div class="form-group">
                     <label>סטטוס</label>
@@ -235,12 +234,11 @@
                     <input type="text" id="editCampaignName" required>
                 </div>
                 <div class="form-group">
-                    <label>Sheet ID</label>
-                    <input type="text" id="editSheetId">
-                </div>
-                <div class="form-group">
                     <label>קישור ל-Sheet</label>
                     <input type="text" id="editSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...#gid=...">
+                    <small style="color: #6b7280; display: block; margin-top: 5px;">
+                        ה-Sheet ID וה-Tab GID מזוהים אוטומטית מהקישור
+                    </small>
                 </div>
                 <div class="form-group">
                     <label>סטטוס</label>
@@ -335,7 +333,6 @@
             const data = {
                 customer_id: customerId,
                 campaign_name: document.getElementById('createCampaignName').value,
-                sheet_id: document.getElementById('createSheetId').value,
                 sheet_url: document.getElementById('createSheetUrl').value,
                 active: document.getElementById('createActive').value === 'true'
             };
@@ -366,7 +363,6 @@
             document.getElementById('editId').value = campaign.id;
             document.getElementById('editCustomerId').value = campaign.customer_id;
             document.getElementById('editCampaignName').value = campaign.campaign_name;
-            document.getElementById('editSheetId').value = campaign.sheet_id || '';
             document.getElementById('editSheetUrl').value = campaign.sheet_url || '';
             document.getElementById('editActive').value = campaign.active ? 'true' : 'false';
 
@@ -436,7 +432,6 @@
             const data = {
                 customer_id: customerId,
                 campaign_name: document.getElementById('editCampaignName').value,
-                sheet_id: document.getElementById('editSheetId').value,
                 sheet_url: document.getElementById('editSheetUrl').value,
                 active: document.getElementById('editActive').value === 'true'
             };
