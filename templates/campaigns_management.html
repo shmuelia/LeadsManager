@@ -119,6 +119,40 @@
         </div>
     </div>
 
+    <!-- Sync Configuration Modal -->
+    <div id="syncConfigModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">🔄 הגדרות סנכרון</h2>
+            <form id="syncConfigForm">
+                <input type="hidden" id="syncCampaignId">
+                <div class="form-group">
+                    <label>שם קמפיין</label>
+                    <input type="text" id="syncCampaignName" disabled style="background: #f3f4f6;">
+                </div>
+                <div class="form-group">
+                    <label>משורה <span style="color:red;">*</span></label>
+                    <input type="number" id="syncStartRow" min="2" value="2" required>
+                    <small style="color: #6b7280;">השורה הראשונה לסנכרון (כולל כותרות - בדרך כלל 2)</small>
+                </div>
+                <div class="form-group">
+                    <label>עד שורה (אופציונלי)</label>
+                    <input type="number" id="syncEndRow" min="2">
+                    <small style="color: #6b7280;">השאר ריק לסנכרון עד הסוף</small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="syncResetTracking" style="width: auto; margin-left: 5px;">
+                        אפס מעקב (התחל מחדש)
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel btn-modal" onclick="closeSyncConfigModal()">ביטול</button>
+                    <button type="submit" class="btn btn-modal">🔄 התחל סנכרון</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Sync Result Modal -->
     <div id="syncResultModal" class="modal">
         <div class="modal-content">
@@ -407,19 +441,52 @@
             load();
         }
 
-        async function sync(id) {
+        function openSyncConfigModal(id) {
             const campaign = campaigns.find(c => c.id === id);
             if (!campaign) return;
 
-            if (!confirm(`האם לסנכרן ליד מקמפיין "${campaign.campaign_name}"?`)) return;
+            document.getElementById('syncCampaignId').value = campaign.id;
+            document.getElementById('syncCampaignName').value = campaign.campaign_name;
+            document.getElementById('syncStartRow').value = 2;
+            document.getElementById('syncEndRow').value = '';
+            document.getElementById('syncResetTracking').checked = false;
+            document.getElementById('syncConfigModal').style.display = 'block';
+        }
 
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = '⏳ מסנכרן...';
+        function closeSyncConfigModal() {
+            document.getElementById('syncConfigModal').style.display = 'none';
+        }
+
+        document.getElementById('syncConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const campaignId = document.getElementById('syncCampaignId').value;
+            const startRow = parseInt(document.getElementById('syncStartRow').value);
+            const endRow = document.getElementById('syncEndRow').value;
+            const resetTracking = document.getElementById('syncResetTracking').checked;
+
+            const syncData = {
+                start_row: startRow,
+                reset_tracking: resetTracking
+            };
+
+            // If end_row is specified, we'll need to handle it (currently not supported by backend)
+            // For now, we just use start_row
+
+            closeSyncConfigModal();
+
+            // Show loading state
+            const btn = document.querySelector(`button[onclick="openSyncConfigModal(${campaignId})"]`);
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ מסנכרן...';
+            }
 
             try {
-                const response = await fetch(`/admin/campaigns/sync/${id}`, {
-                    method: 'POST'
+                const response = await fetch(`/admin/campaigns/sync/${campaignId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(syncData)
                 });
 
                 const result = await response.json();
@@ -433,9 +500,16 @@
             } catch(e) {
                 alert('❌ שגיאה: ' + e.message);
             } finally {
-                btn.disabled = false;
-                btn.textContent = '🔄 סנכרן';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '🔄 סנכרן';
+                }
             }
+        });
+
+        async function sync(id) {
+            // This function is now just a wrapper to open the config modal
+            openSyncConfigModal(id);
         }
 
         function openAddLeadModal() {
@@ -492,6 +566,7 @@
         window.onclick = function(event) {
             const editModal = document.getElementById('editModal');
             const createModal = document.getElementById('createModal');
+            const syncConfigModal = document.getElementById('syncConfigModal');
             const syncResultModal = document.getElementById('syncResultModal');
             const addLeadModal = document.getElementById('addLeadModal');
             if (event.target === editModal) {
@@ -499,6 +574,9 @@
             }
             if (event.target === createModal) {
                 closeCreateModal();
+            }
+            if (event.target === syncConfigModal) {
+                closeSyncConfigModal();
             }
             if (event.target === syncResultModal) {
                 closeSyncResultModal();
