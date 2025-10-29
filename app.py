@@ -3339,7 +3339,14 @@ def customer_management():
 @campaign_manager_required
 def campaigns_management():
     """Campaigns management page - Admin and Campaign Manager access"""
-    return render_template('campaigns_management.html', version=APP_VERSION, build_time=BUILD_TIME)
+    user_role = session.get('role')
+    user_customer_id = session.get('customer_id')
+
+    return render_template('campaigns_management.html',
+                         version=APP_VERSION,
+                         build_time=BUILD_TIME,
+                         user_role=user_role,
+                         user_customer_id=user_customer_id)
 
 @app.route('/admin/campaigns/create', methods=['POST'])
 @campaign_manager_required

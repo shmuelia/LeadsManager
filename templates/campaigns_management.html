@@ -90,9 +90,9 @@
         <div class="modal-content">
             <h2 class="modal-header">➕ קמפיין חדש</h2>
             <form id="createForm">
-                <div class="form-group">
+                <div class="form-group" id="createCustomerGroup" {% if user_role == 'campaign_manager' %}style="display: none;"{% endif %}>
                     <label>לקוח <span style="color:red;">*</span></label>
-                    <select id="createCustomerId" required>
+                    <select id="createCustomerId" {% if user_role != 'campaign_manager' %}required{% endif %}>
                         <option value="">בחר לקוח...</option>
                     </select>
                 </div>
@@ -174,9 +174,9 @@
         <div class="modal-content">
             <h2 class="modal-header">➕ הוסף ליד ידנית</h2>
             <form id="addLeadForm">
-                <div class="form-group">
+                <div class="form-group" id="addLeadCustomerGroup" {% if user_role == 'campaign_manager' %}style="display: none;"{% endif %}>
                     <label>לקוח <span style="color:red;">*</span></label>
-                    <select id="addLeadCustomerId" required>
+                    <select id="addLeadCustomerId" {% if user_role != 'campaign_manager' %}required{% endif %}>
                         <option value="">בחר לקוח...</option>
                     </select>
                 </div>
@@ -224,9 +224,9 @@
             <h2 class="modal-header">✏️ עריכת קמפיין</h2>
             <form id="editForm">
                 <input type="hidden" id="editId">
-                <div class="form-group">
+                <div class="form-group" id="editCustomerGroup" {% if user_role == 'campaign_manager' %}style="display: none;"{% endif %}>
                     <label>לקוח</label>
-                    <select id="editCustomerId" required>
+                    <select id="editCustomerId" {% if user_role != 'campaign_manager' %}required{% endif %}>
                         <option value="">בחר לקוח...</option>
                     </select>
                 </div>
@@ -258,6 +258,10 @@
     </div>
 
     <script>
+        // User role and customer from backend
+        const USER_ROLE = '{{ user_role }}';
+        const USER_CUSTOMER_ID = {{ user_customer_id if user_customer_id else 'null' }};
+
         let campaigns = [];
         let customers = [];
 
@@ -307,6 +311,12 @@
 
         function openCreateModal() {
             document.getElementById('createForm').reset();
+
+            // Auto-set customer_id for campaign managers
+            if (USER_ROLE === 'campaign_manager' && USER_CUSTOMER_ID) {
+                document.getElementById('createCustomerId').value = USER_CUSTOMER_ID;
+            }
+
             document.getElementById('createModal').style.display = 'block';
         }
 
@@ -317,8 +327,13 @@
         document.getElementById('createForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // Use USER_CUSTOMER_ID for campaign managers, otherwise get from dropdown
+            const customerId = (USER_ROLE === 'campaign_manager' && USER_CUSTOMER_ID)
+                ? USER_CUSTOMER_ID
+                : parseInt(document.getElementById('createCustomerId').value);
+
             const data = {
-                customer_id: parseInt(document.getElementById('createCustomerId').value),
+                customer_id: customerId,
                 campaign_name: document.getElementById('createCampaignName').value,
                 sheet_id: document.getElementById('createSheetId').value,
                 sheet_url: document.getElementById('createSheetUrl').value,
@@ -412,8 +427,14 @@
             e.preventDefault();
 
             const id = document.getElementById('editId').value;
+
+            // Use USER_CUSTOMER_ID for campaign managers, otherwise get from dropdown
+            const customerId = (USER_ROLE === 'campaign_manager' && USER_CUSTOMER_ID)
+                ? USER_CUSTOMER_ID
+                : parseInt(document.getElementById('editCustomerId').value);
+
             const data = {
-                customer_id: parseInt(document.getElementById('editCustomerId').value),
+                customer_id: customerId,
                 campaign_name: document.getElementById('editCampaignName').value,
                 sheet_id: document.getElementById('editSheetId').value,
                 sheet_url: document.getElementById('editSheetUrl').value,
@@ -536,8 +557,13 @@
                 return;
             }
 
+            // Use USER_CUSTOMER_ID for campaign managers, otherwise get from dropdown
+            const customerId = (USER_ROLE === 'campaign_manager' && USER_CUSTOMER_ID)
+                ? USER_CUSTOMER_ID
+                : parseInt(document.getElementById('addLeadCustomerId').value);
+
             const data = {
-                customer_id: parseInt(document.getElementById('addLeadCustomerId').value),
+                customer_id: customerId,
                 campaign_name: document.getElementById('addLeadCampaignName').value,
                 name: document.getElementById('addLeadName').value,
                 phone: phone || null,
