@@ -331,19 +331,51 @@
 
     <!-- Sync Configuration Modal -->
     <div id="syncConfigModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 800px;">
             <h2 class="modal-header">⚙️ הגדרות סנכרון</h2>
             <form id="syncConfigForm">
                 <input type="hidden" id="syncCampaignId">
+                <input type="hidden" id="syncSheetUrl">
                 <div class="form-group">
                     <label>קמפיין</label>
                     <input type="text" id="syncCampaignName" readonly style="background: #f3f4f6;">
                 </div>
+
+                <!-- Preview Button -->
+                <div class="form-group">
+                    <button type="button" class="btn-modal" onclick="previewSheet()" style="background: #3b82f6;">
+                        👁️ הצג שורות אחרונות
+                    </button>
+                </div>
+
+                <!-- Preview Table -->
+                <div id="sheetPreview" style="display: none; margin-bottom: 15px;">
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; max-height: 400px; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <strong style="color: #1f2937;">שורות אחרונות מהגיליון</strong>
+                            <span id="totalRowsInfo" style="color: #6b7280; font-size: 0.9em;"></span>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+                            <thead style="background: #e5e7eb;">
+                                <tr>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #d1d5db;">בחר</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">שורה</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">שם</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">טלפון</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">אימייל</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">תאריך</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>משורה <span style="color:red;">*</span></label>
                     <input type="number" id="syncStartRow" min="2" value="2" required>
                     <small style="color: #6b7280; display: block; margin-top: 5px;">
-                        השורה הראשונה לסנכרון (כולל כותרות - בדרך כלל 2)
+                        השורה הראשונה לסנכרון (שורה 1 = כותרות, 2 = נתונים ראשונים)
                     </small>
                 </div>
                 <div class="form-group">
@@ -642,15 +674,66 @@
             // Pre-fill modal
             document.getElementById('syncCampaignId').value = campaign.id;
             document.getElementById('syncCampaignName').value = campaign.campaign_name;
+            document.getElementById('syncSheetUrl').value = campaign.sheet_url || '';
             document.getElementById('syncStartRow').value = 2;
             document.getElementById('syncEndRow').value = '';
             document.getElementById('syncResetTracking').checked = false;
 
+            // Hide preview initially
+            document.getElementById('sheetPreview').style.display = 'none';
+
             document.getElementById('syncConfigModal').style.display = 'block';
+        }
+
+        async function previewSheet() {
+            const sheetUrl = document.getElementById('syncSheetUrl').value;
+            if (!sheetUrl) {
+                alert('אין קישור לגיליון');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/campaigns/preview-sheet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sheet_url: sheetUrl })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    alert('שגיאה: ' + (result.error || 'לא ניתן לטעון תצוגה מקדימה'));
+                    return;
+                }
+
+                // Display preview
+                document.getElementById('totalRowsInfo').textContent = `סה"כ ${result.total_rows} שורות בגיליון`;
+
+                const tbody = document.getElementById('previewTableBody');
+                tbody.innerHTML = result.preview_rows.map(row => `
+                    <tr style="background: ${row.has_data ? 'white' : '#fef3c7'};">
+                        <td style="padding: 6px; text-align: center; border: 1px solid #d1d5db;">
+                            <input type="radio" name="previewRow" value="${row.row_number}"
+                                   onclick="document.getElementById('syncStartRow').value = ${row.row_number}">
+                        </td>
+                        <td style="padding: 6px; border: 1px solid #d1d5db; font-weight: bold;">${row.row_number}</td>
+                        <td style="padding: 6px; border: 1px solid #d1d5db;">${row.name || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #d1d5db; direction: ltr; text-align: left;">${row.phone || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #d1d5db;">${row.email || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #d1d5db;">${row.date || '-'}</td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('sheetPreview').style.display = 'block';
+
+            } catch (e) {
+                alert('שגיאה בטעינת תצוגה מקדימה: ' + e.message);
+            }
         }
 
         function closeSyncConfigModal() {
             document.getElementById('syncConfigModal').style.display = 'none';
+            document.getElementById('sheetPreview').style.display = 'none';
             currentSyncCampaignId = null;
             currentSyncButton = null;
         }

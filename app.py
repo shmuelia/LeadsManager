@@ -3722,6 +3722,73 @@ def sync_campaign(campaign_id):
         except:
             pass
 
+@app.route('/admin/campaigns/preview-sheet', methods=['POST'])
+@campaign_manager_required
+def preview_sheet():
+    """Preview last rows from Google Sheet to help select start row"""
+    import requests
+    import csv
+    from io import StringIO
+
+    try:
+        data = request.get_json()
+        sheet_url = data.get('sheet_url')
+
+        if not sheet_url:
+            return jsonify({'error': 'Sheet URL required'}), 400
+
+        # Extract sheet ID and GID
+        sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+        if not sheet_id_match:
+            return jsonify({'error': 'Invalid Sheet URL'}), 400
+        spreadsheet_id = sheet_id_match.group(1)
+
+        gid_match = re.search(r'gid=(\d+)', sheet_url)
+        gid = gid_match.group(1) if gid_match else '0'
+
+        # Fetch CSV
+        csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+        response = requests.get(csv_url, timeout=30)
+        response.raise_for_status()
+
+        # Parse CSV
+        reader = csv.DictReader(StringIO(response.text))
+        rows = list(reader)
+        total_rows = len(rows)
+
+        # Get last 15 rows
+        preview_rows = []
+        start_index = max(0, total_rows - 15)
+
+        for i, row in enumerate(rows[start_index:], start=start_index + 2):  # +2 because row 1 is headers
+            # Extract key fields
+            name = (row.get('שם מלא') or row.get('שם') or row.get('name') or row.get('Name') or '')
+            phone = (row.get('מס פלאפון') or row.get('טלפון') or row.get('מספר טלפון') or
+                    row.get('phone') or row.get('Phone Number') or '')
+            email = (row.get('מייל') or row.get('אימייל') or row.get('דוא"ל') or
+                    row.get('email') or row.get('Email') or '')
+            date = (row.get('תאריך') or row.get('תאריך אירוע') or row.get('date') or '')
+
+            preview_rows.append({
+                'row_number': i,
+                'name': name[:30] if name else '',
+                'phone': phone,
+                'email': email[:30] if email else '',
+                'date': date,
+                'has_data': bool(name or phone or email)
+            })
+
+        return jsonify({
+            'success': True,
+            'total_rows': total_rows + 1,  # +1 for header row
+            'preview_rows': preview_rows,
+            'headers': list(reader.fieldnames) if hasattr(reader, 'fieldnames') else []
+        })
+
+    except Exception as e:
+        logger.error(f"Preview error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/leads/create', methods=['POST'])
 @campaign_manager_required
 def create_lead_manual():
