@@ -239,6 +239,9 @@
                     {{ session.get('full_name', session.get('username')) }}
                     (מנהל קמפיין)
                 </div>
+                <button class="logout-btn" onclick="window.location.href='/admin/campaigns'" style="background: #10b981; margin-left: 10px;">
+                    🎯 ניהול קמפיינים
+                </button>
                 <button class="logout-btn" onclick="window.location.href='/logout'">
                     🚪 יציאה
                 </button>
@@ -466,6 +469,14 @@
                     const resetTracking = document.getElementById('syncResetTracking').checked;
 
                     closeSyncConfigModal();
+
+                    if (!currentSyncCampaignId) {
+                        alert('שגיאה: מזהה קמפיין חסר');
+                        console.error('currentSyncCampaignId is:', currentSyncCampaignId);
+                        return;
+                    }
+
+                    console.log('Syncing campaign ID:', currentSyncCampaignId);
 
                     if (currentSyncButton) {
                         currentSyncButton.disabled = true;

@@ -3336,15 +3336,15 @@ def customer_management():
     return render_template('customer_management.html')
 
 @app.route('/admin/campaigns')
-@admin_required
+@campaign_manager_required
 def campaigns_management():
-    """Admin-only campaigns management page"""
+    """Campaigns management page - Admin and Campaign Manager access"""
     return render_template('campaigns_management.html', version=APP_VERSION, build_time=BUILD_TIME)
 
 @app.route('/admin/campaigns/create', methods=['POST'])
-@admin_required
+@campaign_manager_required
 def create_campaign():
-    """API: Create new campaign"""
+    """API: Create new campaign - Campaign managers can only create for their customer"""
     try:
         data = request.get_json()
 
@@ -3353,6 +3353,13 @@ def create_campaign():
             return jsonify({'error': 'חסר מזהה לקוח'}), 400
         if not data.get('campaign_name'):
             return jsonify({'error': 'חסר שם קמפיין'}), 400
+
+        # Campaign managers can only create campaigns for their own customer
+        user_role = session.get('role')
+        user_customer_id = session.get('customer_id')
+
+        if user_role == 'campaign_manager' and data['customer_id'] != user_customer_id:
+            return jsonify({'error': 'אין הרשאה ליצור קמפיין ללקוח אחר'}), 403
 
         conn = get_db_connection()
         if not conn:
@@ -3448,15 +3455,28 @@ def get_campaigns_api():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/campaigns/delete/<int:campaign_id>', methods=['DELETE'])
-@admin_required
+@campaign_manager_required
 def delete_campaign(campaign_id):
-    """API: Delete a campaign"""
+    """API: Delete a campaign - Campaign managers can only delete their customer's campaigns"""
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
 
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Check if campaign belongs to user's customer
+        user_role = session.get('role')
+        user_customer_id = session.get('customer_id')
+
+        if user_role == 'campaign_manager':
+            cur.execute("SELECT customer_id FROM campaigns WHERE id = %s", (campaign_id,))
+            campaign = cur.fetchone()
+            if not campaign or campaign['customer_id'] != user_customer_id:
+                cur.close()
+                conn.close()
+                return jsonify({'error': 'אין הרשאה למחוק קמפיין זה'}), 403
+
         cur.execute("DELETE FROM campaigns WHERE id = %s", (campaign_id,))
         conn.commit()
         cur.close()
@@ -3469,9 +3489,9 @@ def delete_campaign(campaign_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/campaigns/update/<int:campaign_id>', methods=['PUT'])
-@admin_required
+@campaign_manager_required
 def update_campaign(campaign_id):
-    """API: Update a campaign"""
+    """API: Update a campaign - Campaign managers can only update their customer's campaigns"""
     try:
         data = request.get_json()
 
@@ -3479,13 +3499,31 @@ def update_campaign(campaign_id):
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
 
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Check if campaign belongs to user's customer
+        user_role = session.get('role')
+        user_customer_id = session.get('customer_id')
+
+        if user_role == 'campaign_manager':
+            cur.execute("SELECT customer_id FROM campaigns WHERE id = %s", (campaign_id,))
+            campaign = cur.fetchone()
+            if not campaign or campaign['customer_id'] != user_customer_id:
+                cur.close()
+                conn.close()
+                return jsonify({'error': 'אין הרשאה לעדכן קמפיין זה'}), 403
+
+            # Campaign managers cannot change the customer_id
+            if 'customer_id' in data and data['customer_id'] != user_customer_id:
+                cur.close()
+                conn.close()
+                return jsonify({'error': 'אין הרשאה לשנות לקוח של קמפיין'}), 403
 
         # Build update query dynamically based on provided fields
         update_fields = []
         params = []
 
-        if 'customer_id' in data:
+        if 'customer_id' in data and user_role == 'admin':  # Only admin can change customer_id
             update_fields.append("customer_id = %s")
             params.append(data['customer_id'])
 

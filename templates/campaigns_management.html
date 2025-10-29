@@ -51,8 +51,12 @@
         <div class="header">
             <h1>🎯 ניהול קמפיינים <span style="font-size:0.6em; opacity:0.8;">{{ version }}</span></h1>
             <div class="nav-links">
-                <a href="/admin" class="nav-link">דשבורד</a>
-                <a href="/admin/customers" class="nav-link">לקוחות</a>
+                {% if session.get('role') == 'admin' %}
+                    <a href="/admin" class="nav-link">דשבורד</a>
+                    <a href="/admin/customers" class="nav-link">לקוחות</a>
+                {% elif session.get('role') == 'campaign_manager' %}
+                    <a href="/campaign-manager" class="nav-link">דשבורד</a>
+                {% endif %}
                 <a href="/logout" class="nav-link">התנתקות</a>
             </div>
         </div>
