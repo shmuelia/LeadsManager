@@ -331,36 +331,30 @@
         <div class="modal-content">
             <h2 class="modal-header">⚙️ הגדרות סנכרון</h2>
             <form id="syncConfigForm">
+                <input type="hidden" id="syncCampaignId">
                 <div class="form-group">
                     <label>קמפיין</label>
                     <input type="text" id="syncCampaignName" readonly style="background: #f3f4f6;">
                 </div>
                 <div class="form-group">
-                    <label>Google Sheet URL <span style="color:red;">*</span></label>
-                    <input type="text" id="syncSheetUrl" readonly style="background: #f3f4f6; font-size: 12px;">
-                </div>
-                <div class="form-group">
-                    <label>Tab GID (מזהה טאב)</label>
-                    <input type="text" id="syncTabGid" placeholder="0" value="0">
+                    <label>משורה <span style="color:red;">*</span></label>
+                    <input type="number" id="syncStartRow" min="2" value="2" required>
                     <small style="color: #6b7280; display: block; margin-top: 5px;">
-                        נמצא ב-URL אחרי gid= (ברירת מחדל: 0)
+                        השורה הראשונה לסנכרון (כולל כותרות - בדרך כלל 2)
                     </small>
                 </div>
                 <div class="form-group">
-                    <label>התחל מהשורה <span style="color:red;">*</span></label>
-                    <input type="number" id="syncStartRow" min="1" value="1" required>
+                    <label>עד שורה (אופציונלי)</label>
+                    <input type="number" id="syncEndRow" min="2">
                     <small style="color: #6b7280; display: block; margin-top: 5px;">
-                        שורה 1 = כותרות, שורה 2 = נתונים ראשונים
+                        השאר ריק לסנכרון עד הסוף
                     </small>
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px;">
                         <input type="checkbox" id="syncResetTracking">
-                        <span>אפס מעקב סנכרון (התעלם מ-last_synced_row)</span>
+                        <span>אפס מעקב (התחל מחדש)</span>
                     </label>
-                    <small style="color: #dc2626; display: block; margin-top: 5px;">
-                        ⚠️ סימון אפשרות זו יסנכרן מחדש שורות שכבר סונכרנו
-                    </small>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-modal btn-cancel" onclick="closeSyncConfigModal()">ביטול</button>
@@ -468,7 +462,7 @@
                     e.preventDefault();
 
                     const startRow = parseInt(document.getElementById('syncStartRow').value);
-                    const tabGid = document.getElementById('syncTabGid').value;
+                    const endRow = document.getElementById('syncEndRow').value;
                     const resetTracking = document.getElementById('syncResetTracking').checked;
 
                     closeSyncConfigModal();
@@ -484,7 +478,6 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 start_row: startRow,
-                                tab_gid: tabGid,
                                 reset_tracking: resetTracking
                             })
                         });
@@ -632,25 +625,10 @@
             currentSyncButton = event.target;
 
             // Pre-fill modal
+            document.getElementById('syncCampaignId').value = campaign.id;
             document.getElementById('syncCampaignName').value = campaign.campaign_name;
-            document.getElementById('syncSheetUrl').value = campaign.sheet_url || '';
-
-            // Extract GID from URL if exists
-            const gidMatch = campaign.sheet_url ? campaign.sheet_url.match(/gid=(\d+)/) : null;
-            document.getElementById('syncTabGid').value = gidMatch ? gidMatch[1] : '0';
-
-            // Set start row from last synced data
-            let startRow = 1;
-            if (campaign.last_synced_row) {
-                const gid = gidMatch ? gidMatch[1] : '0';
-                const gidKey = `gid_${gid}`;
-                if (typeof campaign.last_synced_row === 'object' && campaign.last_synced_row[gidKey]) {
-                    startRow = campaign.last_synced_row[gidKey];
-                } else if (typeof campaign.last_synced_row === 'number') {
-                    startRow = campaign.last_synced_row;
-                }
-            }
-            document.getElementById('syncStartRow').value = startRow;
+            document.getElementById('syncStartRow').value = 2;
+            document.getElementById('syncEndRow').value = '';
             document.getElementById('syncResetTracking').checked = false;
 
             document.getElementById('syncConfigModal').style.display = 'block';
