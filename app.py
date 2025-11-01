@@ -288,7 +288,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session or session.get('role') != 'admin':
             # Check if this is an AJAX/JSON request
-            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+            if request.is_json or request.headers.get('Content-Type') == 'application/json' or request.headers.get('Accept') == 'application/json':
                 return jsonify({'error': 'Unauthorized - admin access required'}), 401
             flash('נדרשות הרשאות מנהל לצפייה בדף זה')
             return redirect(url_for('dashboard'))
