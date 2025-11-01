@@ -3625,6 +3625,10 @@ def sync_campaign(campaign_id):
         csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
         response = requests.get(csv_url, timeout=30)
         response.raise_for_status()
+
+        # Set encoding to UTF-8 for Hebrew column names
+        response.encoding = 'utf-8'
+
         reader = csv.DictReader(StringIO(response.text))
 
         # Determine starting row
