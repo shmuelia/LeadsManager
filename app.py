@@ -3877,6 +3877,159 @@ def fetch_sheet_columns():
         logger.error(f"Fetch columns error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/duplicates')
+@admin_required
+def duplicate_manager():
+    """Admin page for managing duplicate leads"""
+    return render_template('duplicate_manager.html')
+
+@app.route('/admin/duplicates/scan', methods=['POST'])
+@admin_required
+def scan_duplicates():
+    """Scan for duplicate leads based on phone or email"""
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Find duplicates by phone
+        cur.execute("""
+            SELECT phone, array_agg(id ORDER BY received_at ASC) as lead_ids, COUNT(*) as count
+            FROM leads
+            WHERE phone IS NOT NULL AND phone != ''
+            GROUP BY phone, customer_id
+            HAVING COUNT(*) > 1
+        """)
+        phone_duplicates = cur.fetchall()
+
+        # Find duplicates by email
+        cur.execute("""
+            SELECT email, array_agg(id ORDER BY received_at ASC) as lead_ids, COUNT(*) as count
+            FROM leads
+            WHERE email IS NOT NULL AND email != ''
+            GROUP BY email, customer_id
+            HAVING COUNT(*) > 1
+        """)
+        email_duplicates = cur.fetchall()
+
+        # Build duplicate groups
+        duplicate_groups = []
+        processed_leads = set()
+
+        # Process phone duplicates
+        for dup in phone_duplicates:
+            lead_ids = dup['lead_ids']
+            if lead_ids[0] not in processed_leads:
+                cur.execute("""
+                    SELECT id, name, phone, email, campaign_name, status, received_at, customer_id
+                    FROM leads
+                    WHERE id = ANY(%s)
+                    ORDER BY received_at ASC
+                """, (lead_ids,))
+                leads = cur.fetchall()
+
+                duplicate_groups.append({
+                    'reason': 'phone',
+                    'match_value': dup['phone'],
+                    'leads': [dict(lead) for lead in leads]
+                })
+                processed_leads.update(lead_ids)
+
+        # Process email duplicates
+        for dup in email_duplicates:
+            lead_ids = dup['lead_ids']
+            if lead_ids[0] not in processed_leads:
+                cur.execute("""
+                    SELECT id, name, phone, email, campaign_name, status, received_at, customer_id
+                    FROM leads
+                    WHERE id = ANY(%s)
+                    ORDER BY received_at ASC
+                """, (lead_ids,))
+                leads = cur.fetchall()
+
+                duplicate_groups.append({
+                    'reason': 'email',
+                    'match_value': dup['email'],
+                    'leads': [dict(lead) for lead in leads]
+                })
+                processed_leads.update(lead_ids)
+
+        # Calculate stats
+        total_leads_to_delete = sum(len(group['leads']) - 1 for group in duplicate_groups)
+
+        return jsonify({
+            'success': True,
+            'duplicates': duplicate_groups,
+            'stats': {
+                'total_groups': len(duplicate_groups),
+                'leads_to_keep': len(duplicate_groups),
+                'leads_to_delete': total_leads_to_delete
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Scan duplicates error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route('/admin/duplicates/remove', methods=['POST'])
+@admin_required
+def remove_duplicates():
+    """Remove duplicate leads, keeping oldest and merging activities"""
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        data = request.get_json()
+        duplicate_groups = data.get('duplicates', [])
+
+        deleted_count = 0
+        merged_activities = 0
+
+        for group in duplicate_groups:
+            leads = group['leads']
+            if len(leads) < 2:
+                continue
+
+            # First lead is the keeper (oldest)
+            keeper_id = leads[0]['id']
+            duplicate_ids = [lead['id'] for lead in leads[1:]]
+
+            # Merge activities from duplicates to keeper
+            for dup_id in duplicate_ids:
+                cur.execute("""
+                    UPDATE lead_activities
+                    SET lead_id = %s
+                    WHERE lead_id = %s
+                """, (keeper_id, dup_id))
+                merged_activities += cur.rowcount
+
+            # Delete duplicate leads
+            cur.execute("""
+                DELETE FROM leads
+                WHERE id = ANY(%s)
+            """, (duplicate_ids,))
+            deleted_count += cur.rowcount
+
+        conn.commit()
+
+        logger.info(f"Removed {deleted_count} duplicate leads, merged {merged_activities} activities")
+
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'merged_activities': merged_activities
+        })
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Remove duplicates error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
 @app.route('/admin/leads/create', methods=['POST'])
 @campaign_manager_required
 def create_lead_manual():
