@@ -106,7 +106,55 @@
                     <small style="color: #6b7280; display: block; margin-top: 5px;">
                         ה-Sheet ID וה-Tab GID מזוהים אוטומטית מהקישור
                     </small>
+                    <button type="button" class="btn-modal" onclick="fetchColumnsForCreate()"
+                            style="margin-top: 10px; background: #3b82f6;">
+                        📋 טען עמודות מהגיליון
+                    </button>
                 </div>
+
+                <!-- Column Mapping Section -->
+                <div id="createColumnMapping" style="display: none;">
+                    <h3 style="margin: 15px 0 10px; color: #1f2937; font-size: 16px;">🔗 מיפוי עמודות</h3>
+                    <small style="color: #6b7280; display: block; margin-bottom: 10px;">
+                        בחר איזו עמודה בגיליון מתאימה לכל שדה במערכת. שדות עם <span style="color:red;">*</span> הם חובה.
+                    </small>
+
+                    <div class="form-group">
+                        <label>שם <span style="color:red;">*</span></label>
+                        <select id="createMapName">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>טלפון <span style="color:red;">*</span></label>
+                        <select id="createMapPhone">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>אימייל <span style="color:red;">*</span></label>
+                        <select id="createMapEmail">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>תאריך (אופציונלי)</label>
+                        <select id="createMapDate">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>שם קמפיין (אופציונלי)</label>
+                        <select id="createMapCampaign">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>סטטוס</label>
                     <select id="createActive">
@@ -239,7 +287,55 @@
                     <small style="color: #6b7280; display: block; margin-top: 5px;">
                         ה-Sheet ID וה-Tab GID מזוהים אוטומטית מהקישור
                     </small>
+                    <button type="button" class="btn-modal" onclick="fetchColumnsForEdit()"
+                            style="margin-top: 10px; background: #3b82f6;">
+                        📋 טען עמודות מהגיליון
+                    </button>
                 </div>
+
+                <!-- Column Mapping Section -->
+                <div id="editColumnMapping" style="display: none;">
+                    <h3 style="margin: 15px 0 10px; color: #1f2937; font-size: 16px;">🔗 מיפוי עמודות</h3>
+                    <small style="color: #6b7280; display: block; margin-bottom: 10px;">
+                        בחר איזו עמודה בגיליון מתאימה לכל שדה במערכת. שדות עם <span style="color:red;">*</span> הם חובה.
+                    </small>
+
+                    <div class="form-group">
+                        <label>שם <span style="color:red;">*</span></label>
+                        <select id="editMapName">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>טלפון <span style="color:red;">*</span></label>
+                        <select id="editMapPhone">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>אימייל <span style="color:red;">*</span></label>
+                        <select id="editMapEmail">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>תאריך (אופציונלי)</label>
+                        <select id="editMapDate">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>שם קמפיין (אופציונלי)</label>
+                        <select id="editMapCampaign">
+                            <option value="">בחר עמודה...</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>סטטוס</label>
                     <select id="editActive">
@@ -320,6 +416,121 @@
 
         function closeCreateModal() {
             document.getElementById('createModal').style.display = 'none';
+            document.getElementById('createColumnMapping').style.display = 'none';
+        }
+
+        async function fetchColumnsForCreate() {
+            const sheetUrl = document.getElementById('createSheetUrl').value;
+            if (!sheetUrl) {
+                alert('נא להזין קישור ל-Sheet תחילה');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/campaigns/fetch-columns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sheet_url: sheetUrl })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('שגיאה: ' + (error.error || 'לא ניתן לטעון עמודות'));
+                    return;
+                }
+
+                const result = await response.json();
+                populateColumnMapping('create', result.columns);
+                document.getElementById('createColumnMapping').style.display = 'block';
+                alert(`נטענו ${result.columns.length} עמודות מהגיליון`);
+            } catch(e) {
+                alert('שגיאה: ' + e.message);
+            }
+        }
+
+        async function fetchColumnsForEdit() {
+            const sheetUrl = document.getElementById('editSheetUrl').value;
+            if (!sheetUrl) {
+                alert('נא להזין קישור ל-Sheet תחילה');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/campaigns/fetch-columns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sheet_url: sheetUrl })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('שגיאה: ' + (error.error || 'לא ניתן לטעון עמודות'));
+                    return;
+                }
+
+                const result = await response.json();
+                populateColumnMapping('edit', result.columns);
+                document.getElementById('editColumnMapping').style.display = 'block';
+                alert(`נטענו ${result.columns.length} עמודות מהגיליון`);
+            } catch(e) {
+                alert('שגיאה: ' + e.message);
+            }
+        }
+
+        function populateColumnMapping(mode, columns) {
+            const prefix = mode; // 'create' or 'edit'
+            const options = '<option value="">בחר עמודה...</option>' +
+                columns.map(col => `<option value="${col}">${col}</option>`).join('');
+
+            document.getElementById(`${prefix}MapName`).innerHTML = options;
+            document.getElementById(`${prefix}MapPhone`).innerHTML = options;
+            document.getElementById(`${prefix}MapEmail`).innerHTML = options;
+            document.getElementById(`${prefix}MapDate`).innerHTML = options;
+            document.getElementById(`${prefix}MapCampaign`).innerHTML = options;
+
+            // Auto-select common column names
+            autoSelectColumns(prefix, columns);
+        }
+
+        function autoSelectColumns(prefix, columns) {
+            // Try to auto-match common column names
+            const namePatterns = ['שם מלא', 'שם', 'name', 'Name', 'Full Name'];
+            const phonePatterns = ['מס פלאפון', 'טלפון', 'מספר טלפון', 'phone', 'Phone Number', 'Phone'];
+            const emailPatterns = ['מייל', 'אימייל', 'דוא"ל', 'email', 'Email'];
+            const datePatterns = ['תאריך', 'date', 'Date', 'תאריך אירוע'];
+            const campaignPatterns = ['שם הקמפיין', 'קמפיין', 'campaign', 'Campaign Name'];
+
+            const tryMatch = (selectId, patterns) => {
+                for (const col of columns) {
+                    if (patterns.some(p => col.includes(p) || p.includes(col))) {
+                        document.getElementById(`${prefix}${selectId}`).value = col;
+                        return;
+                    }
+                }
+            };
+
+            tryMatch('MapName', namePatterns);
+            tryMatch('MapPhone', phonePatterns);
+            tryMatch('MapEmail', emailPatterns);
+            tryMatch('MapDate', datePatterns);
+            tryMatch('MapCampaign', campaignPatterns);
+        }
+
+        function getColumnMapping(prefix) {
+            const mapping = {};
+            const name = document.getElementById(`${prefix}MapName`).value;
+            const phone = document.getElementById(`${prefix}MapPhone`).value;
+            const email = document.getElementById(`${prefix}MapEmail`).value;
+            const date = document.getElementById(`${prefix}MapDate`).value;
+            const campaign = document.getElementById(`${prefix}MapCampaign`).value;
+
+            if (name) mapping.name = name;
+            if (phone) mapping.phone = phone;
+            if (email) mapping.email = email;
+            if (date) mapping.date = date;
+            if (campaign) mapping.campaign = campaign;
+
+            return mapping;
         }
 
         document.getElementById('createForm').addEventListener('submit', async (e) => {
@@ -330,11 +541,23 @@
                 ? USER_CUSTOMER_ID
                 : parseInt(document.getElementById('createCustomerId').value);
 
+            const sheetUrl = document.getElementById('createSheetUrl').value;
+            const columnMapping = sheetUrl ? getColumnMapping('create') : {};
+
+            // Validate required fields if sheet_url is provided
+            if (sheetUrl && Object.keys(columnMapping).length > 0) {
+                if (!columnMapping.name || !columnMapping.phone || !columnMapping.email) {
+                    alert('יש למפות את השדות החובה: שם, טלפון, אימייל');
+                    return;
+                }
+            }
+
             const data = {
                 customer_id: customerId,
                 campaign_name: document.getElementById('createCampaignName').value,
-                sheet_url: document.getElementById('createSheetUrl').value,
-                active: document.getElementById('createActive').value === 'true'
+                sheet_url: sheetUrl,
+                active: document.getElementById('createActive').value === 'true',
+                column_mapping: columnMapping
             };
 
             try {
@@ -366,11 +589,19 @@
             document.getElementById('editSheetUrl').value = campaign.sheet_url || '';
             document.getElementById('editActive').value = campaign.active ? 'true' : 'false';
 
+            // If campaign has column mapping, show it
+            if (campaign.column_mapping && Object.keys(campaign.column_mapping).length > 0) {
+                // We need to load columns first, then set values
+                // For now, just hide the mapping section
+                document.getElementById('editColumnMapping').style.display = 'none';
+            }
+
             document.getElementById('editModal').style.display = 'block';
         }
 
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editColumnMapping').style.display = 'none';
         }
 
         function showSyncResult(result, isSuccess) {
@@ -429,11 +660,23 @@
                 ? USER_CUSTOMER_ID
                 : parseInt(document.getElementById('editCustomerId').value);
 
+            const sheetUrl = document.getElementById('editSheetUrl').value;
+            const columnMapping = sheetUrl ? getColumnMapping('edit') : {};
+
+            // Validate required fields if sheet_url is provided and mapping exists
+            if (sheetUrl && Object.keys(columnMapping).length > 0) {
+                if (!columnMapping.name || !columnMapping.phone || !columnMapping.email) {
+                    alert('יש למפות את השדות החובה: שם, טלפון, אימייל');
+                    return;
+                }
+            }
+
             const data = {
                 customer_id: customerId,
                 campaign_name: document.getElementById('editCampaignName').value,
-                sheet_url: document.getElementById('editSheetUrl').value,
-                active: document.getElementById('editActive').value === 'true'
+                sheet_url: sheetUrl,
+                active: document.getElementById('editActive').value === 'true',
+                column_mapping: columnMapping
             };
 
             try {

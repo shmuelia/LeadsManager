@@ -3376,15 +3376,16 @@ def create_campaign():
 
         # Insert new campaign
         cur.execute("""
-            INSERT INTO campaigns (customer_id, campaign_name, campaign_type, sheet_id, sheet_url, active)
-            VALUES (%s, %s, 'google_sheets', %s, %s, %s)
+            INSERT INTO campaigns (customer_id, campaign_name, campaign_type, sheet_id, sheet_url, active, column_mapping)
+            VALUES (%s, %s, 'google_sheets', %s, %s, %s, %s)
             RETURNING id, campaign_name, customer_id
         """, (
             data['customer_id'],
             data['campaign_name'],
             data.get('sheet_id'),
             data.get('sheet_url'),
-            data.get('active', True)
+            data.get('active', True),
+            psycopg2.extras.Json(data.get('column_mapping', {}))
         ))
 
         new_campaign = cur.fetchone()
@@ -3550,6 +3551,10 @@ def update_campaign(campaign_id):
             update_fields.append("active = %s")
             params.append(data['active'])
 
+        if 'column_mapping' in data:
+            update_fields.append("column_mapping = %s")
+            params.append(psycopg2.extras.Json(data['column_mapping']))
+
         if not update_fields:
             return jsonify({'error': 'No fields to update'}), 400
 
@@ -3603,6 +3608,7 @@ def sync_campaign(campaign_id):
             return jsonify({'error': 'Campaign not found or no sheet URL'}), 404
 
         sheet_url = campaign['sheet_url']
+        column_mapping = campaign.get('column_mapping') or {}
         sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
         if not sheet_id_match:
             return jsonify({'error': 'Invalid Sheet URL'}), 400
@@ -3643,22 +3649,34 @@ def sync_campaign(campaign_id):
                 continue
             
             try:
-                # Extract fields with comprehensive Hebrew/English support
-                name = (row_data.get('שם מלא') or row_data.get('שם') or
-                       row_data.get('name') or row_data.get('Name') or '')
-                phone = (row_data.get('מס פלאפון') or row_data.get('טלפון') or
-                        row_data.get('מספר טלפון') or row_data.get('phone') or
-                        row_data.get('Phone Number') or row_data.get('טלפון:') or '')
-                email = (row_data.get('מייל') or row_data.get('אימייל') or
-                        row_data.get('דוא"ל') or row_data.get('email') or
-                        row_data.get('Email') or row_data.get('אימייל:') or '')
+                # Extract fields using column mapping if available, otherwise use fallback
+                if column_mapping and column_mapping.get('name'):
+                    # Use configured column mapping
+                    name = row_data.get(column_mapping['name'], '')
+                    phone = row_data.get(column_mapping.get('phone', ''), '')
+                    email = row_data.get(column_mapping.get('email', ''), '')
+                    campaign_name_from_row = row_data.get(column_mapping.get('campaign', ''), '')
+                    date_from_row = row_data.get(column_mapping.get('date', ''), '')
+                else:
+                    # Fallback: Comprehensive Hebrew/English support
+                    name = (row_data.get('שם מלא') or row_data.get('שם') or
+                           row_data.get('name') or row_data.get('Name') or '')
+                    phone = (row_data.get('מס פלאפון') or row_data.get('טלפון') or
+                            row_data.get('מספר טלפון') or row_data.get('phone') or
+                            row_data.get('Phone Number') or row_data.get('טלפון:') or '')
+                    email = (row_data.get('מייל') or row_data.get('אימייל') or
+                            row_data.get('דוא"ל') or row_data.get('email') or
+                            row_data.get('Email') or row_data.get('אימייל:') or '')
+                    campaign_name_from_row = ''
+                    date_from_row = ''
 
                 # Clean phone number
                 if phone:
                     phone = str(phone).strip().replace('-', '').replace(' ', '')
 
-                # Skip if no valid data
-                if not (name or phone or email):
+                # Skip if missing required fields
+                if not name or not phone or not email:
+                    logger.warning(f"Row {current_row} skipped - missing required fields: name={bool(name)}, phone={bool(phone)}, email={bool(email)}")
                     continue
                 
                 cur.execute("SELECT id FROM leads WHERE customer_id = %s AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s)) LIMIT 1",
@@ -3667,11 +3685,16 @@ def sync_campaign(campaign_id):
                     duplicates += 1
                     continue
                 
-                raw_data = {'source': 'google_sheets', 'sheet_id': campaign['sheet_id'], 'campaign_name': campaign['campaign_name'], 'row_number': current_row}
+                # Use campaign name from row if available, otherwise use campaign name
+                final_campaign_name = campaign_name_from_row if (column_mapping and campaign_name_from_row) else campaign['campaign_name']
+
+                raw_data = {'source': 'google_sheets', 'sheet_id': campaign['sheet_id'], 'campaign_name': final_campaign_name, 'row_number': current_row}
+                if date_from_row:
+                    raw_data['date'] = date_from_row
                 raw_data.update({k: v for k, v in row_data.items() if v})
-                
+
                 cur.execute("INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP) RETURNING id",
-                           (campaign['customer_id'], name or 'Unknown', email or None, phone or None, campaign['campaign_name'], json.dumps(raw_data)))
+                           (campaign['customer_id'], name, email, phone, final_campaign_name, json.dumps(raw_data)))
                 lead_id = cur.fetchone()['id']
                 cur.execute("INSERT INTO lead_activities (lead_id, user_name, activity_type, description) VALUES (%s, %s, 'lead_received', %s)",
                            (lead_id, 'system', f"Lead imported from Google Sheet: {campaign['campaign_name']}, Row {current_row}"))
@@ -3787,6 +3810,53 @@ def preview_sheet():
 
     except Exception as e:
         logger.error(f"Preview error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/campaigns/fetch-columns', methods=['POST'])
+@campaign_manager_required
+def fetch_sheet_columns():
+    """Fetch column headers from Google Sheet for mapping"""
+    import requests
+    import csv
+    from io import StringIO
+
+    try:
+        data = request.get_json()
+        sheet_url = data.get('sheet_url')
+
+        if not sheet_url:
+            return jsonify({'error': 'Sheet URL required'}), 400
+
+        # Extract sheet ID and GID
+        sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+        if not sheet_id_match:
+            return jsonify({'error': 'Invalid Sheet URL'}), 400
+        spreadsheet_id = sheet_id_match.group(1)
+
+        gid_match = re.search(r'gid=(\d+)', sheet_url)
+        gid = gid_match.group(1) if gid_match else '0'
+
+        # Fetch CSV
+        csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+        logger.info(f"Fetching columns from: {csv_url}")
+        response = requests.get(csv_url, timeout=30)
+        response.raise_for_status()
+
+        # Parse CSV headers only
+        reader = csv.DictReader(StringIO(response.text))
+        columns = list(reader.fieldnames) if reader.fieldnames else []
+
+        logger.info(f"Found {len(columns)} columns: {columns}")
+
+        return jsonify({
+            'success': True,
+            'columns': columns,
+            'sheet_id': spreadsheet_id,
+            'gid': gid
+        })
+
+    except Exception as e:
+        logger.error(f"Fetch columns error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/leads/create', methods=['POST'])
