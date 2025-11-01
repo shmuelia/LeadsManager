@@ -760,6 +760,9 @@
         <button class="filter-chip active" onclick="filterLeadsByType('open')" data-filter="open">
             פתוחים
         </button>
+        <button class="filter-chip" onclick="manualRefresh()" style="background: #3b82f6; color: white; border-color: #3b82f6;">
+            🔄 רענן
+        </button>
     </div>
 
     <!-- Control Panel (Filters) -->
@@ -2001,7 +2004,13 @@ class UnifiedLeadManagerClass {
         await this.loadLeads();
         this.showToast('הרשימה עודכנה', 'success');
     }
-    
+
+    async manualRefresh() {
+        this.showToast('מרענן...', 'info');
+        await this.loadLeads();
+        this.showToast('הרשימה עודכנה בהצלחה', 'success');
+    }
+
     async refreshAndApplyFilters() {
         // Refresh leads from server and then apply filters
         await this.loadLeads();
@@ -2098,6 +2107,15 @@ function filterLeadsByType(type) {
     } else {
         console.log('UnifiedLeadManager not ready yet, retrying in 100ms...');
         setTimeout(() => filterLeadsByType(type), 100);
+    }
+}
+
+function manualRefresh() {
+    if (window.UnifiedLeadManager) {
+        window.UnifiedLeadManager.manualRefresh();
+    } else {
+        console.log('UnifiedLeadManager not ready yet, retrying in 100ms...');
+        setTimeout(() => manualRefresh(), 100);
     }
 }
 
