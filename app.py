@@ -3842,6 +3842,9 @@ def fetch_sheet_columns():
         response = requests.get(csv_url, timeout=30)
         response.raise_for_status()
 
+        # Set encoding to UTF-8 for Hebrew support
+        response.encoding = 'utf-8'
+
         # Parse CSV headers only
         reader = csv.DictReader(StringIO(response.text))
         columns = list(reader.fieldnames) if reader.fieldnames else []
