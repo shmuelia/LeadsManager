@@ -1372,6 +1372,14 @@ class UnifiedLeadManagerClass {
         } catch (e) {
             console.error('Error parsing raw data:', e);
         }
+
+        // Parse custom data for campaign-specific fields
+        let customData = {};
+        try {
+            customData = lead.custom_data ? (typeof lead.custom_data === 'string' ? JSON.parse(lead.custom_data) : lead.custom_data) : {};
+        } catch (e) {
+            console.error('Error parsing custom data:', e);
+        }
         
         // Extract Facebook lead form info
         const leadFormId = rawData['מזהה טופס לידים'] || rawData.lead_form_id || rawData.form_id;
@@ -1441,6 +1449,21 @@ class UnifiedLeadManagerClass {
                     </div>
                 </div>
             </div>
+
+            <!-- Custom Fields Section -->
+            ${Object.keys(customData).length > 0 ? `
+                <div style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #ec4899; box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);">
+                    <h3 style="color: #831843; margin: 0 0 20px 0; font-size: 1.4em;">✨ שדות נוספים</h3>
+                    <div style="display: grid; gap: 16px;">
+                        ${Object.entries(customData).map(([key, value]) => `
+                            <div style="background: white; padding: 15px; border-radius: 8px; border-right: 4px solid #ec4899;">
+                                <div style="font-weight: bold; color: #831843; margin-bottom: 8px;">${key}</div>
+                                <div style="color: #374151; word-break: break-word;">${value || 'לא צוין'}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
 
             <!-- Enhanced Zapier Data Display -->
             ${Object.keys(rawData).length > 0 ? `

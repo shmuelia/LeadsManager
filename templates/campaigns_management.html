@@ -153,6 +153,17 @@
                             <option value="">בחר עמודה...</option>
                         </select>
                     </div>
+
+                    <!-- Additional Custom Fields -->
+                    <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                        <label style="font-weight: bold; color: #1f2937;">➕ שדות נוספים לשמירה</label>
+                        <small style="color: #6b7280; display: block; margin-bottom: 10px;">
+                            בחר עמודות נוספות מהגיליון שתרצה לשמור (למשל: "מה היה בשיחה", "הערות", וכו')
+                        </small>
+                        <div id="createCustomFieldsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 10px; border-radius: 4px; background: #f9fafb;">
+                            <em style="color: #9ca3af;">טען עמודות מהגיליון תחילה</em>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -334,6 +345,17 @@
                             <option value="">בחר עמודה...</option>
                         </select>
                     </div>
+
+                    <!-- Additional Custom Fields -->
+                    <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                        <label style="font-weight: bold; color: #1f2937;">➕ שדות נוספים לשמירה</label>
+                        <small style="color: #6b7280; display: block; margin-bottom: 10px;">
+                            בחר עמודות נוספות מהגיליון שתרצה לשמור (למשל: "מה היה בשיחה", "הערות", וכו')
+                        </small>
+                        <div id="editCustomFieldsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 10px; border-radius: 4px; background: #f9fafb;">
+                            <em style="color: #9ca3af;">טען עמודות מהגיליון תחילה</em>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -490,6 +512,43 @@
 
             // Auto-select common column names
             autoSelectColumns(prefix, columns);
+
+            // Populate custom fields checkboxes
+            populateCustomFields(prefix, columns);
+        }
+
+        function populateCustomFields(prefix, columns) {
+            const container = document.getElementById(`${prefix}CustomFieldsList`);
+
+            // Get the mapped columns so we can exclude them
+            const getMappedColumns = () => {
+                const mapped = [];
+                ['Name', 'Phone', 'Email', 'Date', 'Campaign'].forEach(field => {
+                    const val = document.getElementById(`${prefix}Map${field}`).value;
+                    if (val) mapped.push(val);
+                });
+                return mapped;
+            };
+
+            // Wait a bit for auto-selection to complete, then filter
+            setTimeout(() => {
+                const mappedCols = getMappedColumns();
+                const availableColumns = columns.filter(col => !mappedCols.includes(col));
+
+                if (availableColumns.length === 0) {
+                    container.innerHTML = '<em style="color: #9ca3af;">כל העמודות כבר ממופות לשדות קיימים</em>';
+                    return;
+                }
+
+                container.innerHTML = availableColumns.map(col => `
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; padding: 5px; border-radius: 4px; hover:background: #f3f4f6;">
+                            <input type="checkbox" class="${prefix}CustomField" value="${col}" style="margin-left: 8px;">
+                            <span style="color: #374151;">${col}</span>
+                        </label>
+                    </div>
+                `).join('');
+            }, 100);
         }
 
         function autoSelectColumns(prefix, columns) {
@@ -529,6 +588,13 @@
             if (email) mapping.email = email;
             if (date) mapping.date = date;
             if (campaign) mapping.campaign = campaign;
+
+            // Get selected custom fields
+            const customFieldCheckboxes = document.querySelectorAll(`.${prefix}CustomField:checked`);
+            const customFields = Array.from(customFieldCheckboxes).map(cb => cb.value);
+            if (customFields.length > 0) {
+                mapping.custom_fields = customFields;
+            }
 
             return mapping;
         }

@@ -3650,6 +3650,7 @@ def sync_campaign(campaign_id):
             
             try:
                 # Extract fields using column mapping if available, otherwise use fallback
+                custom_data = {}
                 if column_mapping and column_mapping.get('name'):
                     # Use configured column mapping
                     name = row_data.get(column_mapping['name'], '')
@@ -3657,6 +3658,13 @@ def sync_campaign(campaign_id):
                     email = row_data.get(column_mapping.get('email', ''), '')
                     campaign_name_from_row = row_data.get(column_mapping.get('campaign', ''), '')
                     date_from_row = row_data.get(column_mapping.get('date', ''), '')
+
+                    # Extract custom fields if configured
+                    if 'custom_fields' in column_mapping:
+                        for field_name in column_mapping['custom_fields']:
+                            field_value = row_data.get(field_name, '')
+                            if field_value:
+                                custom_data[field_name] = field_value
                 else:
                     # Fallback: Comprehensive Hebrew/English support
                     name = (row_data.get('שם מלא') or row_data.get('שם') or
@@ -3693,8 +3701,8 @@ def sync_campaign(campaign_id):
                     raw_data['date'] = date_from_row
                 raw_data.update({k: v for k, v in row_data.items() if v})
 
-                cur.execute("INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, CURRENT_TIMESTAMP) RETURNING id",
-                           (campaign['customer_id'], name, email, phone, final_campaign_name, json.dumps(raw_data)))
+                cur.execute("INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, custom_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, %s, CURRENT_TIMESTAMP) RETURNING id",
+                           (campaign['customer_id'], name, email, phone, final_campaign_name, json.dumps(raw_data), json.dumps(custom_data)))
                 lead_id = cur.fetchone()['id']
                 cur.execute("INSERT INTO lead_activities (lead_id, user_name, activity_type, description) VALUES (%s, %s, 'lead_received', %s)",
                            (lead_id, 'system', f"Lead imported from Google Sheet: {campaign['campaign_name']}, Row {current_row}"))
