@@ -1466,42 +1466,58 @@ class UnifiedLeadManagerClass {
             ` : ''}
 
             <!-- Enhanced Zapier Data Display -->
-            ${Object.keys(rawData).length > 0 ? `
-                <!-- Campaign & Ad Information -->
-                <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #0ea5e9; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);">
-                    <h3 style="color: #0c4a6e; margin: 0 0 20px 0; font-size: 1.4em;">📊 פרטי קמפיין ומודעות</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <div style="margin-bottom: 12px;"><strong>מזהה מודעה:</strong> ${rawData['Ad Id'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>שם המודעה:</strong> ${rawData['Ad Name'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>מזהה קבוצת מודעות:</strong> ${rawData['Adset Id'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>שם קבוצת מודעות:</strong> ${rawData['Adset Name'] || 'לא צוין'}</div>
-                        </div>
-                        <div>
-                            <div style="margin-bottom: 12px;"><strong>מזהה קמפיין:</strong> ${rawData['Campaign Id'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>שם קמפיין:</strong> ${rawData['Campaign Name'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>זמן יצירה:</strong> ${rawData['Created Time'] ? new Date(rawData['Created Time']).toLocaleString('he-IL') : 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>פלטפורמה:</strong> ${rawData['Platform'] || 'לא צוין'}</div>
-                        </div>
-                    </div>
-                </div>
+            ${(() => {
+                // Check if there's any campaign/ad data
+                const hasCampaignData = rawData['Ad Id'] || rawData['Ad Name'] || rawData['Adset Id'] ||
+                                       rawData['Adset Name'] || rawData['Campaign Id'] || rawData['Campaign Name'] ||
+                                       rawData['Created Time'] || rawData['Platform'];
 
-                <!-- Form & Page Information -->
-                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #22c55e; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);">
-                    <h3 style="color: #166534; margin: 0 0 20px 0; font-size: 1.4em;">📋 פרטי טופס ועמוד</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <div style="margin-bottom: 12px;"><strong>מזהה טופס:</strong> ${rawData['Form Id'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>שם הטופס:</strong> ${rawData['Form Name'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>מזהה ליד:</strong> ${rawData['Lead Id'] || 'לא צוין'}</div>
+                // Check if there's any form/page data
+                const hasFormData = rawData['Form Id'] || rawData['Form Name'] || rawData['Lead Id'] ||
+                                   rawData['Page Id'] || rawData['Page Name'] || rawData['Custom Disclaimer Responses'];
+
+                return `
+                    ${hasCampaignData ? `
+                        <!-- Campaign & Ad Information -->
+                        <div style="background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #0ea5e9; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);">
+                            <h3 style="color: #0c4a6e; margin: 0 0 20px 0; font-size: 1.4em;">📊 פרטי קמפיין ומודעות</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <div>
+                                    <div style="margin-bottom: 12px;"><strong>מזהה מודעה:</strong> ${rawData['Ad Id'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>שם המודעה:</strong> ${rawData['Ad Name'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>מזהה קבוצת מודעות:</strong> ${rawData['Adset Id'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>שם קבוצת מודעות:</strong> ${rawData['Adset Name'] || 'לא צוין'}</div>
+                                </div>
+                                <div>
+                                    <div style="margin-bottom: 12px;"><strong>מזהה קמפיין:</strong> ${rawData['Campaign Id'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>שם קמפיין:</strong> ${rawData['Campaign Name'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>זמן יצירה:</strong> ${rawData['Created Time'] ? new Date(rawData['Created Time']).toLocaleString('he-IL') : 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>פלטפורמה:</strong> ${rawData['Platform'] || 'לא צוין'}</div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="margin-bottom: 12px;"><strong>מזהה עמוד:</strong> ${rawData['Page Id'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>שם עמוד:</strong> ${rawData['Page Name'] || 'לא צוין'}</div>
-                            <div style="margin-bottom: 12px;"><strong>תגובות הצהרת סירוב:</strong> ${rawData['Custom Disclaimer Responses'] || 'לא צוין'}</div>
+                    ` : ''}
+
+                    ${hasFormData ? `
+                        <!-- Form & Page Information -->
+                        <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #22c55e; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);">
+                            <h3 style="color: #166534; margin: 0 0 20px 0; font-size: 1.4em;">📋 פרטי טופס ועמוד</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <div>
+                                    <div style="margin-bottom: 12px;"><strong>מזהה טופס:</strong> ${rawData['Form Id'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>שם הטופס:</strong> ${rawData['Form Name'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>מזהה ליד:</strong> ${rawData['Lead Id'] || 'לא צוין'}</div>
+                                </div>
+                                <div>
+                                    <div style="margin-bottom: 12px;"><strong>מזהה עמוד:</strong> ${rawData['Page Id'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>שם עמוד:</strong> ${rawData['Page Name'] || 'לא צוין'}</div>
+                                    <div style="margin-bottom: 12px;"><strong>תגובות הצהרת סירוב:</strong> ${rawData['Custom Disclaimer Responses'] || 'לא צוין'}</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    ` : ''}
+                `;
+            })()}
 
                 <!-- Form Responses -->
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);">
