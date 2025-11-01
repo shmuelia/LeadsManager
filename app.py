@@ -3887,7 +3887,7 @@ def duplicate_manager():
 @admin_required
 def scan_duplicates():
     """Scan for duplicate leads based on phone or email"""
-    conn = get_db()
+    conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
@@ -3977,7 +3977,7 @@ def scan_duplicates():
 @admin_required
 def remove_duplicates():
     """Remove duplicate leads, keeping oldest and merging activities"""
-    conn = get_db()
+    conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
