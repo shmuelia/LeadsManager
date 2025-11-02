@@ -65,6 +65,7 @@ def sync_campaign(campaign):
 
         sheet_url = campaign_full['sheet_url']
         column_mapping = campaign_full.get('column_mapping', {})
+        last_synced_row = campaign_full.get('last_synced_row', 0) or 0
 
         # Convert sheet URL to CSV export URL
         if '/edit' in sheet_url:
@@ -82,11 +83,21 @@ def sync_campaign(campaign):
         new_leads = 0
         duplicates = 0
         errors = 0
+        current_row = 0
+        max_row_processed = last_synced_row
 
-        for row in reader:
+        for row_data in reader:
+            current_row += 1
+
+            # Skip rows we've already processed
+            if current_row <= last_synced_row:
+                continue
+
+            # Skip empty rows
+            if not any(row_data.values()):
+                continue
+
             try:
-                row_data = dict(row)
-
                 # Extract fields using column mapping
                 custom_data = {}
                 if column_mapping and column_mapping.get('name'):
@@ -94,6 +105,7 @@ def sync_campaign(campaign):
                     phone = row_data.get(column_mapping.get('phone', ''), '').strip()
                     email = row_data.get(column_mapping.get('email', ''), '').strip()
                     campaign_name_from_row = row_data.get(column_mapping.get('campaign', ''), '').strip()
+                    date_from_row = row_data.get(column_mapping.get('date', ''), '').strip()
 
                     # Extract custom fields
                     if 'custom_fields' in column_mapping:
@@ -104,35 +116,43 @@ def sync_campaign(campaign):
                 else:
                     # No column mapping - skip this campaign
                     logger.warning(f"Campaign {campaign['campaign_name']} has no column mapping configured")
-                    continue
+                    break
 
-                # Validate required fields
+                # Clean phone number - remove dashes and spaces
+                if phone:
+                    phone = str(phone).strip().replace('-', '').replace(' ', '')
+
+                # Validate required fields - need name AND (phone OR email)
                 if not name or (not phone and not email):
                     continue
 
                 # Determine final campaign name
                 final_campaign_name = campaign_name_from_row if campaign_name_from_row else campaign_full['campaign_name']
 
-                # Check for duplicates
-                check_query = "SELECT id FROM leads WHERE customer_id = %s AND ("
-                check_params = [campaign_full['customer_id']]
-                conditions = []
+                # Check for duplicates using same logic as app.py
+                cur.execute("""
+                    SELECT id FROM leads
+                    WHERE customer_id = %s
+                    AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s))
+                    LIMIT 1
+                """, (campaign_full['customer_id'], phone or '', email or ''))
 
-                if phone:
-                    conditions.append("phone = %s")
-                    check_params.append(phone)
-                if email:
-                    conditions.append("email = %s")
-                    check_params.append(email)
-
-                check_query += " OR ".join(conditions) + ")"
-
-                cur.execute(check_query, check_params)
                 existing = cur.fetchone()
 
                 if existing:
                     duplicates += 1
                     continue
+
+                # Build raw_data
+                raw_data = {
+                    'source': 'google_sheets',
+                    'sheet_id': campaign_full.get('sheet_id'),
+                    'campaign_name': final_campaign_name,
+                    'row_number': current_row
+                }
+                if date_from_row:
+                    raw_data['date'] = date_from_row
+                raw_data.update({k: v for k, v in row_data.items() if v})
 
                 # Insert new lead
                 cur.execute("""
@@ -146,22 +166,31 @@ def sync_campaign(campaign):
                     email if email else None,
                     phone if phone else None,
                     final_campaign_name,
-                    json.dumps(row_data),
+                    json.dumps(raw_data),
                     json.dumps(custom_data)
                 ))
 
                 new_leads += 1
+                max_row_processed = current_row
 
             except Exception as e:
                 errors += 1
-                logger.error(f"Error processing row in campaign {campaign['campaign_name']}: {e}")
+                logger.error(f"Error processing row {current_row} in campaign {campaign['campaign_name']}: {e}")
                 continue
+
+        # Update last_synced_row
+        if max_row_processed > last_synced_row:
+            cur.execute("""
+                UPDATE campaigns
+                SET last_synced_row = %s, last_sync_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (max_row_processed, campaign['id']))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        logger.info(f"Campaign {campaign['campaign_name']}: {new_leads} new, {duplicates} duplicates, {errors} errors")
+        logger.info(f"Campaign {campaign['campaign_name']}: {new_leads} new, {duplicates} duplicates, {errors} errors (rows {last_synced_row+1}-{max_row_processed})")
 
         return {
             'success': True,
