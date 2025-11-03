@@ -65,7 +65,6 @@ def sync_campaign(campaign):
 
         sheet_url = campaign_full['sheet_url']
         column_mapping = campaign_full.get('column_mapping', {})
-        last_synced_row = campaign_full.get('last_synced_row', 0) or 0
 
         # Convert sheet URL to CSV export URL
         if '/edit' in sheet_url:
@@ -84,14 +83,9 @@ def sync_campaign(campaign):
         duplicates = 0
         errors = 0
         current_row = 0
-        max_row_processed = last_synced_row
 
         for row_data in reader:
             current_row += 1
-
-            # Skip rows we've already processed
-            if current_row <= last_synced_row:
-                continue
 
             # Skip empty rows
             if not any(row_data.values()):
@@ -188,26 +182,24 @@ def sync_campaign(campaign):
                 ))
 
                 new_leads += 1
-                max_row_processed = current_row
 
             except Exception as e:
                 errors += 1
                 logger.error(f"Error processing row {current_row} in campaign {campaign['campaign_name']}: {e}")
                 continue
 
-        # Update last_synced_row
-        if max_row_processed > last_synced_row:
-            cur.execute("""
-                UPDATE campaigns
-                SET last_synced_row = %s, last_sync_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-            """, (max_row_processed, campaign['id']))
+        # Update last sync timestamp
+        cur.execute("""
+            UPDATE campaigns
+            SET last_sync_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (campaign['id'],))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        logger.info(f"Campaign {campaign['campaign_name']}: {new_leads} new, {duplicates} duplicates, {errors} errors (rows {last_synced_row+1}-{max_row_processed})")
+        logger.info(f"Campaign {campaign['campaign_name']}: {new_leads} new, {duplicates} duplicates, {errors} errors (total {current_row} rows checked)")
 
         return {
             'success': True,
