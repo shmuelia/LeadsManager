@@ -507,18 +507,30 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Mobile-first: Leads at top, filters at bottom */
+    /* Filters at top, leads at bottom */
     .lead-manager-container {
         display: flex;
         flex-direction: column;
     }
-    
-    .leads-display {
-        order: 1; /* Leads always first */
+
+    .customer-selector {
+        order: 1; /* Customer selector first */
     }
-    
+
+    .filter-chips {
+        order: 2; /* Quick filter chips second */
+    }
+
+    .action-buttons-bar {
+        order: 3; /* Action buttons third */
+    }
+
     .control-panel {
-        order: 2; /* Filters always second */
+        order: 4; /* Detailed filters fourth */
+    }
+
+    .leads-display {
+        order: 5; /* Leads table last */
     }
     
     /* Mobile Design */
@@ -733,7 +745,7 @@
     </div>
 
     <!-- ===== ACTION BUTTONS BAR ===== -->
-    <div style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 15px; flex-wrap: wrap;">
+    <div class="action-buttons-bar" style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 15px; flex-wrap: wrap;">
         <button class="action-btn" onclick="manualRefresh()" style="background: #3b82f6; color: white;"
                 title="רענן את רשימת הלידים">
             🔄 רענן
