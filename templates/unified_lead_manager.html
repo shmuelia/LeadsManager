@@ -1134,10 +1134,13 @@ class UnifiedLeadManagerClass {
                 // Find the user by ID
                 const selectedUser = this.users.find(u => u.id == assignedToFilter);
                 if (selectedUser) {
-                    // Match by username or user_id
-                    if (lead.assigned_to !== selectedUser.username && lead.user_id != assignedToFilter) {
+                    // Match by username (assigned_to stores username, not user_id)
+                    if (lead.assigned_to !== selectedUser.username) {
                         return false;
                     }
+                } else {
+                    // User not found, don't show this lead
+                    return false;
                 }
             }
             
