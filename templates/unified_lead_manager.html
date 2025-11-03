@@ -517,20 +517,16 @@
         order: 1; /* Customer selector first */
     }
 
-    .filter-chips {
-        order: 2; /* Quick filter chips second */
-    }
-
     .action-buttons-bar {
-        order: 3; /* Action buttons third */
+        order: 2; /* Action buttons second */
     }
 
     .control-panel {
-        order: 4; /* Detailed filters fourth */
+        order: 3; /* Detailed filters third */
     }
 
     .leads-display {
-        order: 5; /* Leads table last */
+        order: 4; /* Leads table last */
     }
     
     /* Mobile Design */
@@ -707,41 +703,6 @@
                 title="החלף בין לקוחות שונים לניהול הלידים שלהם">
             <option value="">בחר לקוח</option>
         </select>
-    </div>
-
-    <!-- Filter Chips (Quick Filters) -->
-    <div class="filter-chips" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-        <!-- ===== QUICK STATUS FILTERS ===== -->
-        <button class="filter-chip" onclick="filterLeadsByType('all')" data-filter="all">
-            כל הלידים
-        </button>
-        <button class="filter-chip active" onclick="filterLeadsByType('open')" data-filter="open">
-            פתוחים
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('unassigned')" data-filter="unassigned">
-            לא מוקצים
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('new')" data-filter="new">
-            חדשים
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('contacted')" data-filter="contacted">
-            נוצר קשר
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('qualified')" data-filter="qualified">
-            מוכשרים
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('interested')" data-filter="interested">
-            מתעניינים
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('hired')" data-filter="hired">
-            התקבלו
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('rejected')" data-filter="rejected">
-            נדחו
-        </button>
-        <button class="filter-chip" onclick="filterLeadsByType('closed')" data-filter="closed">
-            סגורים
-        </button>
     </div>
 
     <!-- ===== ACTION BUTTONS BAR ===== -->
