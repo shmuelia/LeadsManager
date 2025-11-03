@@ -706,7 +706,10 @@
     </div>
 
     <!-- ===== ACTION BUTTONS BAR ===== -->
-    <div class="action-buttons-bar" style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 15px; flex-wrap: wrap;">
+    <div class="action-buttons-bar" style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 15px; flex-wrap: wrap; align-items: center;">
+        <div id="leadsCounter" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 16px;">
+            📊 <span id="leadsCountNumber">0</span> לידים
+        </div>
         <button class="action-btn" onclick="manualRefresh()" style="background: #3b82f6; color: white;"
                 title="רענן את רשימת הלידים">
             🔄 רענן
@@ -1149,22 +1152,32 @@ class UnifiedLeadManagerClass {
         
         console.log('🔍 DEBUGGING: Filtered leads count:', this.filteredLeads.length);
         console.log('🔍 DEBUGGING: Sample filtered lead:', this.filteredLeads[0] || 'No filtered leads');
-        
+
+        // Update the counter
+        this.updateLeadsCounter();
+
         this.renderLeads();
     }
-    
+
+    updateLeadsCounter() {
+        const counterElement = document.getElementById('leadsCountNumber');
+        if (counterElement) {
+            counterElement.textContent = this.filteredLeads.length;
+        }
+    }
+
     renderLeads() {
         const tbody = document.getElementById('leadsTableBody');
         const cardsContainer = document.getElementById('leadCardsContainer');
         const emptyState = document.getElementById('emptyState');
-        
+
         if (this.filteredLeads.length === 0) {
             tbody.innerHTML = '';
             cardsContainer.innerHTML = '';
             emptyState.style.display = 'block';
             return;
         }
-        
+
         emptyState.style.display = 'none';
         
         // Render table for desktop
