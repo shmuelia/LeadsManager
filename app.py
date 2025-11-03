@@ -3891,12 +3891,15 @@ def scan_duplicates():
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Find duplicates by phone
+        # Find duplicates by phone (normalized - without spaces/dashes)
         cur.execute("""
-            SELECT phone, array_agg(id ORDER BY received_at ASC) as lead_ids, COUNT(*) as count
+            SELECT
+                REPLACE(REPLACE(phone, '-', ''), ' ', '') as normalized_phone,
+                array_agg(id ORDER BY received_at ASC) as lead_ids,
+                COUNT(*) as count
             FROM leads
             WHERE phone IS NOT NULL AND phone != ''
-            GROUP BY phone, customer_id
+            GROUP BY REPLACE(REPLACE(phone, '-', ''), ' ', ''), customer_id
             HAVING COUNT(*) > 1
         """)
         phone_duplicates = cur.fetchall()
@@ -3911,11 +3914,26 @@ def scan_duplicates():
         """)
         email_duplicates = cur.fetchall()
 
+        # Find duplicates by name + partial phone (last 7 digits)
+        cur.execute("""
+            SELECT
+                name,
+                RIGHT(REPLACE(REPLACE(phone, '-', ''), ' ', ''), 7) as phone_last7,
+                array_agg(id ORDER BY received_at ASC) as lead_ids,
+                COUNT(*) as count
+            FROM leads
+            WHERE name IS NOT NULL AND name != ''
+            AND phone IS NOT NULL AND phone != ''
+            GROUP BY name, RIGHT(REPLACE(REPLACE(phone, '-', ''), ' ', ''), 7), customer_id
+            HAVING COUNT(*) > 1
+        """)
+        name_phone_duplicates = cur.fetchall()
+
         # Build duplicate groups
         duplicate_groups = []
         processed_leads = set()
 
-        # Process phone duplicates
+        # Process phone duplicates (normalized)
         for dup in phone_duplicates:
             lead_ids = dup['lead_ids']
             if lead_ids[0] not in processed_leads:
@@ -3929,7 +3947,27 @@ def scan_duplicates():
 
                 duplicate_groups.append({
                     'reason': 'phone',
-                    'match_value': dup['phone'],
+                    'match_value': dup['normalized_phone'],
+                    'leads': [dict(lead) for lead in leads]
+                })
+                processed_leads.update(lead_ids)
+
+        # Process name + phone duplicates (catch cases where phone format differs)
+        for dup in name_phone_duplicates:
+            lead_ids = dup['lead_ids']
+            # Only add if not already processed by phone duplicates
+            if lead_ids[0] not in processed_leads:
+                cur.execute("""
+                    SELECT id, name, phone, email, campaign_name, status, received_at, customer_id
+                    FROM leads
+                    WHERE id = ANY(%s)
+                    ORDER BY received_at ASC
+                """, (lead_ids,))
+                leads = cur.fetchall()
+
+                duplicate_groups.append({
+                    'reason': 'name_phone',
+                    'match_value': f"{dup['name']} (טלפון מסתיים ב-{dup['phone_last7']})",
                     'leads': [dict(lead) for lead in leads]
                 })
                 processed_leads.update(lead_ids)

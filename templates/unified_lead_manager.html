@@ -812,6 +812,14 @@
                 <option value="mine">שלי</option>
             </select>
         </div>
+
+        <div class="filter-group">
+            <label class="filter-label">👥 מוקצה ל</label>
+            <select id="assignedToFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
+                    title="סנן לידים לפי משתמש ספציפי שהם מוקצים אליו">
+                <option value="">כל המשתמשים</option>
+            </select>
+        </div>
         
         <div class="filter-group">
             <label class="filter-label">📅 תקופה</label>
@@ -1006,7 +1014,21 @@ class UnifiedLeadManagerClass {
                 option.textContent = campaign.substring(0, 30) + (campaign.length > 30 ? '...' : '');
                 campaignFilter.appendChild(option);
             });
-            
+
+            // Update assigned to filter with users
+            const assignedToFilter = document.getElementById('assignedToFilter');
+            assignedToFilter.innerHTML = '<option value="">כל המשתמשים</option>';
+            if (this.users && this.users.length > 0) {
+                this.users
+                    .sort((a, b) => (a.full_name || a.username).localeCompare(b.full_name || b.username))
+                    .forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.full_name || user.username;
+                        assignedToFilter.appendChild(option);
+                    });
+            }
+
             this.applyFilters();
             
         } catch (error) {
@@ -1068,6 +1090,7 @@ class UnifiedLeadManagerClass {
         const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
         const assignmentFilter = document.getElementById('assignmentFilter').value;
+        const assignedToFilter = document.getElementById('assignedToFilter').value;
         const dateFilter = document.getElementById('dateFilter').value;
         const campaignFilter = document.getElementById('campaignFilter').value;
         
@@ -1102,6 +1125,18 @@ class UnifiedLeadManagerClass {
                 if (assignmentFilter === 'unassigned' && lead.assigned_to) return false;
                 if (assignmentFilter === 'assigned' && !lead.assigned_to) return false;
                 if (assignmentFilter === 'mine' && lead.assigned_to !== this.username) return false;
+            }
+
+            // Assigned To filter (specific user)
+            if (assignedToFilter) {
+                // Find the user by ID
+                const selectedUser = this.users.find(u => u.id == assignedToFilter);
+                if (selectedUser) {
+                    // Match by username or user_id
+                    if (lead.assigned_to !== selectedUser.username && lead.user_id != assignedToFilter) {
+                        return false;
+                    }
+                }
             }
             
             // Handle unassigned filter from chips
