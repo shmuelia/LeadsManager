@@ -129,7 +129,24 @@ def sync_campaign(campaign):
                 # Determine final campaign name
                 final_campaign_name = campaign_name_from_row if campaign_name_from_row else campaign_full['campaign_name']
 
-                # Check for duplicates using same logic as app.py
+                # Check for duplicates - first by sheet row number, then by phone/email
+                # This prevents re-importing the same row even if data changed
+                cur.execute("""
+                    SELECT id FROM leads
+                    WHERE customer_id = %s
+                    AND campaign_name = %s
+                    AND raw_data->>'row_number' = %s
+                    AND raw_data->>'sheet_id' = %s
+                    LIMIT 1
+                """, (campaign_full['customer_id'], final_campaign_name, str(current_row), campaign_full.get('sheet_id', '')))
+
+                existing_by_row = cur.fetchone()
+
+                if existing_by_row:
+                    duplicates += 1
+                    continue
+
+                # Also check for duplicates by phone/email (different row, same person)
                 cur.execute("""
                     SELECT id FROM leads
                     WHERE customer_id = %s
@@ -137,9 +154,9 @@ def sync_campaign(campaign):
                     LIMIT 1
                 """, (campaign_full['customer_id'], phone or '', email or ''))
 
-                existing = cur.fetchone()
+                existing_by_contact = cur.fetchone()
 
-                if existing:
+                if existing_by_contact:
                     duplicates += 1
                     continue
 
