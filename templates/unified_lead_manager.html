@@ -1814,12 +1814,22 @@ class UnifiedLeadManagerClass {
         }
     }
     
-    showStatusChangeWithNote(leadId, newStatus, currentModal) {
+    async showStatusChangeWithNote(leadId, newStatus, currentModal) {
         // Close current modal if exists
         if (currentModal) currentModal.remove();
 
         const lead = this.leads.find(l => l.id === leadId);
         if (!lead) return;
+
+        // Fetch activities for this lead
+        let activities = [];
+        try {
+            const response = await fetch(`/leads/${leadId}`);
+            const data = await response.json();
+            activities = data.activities || [];
+        } catch (error) {
+            console.error('Error loading activities:', error);
+        }
 
         // Create status selection modal (same as PC version)
         const modal = document.createElement('div');
@@ -1836,7 +1846,27 @@ class UnifiedLeadManagerClass {
                         <p style="color: #6b7280; margin-bottom: 8px;">סטטוס נוכחי:</p>
                         <span class="status-badge status-${lead.status}" style="pointer-events: none;">${this.getStatusLabel(lead.status)}</span>
                     </div>
-                    
+
+                    ${activities.length > 0 ? `
+                    <div style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+                        <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px; font-weight: 600;">📈 היסטוריית פעילות</h4>
+                        <div style="max-height: 150px; overflow-y: auto;">
+                            ${activities.slice(0, 5).map(activity => `
+                                <div style="padding: 10px; background: linear-gradient(135deg, #fef7cd 0%, #fef3c7 100%); border-radius: 6px; margin-bottom: 8px; font-size: 13px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                        <span style="background: #059669; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                            ${this.getActivityLabel(activity.activity_type)}
+                                        </span>
+                                        <span style="color: #6b7280; font-size: 11px;">${this.formatDate(activity.created_at)}</span>
+                                    </div>
+                                    <div style="color: #374151; font-size: 12px;">${activity.description || 'אין תיאור'}</div>
+                                    ${activity.user_name ? `<div style="color: #6b7280; font-size: 11px; margin-top: 3px;">על ידי: ${activity.user_name}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
                     <div class="mobile-status-grid">
                         <button class="mobile-status-btn status-new" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'new', this.closest('.modal-overlay'))">
                             <div class="status-icon">🆕</div>
