@@ -1637,7 +1637,7 @@ def get_leads():
         
         # Get pagination parameters
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 100))  # Default 100 leads per page
+        per_page = int(request.args.get('per_page', 1000))  # Default 1000 leads per page (increased from 100)
         offset = (page - 1) * per_page
         
         # Get selected customer ID (default to 1 if none selected)
