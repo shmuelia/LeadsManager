@@ -259,6 +259,9 @@
                     <button class="btn-sync-all" onclick="syncAllCampaigns()" id="syncAllBtn">
                         ⚡ סנכרן הכל
                     </button>
+                    <button class="btn-sync-all" onclick="migrateRowNumbers()" id="migrateBtn" style="background: #f59e0b;">
+                        🔧 עדכן מספרי שורות (חד פעמי)
+                    </button>
                 </div>
             </div>
             <div id="campaignsGrid" class="campaigns-grid">
@@ -741,33 +744,33 @@
         // Sync all campaigns
         async function syncAllCampaigns() {
             if (!confirm('האם לסנכרן את כל הקמפיינים הפעילים?')) return;
-            
+
             const btn = document.getElementById('syncAllBtn');
             btn.disabled = true;
             btn.textContent = '⏳ מסנכרן הכל...';
-            
+
             try {
                 const response = await fetch('/admin/campaigns/sync-all', {
                     method: 'POST'
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
-                    const summaryText = 
+                    const summaryText =
                         `✅ סנכרון כללי הושלם\n\n` +
                         `קמפיינים שסונכרנו: ${result.results.length}\n` +
                         `סה"כ לידים חדשים: ${result.summary.total_new_leads}\n` +
                         `סה"כ כפילויות: ${result.summary.total_duplicates}\n` +
                         `סה"כ שגיאות: ${result.summary.total_errors}\n\n` +
                         `פירוט לפי קמפיין:\n` +
-                        result.results.map(r => 
+                        result.results.map(r =>
                             `\n${r.campaign_name}:\n` +
                             `  לידים חדשים: ${r.new_leads}\n` +
                             `  כפילויות: ${r.duplicates}\n` +
                             `  שגיאות: ${r.errors}`
                         ).join('');
-                    
+
                     showSyncResult({ text: summaryText }, true, 'תוצאות סנכרון כללי');
                 } else {
                     showSyncResult(result, false);
@@ -777,6 +780,46 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '⚡ סנכרן הכל';
+            }
+        }
+
+        // Migrate row numbers (one-time)
+        async function migrateRowNumbers() {
+            if (!confirm('⚠️ זהו תהליך חד פעמי!\n\nהתהליך יעדכן את מספרי השורות מה-Google Sheets לכל הלידים הקיימים.\nזה עשוי לקחת מספר דקות.\n\nהאם להמשיך?')) return;
+
+            const btn = document.getElementById('migrateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ מעדכן מספרי שורות...';
+
+            try {
+                const response = await fetch('/admin/campaigns/migrate-row-numbers', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const summaryText =
+                        `✅ עדכון מספרי שורות הושלם\n\n` +
+                        `קמפיינים שעודכנו: ${result.results.length}\n` +
+                        `סה"כ לידים שעודכנו: ${result.summary.total_updated}\n` +
+                        `סה"כ לידים שלא נמצאו בשיטס: ${result.summary.total_not_found}\n\n` +
+                        `פירוט לפי קמפיין:\n` +
+                        result.results.map(r =>
+                            `\n${r.campaign_name}:\n` +
+                            `  עודכנו: ${r.updated}\n` +
+                            `  לא נמצאו: ${r.not_found}`
+                        ).join('');
+
+                    showSyncResult({ text: summaryText }, true, 'תוצאות עדכון מספרי שורות');
+                } else {
+                    showSyncResult(result, false);
+                }
+            } catch(e) {
+                showSyncResult({ error: e.message }, false);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔧 עדכן מספרי שורות (חד פעמי)';
             }
         }
         

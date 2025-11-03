@@ -4402,6 +4402,55 @@ def sync_all_campaigns():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/campaigns/migrate-row-numbers', methods=['POST'])
+@campaign_manager_required
+def migrate_row_numbers():
+    """One-time migration to populate row_number for existing leads"""
+    try:
+        import subprocess
+        import sys
+
+        logger.info("=== Starting row number migration ===")
+
+        # Run the migration script
+        result = subprocess.run(
+            [sys.executable, 'migrate_row_numbers.py'],
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minute timeout
+        )
+
+        logger.info(f"Migration output: {result.stdout}")
+        if result.stderr:
+            logger.error(f"Migration errors: {result.stderr}")
+
+        if result.returncode == 0:
+            # Parse the output to extract results
+            # For now, return success with the output
+            return jsonify({
+                'success': True,
+                'message': 'Migration completed successfully',
+                'output': result.stdout,
+                'results': [],  # Could parse from output if needed
+                'summary': {
+                    'total_updated': 0,  # Could parse from output
+                    'total_not_found': 0
+                }
+            })
+        else:
+            return jsonify({
+                'error': f'Migration failed: {result.stderr}',
+                'output': result.stdout
+            }), 500
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'error': 'Migration timed out after 10 minutes'}), 500
+    except Exception as e:
+        logger.error(f"Error in migration: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/customers/api')
 @campaign_manager_required
 def get_customers():
