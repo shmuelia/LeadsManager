@@ -785,7 +785,69 @@
 
         // Migrate row numbers (one-time)
         async function migrateRowNumbers() {
-            if (!confirm('⚠️ זהו תהליך חד פעמי!\n\nהתהליך יעדכן את מספרי השורות מה-Google Sheets לכל הלידים הקיימים.\nזה עשוי לקחת מספר דקות.\n\nהאם להמשיך?')) return;
+            // Show campaign selection modal
+            const campaigns = await fetch('/admin/campaigns/api').then(r => r.json());
+
+            const campaignsWithSheets = campaigns.filter(c => c.sheet_url);
+
+            if (campaignsWithSheets.length === 0) {
+                alert('לא נמצאו קמפיינים עם Google Sheets');
+                return;
+            }
+
+            const checkboxes = campaignsWithSheets.map(c =>
+                `<div style="margin: 10px 0; padding: 10px; background: #f9fafb; border-radius: 6px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" value="${c.id}" checked style="margin-left: 10px;">
+                        <span style="font-weight: 600;">${c.campaign_name}</span>
+                    </label>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px; margin-right: 30px;">
+                        ${c.sheet_url.substring(0, 60)}...
+                    </div>
+                </div>`
+            ).join('');
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.zIndex = '10001';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h3>⚠️ בחר קמפיינים לעדכון מספרי שורות</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✖️</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="color: #dc2626; margin-bottom: 15px; font-weight: 600;">
+                            זהו תהליך חד פעמי! בחר רק קמפיינים עם Google Sheets פעילים ועדכניים.
+                        </p>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            ${checkboxes}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="action-btn btn-primary" onclick="executeMigration()">
+                            🔧 התחל עדכון
+                        </button>
+                        <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            ביטול
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function executeMigration() {
+            const selectedIds = Array.from(document.querySelectorAll('.modal-overlay input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                alert('בחר לפחות קמפיין אחד');
+                return;
+            }
+
+            // Close modal
+            document.querySelector('.modal-overlay').remove();
 
             const btn = document.getElementById('migrateBtn');
             btn.disabled = true;
@@ -793,7 +855,9 @@
 
             try {
                 const response = await fetch('/admin/campaigns/migrate-row-numbers', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaign_ids: selectedIds })
                 });
 
                 const result = await response.json();

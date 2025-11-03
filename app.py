@@ -4407,44 +4407,71 @@ def sync_all_campaigns():
 def migrate_row_numbers():
     """One-time migration to populate row_number for existing leads"""
     try:
-        import subprocess
-        import sys
+        data = request.get_json() or {}
+        selected_campaign_ids = data.get('campaign_ids', [])
 
-        logger.info("=== Starting row number migration ===")
+        logger.info(f"=== Starting row number migration for {len(selected_campaign_ids)} campaigns ===")
 
-        # Run the migration script
-        result = subprocess.run(
-            [sys.executable, 'migrate_row_numbers.py'],
-            capture_output=True,
-            text=True,
-            timeout=600  # 10 minute timeout
-        )
+        # Import the migration function directly
+        from migrate_row_numbers import migrate_campaign, get_db_connection
 
-        logger.info(f"Migration output: {result.stdout}")
-        if result.stderr:
-            logger.error(f"Migration errors: {result.stderr}")
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
 
-        if result.returncode == 0:
-            # Parse the output to extract results
-            # For now, return success with the output
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get selected campaigns or all if none selected
+        if selected_campaign_ids:
+            placeholders = ','.join(['%s'] * len(selected_campaign_ids))
+            cur.execute(f"""
+                SELECT id, campaign_name, sheet_url
+                FROM campaigns
+                WHERE id IN ({placeholders})
+                AND sheet_url IS NOT NULL AND sheet_url != ''
+                ORDER BY id
+            """, selected_campaign_ids)
+        else:
+            cur.execute("""
+                SELECT id, campaign_name, sheet_url
+                FROM campaigns
+                WHERE sheet_url IS NOT NULL AND sheet_url != ''
+                ORDER BY id
+            """)
+
+        campaigns = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not campaigns:
             return jsonify({
                 'success': True,
-                'message': 'Migration completed successfully',
-                'output': result.stdout,
-                'results': [],  # Could parse from output if needed
-                'summary': {
-                    'total_updated': 0,  # Could parse from output
-                    'total_not_found': 0
-                }
+                'message': 'No campaigns found to migrate',
+                'results': [],
+                'summary': {'total_updated': 0, 'total_not_found': 0}
             })
-        else:
-            return jsonify({
-                'error': f'Migration failed: {result.stderr}',
-                'output': result.stdout
-            }), 500
 
-    except subprocess.TimeoutExpired:
-        return jsonify({'error': 'Migration timed out after 10 minutes'}), 500
+        results = []
+        total_updated = 0
+        total_not_found = 0
+
+        for campaign in campaigns:
+            result = migrate_campaign(campaign)
+            if result['success']:
+                total_updated += result['updated']
+                total_not_found += result['not_found']
+            results.append(result)
+
+        return jsonify({
+            'success': True,
+            'message': 'Migration completed successfully',
+            'results': results,
+            'summary': {
+                'total_updated': total_updated,
+                'total_not_found': total_not_found
+            }
+        })
+
     except Exception as e:
         logger.error(f"Error in migration: {str(e)}")
         import traceback
