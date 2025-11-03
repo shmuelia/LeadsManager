@@ -687,48 +687,7 @@
 </style>
 
 <div class="lead-manager-container">
-    <!-- Leads Display (Cards + Table) -->
-    <div class="leads-display" style="position: relative;">
-        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-            <div class="loading-spinner"></div>
-        </div>
-        
-        <!-- Mobile Cards -->
-        <div class="lead-cards-container" id="leadCardsContainer">
-            <!-- Lead cards will be populated here -->
-        </div>
-        
-        <!-- Desktop Table -->
-        <div class="lead-table-container" style="overflow-x: auto;">
-            <table class="lead-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40px;">
-                            <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)"
-                                   title="בחר/בטל בחירה של כל הלידים המוצגים">
-                        </th>
-                        <th>פעולות</th>
-                        <th>סטטוס</th>
-                        <th>שם</th>
-                        <th>קמפיין</th>
-                        <th>מוקצה ל</th>
-                        <th>תאריך</th>
-                    </tr>
-                </thead>
-                <tbody id="leadsTableBody">
-                    <!-- Leads will be populated here -->
-                </tbody>
-            </table>
-        </div>
-        
-        <div id="emptyState" class="empty-state" style="display: none;">
-            <div class="empty-state-icon">📭</div>
-            <h3>אין לידים להצגה</h3>
-            <p>נסה לשנות את הפילטרים או לרענן את הרשימה</p>
-        </div>
-    </div>
-
-    <!-- ===== CUSTOMER SELECTOR (ADMIN ONLY) - MOVED TO TOP ===== -->
+    <!-- ===== CUSTOMER SELECTOR (ADMIN ONLY) - AT TOP ===== -->
     <div id="customerSelectorDiv" class="customer-selector" style="display: none; margin-bottom: 20px;"
          title="בחר לקוח לצפייה בלידים שלו בלבד">
         <span>🏢 לקוח:</span>
@@ -796,12 +755,12 @@
         <!-- Filters -->
         <div class="filter-group">
             <label class="filter-label">🔍 חיפוש</label>
-            <input type="text" id="searchFilter" class="filter-input" 
-                   placeholder="חפש שם, טלפון, אימייל..." 
+            <input type="text" id="searchFilter" class="filter-input"
+                   placeholder="חפש שם, טלפון, אימייל..."
                    onkeyup="window.UnifiedLeadManager.applyFilters()"
                    title="חפש לידים לפי שם, מספר טלפון או כתובת אימייל">
         </div>
-        
+
         <div class="filter-group">
             <label class="filter-label">📌 סטטוס</label>
             <select id="statusFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
@@ -817,7 +776,7 @@
                 <option value="closed">סגור</option>
             </select>
         </div>
-        
+
         <div class="filter-group">
             <label class="filter-label">👤 מצב הקצאה</label>
             <select id="assignmentFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
@@ -856,13 +815,45 @@
             </select>
         </div>
     </div>
-    
-    <!-- Header moved to bottom to save mobile space -->
-    <div class="lead-header" style="margin-top: 25px; margin-bottom: 0; border-bottom: none; border-top: 2px solid #e2e8f0; padding-top: 20px; padding-bottom: 15px;">
-        <div class="lead-title">
-            <span>📊</span>
-            <span>לוח בקרה - ניהול לידים</span>
-            <span id="customerName" style="font-size: 0.7em; color: #6b7280;"></span>
+
+    <!-- Leads Display (Cards + Table) -->
+    <div class="leads-display" style="position: relative; margin-top: 20px;">
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="lead-cards-container" id="leadCardsContainer">
+            <!-- Lead cards will be populated here -->
+        </div>
+
+        <!-- Desktop Table -->
+        <div class="lead-table-container" style="overflow-x: auto;">
+            <table class="lead-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)"
+                                   title="בחר/בטל בחירה של כל הלידים המוצגים">
+                        </th>
+                        <th>פעולות</th>
+                        <th>סטטוס</th>
+                        <th>שם</th>
+                        <th>קמפיין</th>
+                        <th>מוקצה ל</th>
+                        <th>תאריך</th>
+                    </tr>
+                </thead>
+                <tbody id="leadsTableBody">
+                    <!-- Leads will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📭</div>
+            <h3>אין לידים להצגה</h3>
+            <p>נסה לשנות את הפילטרים או לרענן את הרשימה</p>
         </div>
     </div>
 </div>
