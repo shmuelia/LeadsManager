@@ -1900,6 +1900,14 @@ class UnifiedLeadManagerClass {
                         <p style="color: #6b7280; margin-bottom: 12px;">סטטוס נוכחי: <span class="status-badge status-${lead.status}">${this.getStatusLabel(lead.status)}</span></p>
                         <p style="color: #059669; margin-bottom: 16px;">סטטוס חדש: <span class="status-badge status-${newStatus}">${this.getStatusLabel(newStatus)}</span></p>
                     </div>
+
+                    ${lead.notes ? `
+                    <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border-right: 4px solid #3b82f6; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0; color: #1f2937; font-size: 14px; font-weight: 600;">📝 היסטוריית הליד:</h4>
+                        <div style="max-height: 150px; overflow-y: auto; color: #4b5563; font-size: 13px; line-height: 1.6; white-space: pre-wrap;">${lead.notes}</div>
+                    </div>
+                    ` : ''}
+
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #dc2626;">הערת עדכון (חובה):</label>
                         <textarea id="statusNoteModal${leadId}" placeholder="הוסף הערה על העדכון (שדה חובה)..."
