@@ -730,8 +730,15 @@
     
     <!-- Filter Chips (Quick Filters) -->
     <div class="filter-chips" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+        <!-- ===== QUICK STATUS FILTERS ===== -->
         <button class="filter-chip" onclick="filterLeadsByType('all')" data-filter="all">
             כל הלידים
+        </button>
+        <button class="filter-chip active" onclick="filterLeadsByType('open')" data-filter="open">
+            פתוחים
+        </button>
+        <button class="filter-chip" onclick="filterLeadsByType('unassigned')" data-filter="unassigned">
+            לא מוקצים
         </button>
         <button class="filter-chip" onclick="filterLeadsByType('new')" data-filter="new">
             חדשים
@@ -754,18 +761,27 @@
         <button class="filter-chip" onclick="filterLeadsByType('closed')" data-filter="closed">
             סגורים
         </button>
-        <button class="filter-chip" onclick="filterLeadsByType('unassigned')" data-filter="unassigned">
-            לא מוקצים
-        </button>
-        <button class="filter-chip active" onclick="filterLeadsByType('open')" data-filter="open">
-            פתוחים
-        </button>
-        <button class="filter-chip" onclick="manualRefresh()" style="background: #3b82f6; color: white; border-color: #3b82f6;">
-            🔄 רענן
-        </button>
     </div>
 
-    <!-- Control Panel (Filters) -->
+    <!-- ===== ACTION BUTTONS BAR ===== -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 15px; flex-wrap: wrap;">
+        <button class="action-btn" onclick="manualRefresh()" style="background: #3b82f6; color: white;"
+                title="רענן את רשימת הלידים">
+            🔄 רענן
+        </button>
+        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.exportLeads()"
+                title="ייצא את הלידים המפולטרים לקובץ אקסל">
+            📥 ייצא לאקסל
+        </button>
+        {% if session.get('role') in ['admin', 'campaign_manager'] %}
+        <button class="action-btn btn-add-lead" onclick="openAddLeadModal()"
+                title="הוסף ליד חדש באופן ידני">
+            ➕ הוסף ליד ידנית
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- ===== DETAILED FILTERS PANEL ===== -->
     <div class="control-panel">
         <!-- Customer Selector (Admin Only) -->
         <div id="customerSelectorDiv" class="customer-selector" style="display: none;" 
@@ -803,7 +819,7 @@
         </div>
         
         <div class="filter-group">
-            <label class="filter-label">👤 הקצאה</label>
+            <label class="filter-label">👤 מצב הקצאה</label>
             <select id="assignmentFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
                     title="סנן לידים לפי מצב ההקצאה למשתמשים">
                 <option value="">כל ההקצאות</option>
@@ -814,13 +830,13 @@
         </div>
 
         <div class="filter-group">
-            <label class="filter-label">👥 מוקצה ל</label>
+            <label class="filter-label">👥 מוקצה למשתמש</label>
             <select id="assignedToFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
                     title="סנן לידים לפי משתמש ספציפי שהם מוקצים אליו">
                 <option value="">כל המשתמשים</option>
             </select>
         </div>
-        
+
         <div class="filter-group">
             <label class="filter-label">📅 תקופה</label>
             <select id="dateFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
@@ -831,7 +847,7 @@
                 <option value="month">החודש</option>
             </select>
         </div>
-        
+
         <div class="filter-group">
             <label class="filter-label">🎯 קמפיין</label>
             <select id="campaignFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
@@ -839,20 +855,6 @@
                 <option value="">כל הקמפיינים</option>
             </select>
         </div>
-        
-        <!-- Action Buttons -->
-        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.exportLeads()" 
-                title="ייצא את הלידים המפולטרים לקובץ אקסל">
-            📥 ייצא לאקסל
-        </button>
-        
-        <!-- Add Lead Button (Campaign Manager & Admin only) -->
-        {% if session.get('role') in ['admin', 'campaign_manager'] %}
-        <button class="action-btn btn-add-lead" onclick="openAddLeadModal()" 
-                title="הוסף ליד חדש באופן ידני">
-            ➕ הוסף ליד ידנית
-        </button>
-        {% endif %}
     </div>
     
     <!-- Header moved to bottom to save mobile space -->
