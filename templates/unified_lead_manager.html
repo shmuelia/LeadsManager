@@ -727,7 +727,17 @@
             <p>נסה לשנות את הפילטרים או לרענן את הרשימה</p>
         </div>
     </div>
-    
+
+    <!-- ===== CUSTOMER SELECTOR (ADMIN ONLY) - MOVED TO TOP ===== -->
+    <div id="customerSelectorDiv" class="customer-selector" style="display: none; margin-bottom: 20px;"
+         title="בחר לקוח לצפייה בלידים שלו בלבד">
+        <span>🏢 לקוח:</span>
+        <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)"
+                title="החלף בין לקוחות שונים לניהול הלידים שלהם">
+            <option value="">בחר לקוח</option>
+        </select>
+    </div>
+
     <!-- Filter Chips (Quick Filters) -->
     <div class="filter-chips" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
         <!-- ===== QUICK STATUS FILTERS ===== -->
@@ -783,16 +793,6 @@
 
     <!-- ===== DETAILED FILTERS PANEL ===== -->
     <div class="control-panel">
-        <!-- Customer Selector (Admin Only) -->
-        <div id="customerSelectorDiv" class="customer-selector" style="display: none;" 
-             title="בחר לקוח לצפייה בלידים שלו בלבד">
-            <span>🏢 לקוח:</span>
-            <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)"
-                    title="החלף בין לקוחות שונים לניהול הלידים שלהם">
-                <option value="">בחר לקוח</option>
-            </select>
-        </div>
-        
         <!-- Filters -->
         <div class="filter-group">
             <label class="filter-label">🔍 חיפוש</label>
@@ -1019,6 +1019,7 @@ class UnifiedLeadManagerClass {
 
             // Update assigned to filter with users
             const assignedToFilter = document.getElementById('assignedToFilter');
+            const currentAssignedTo = assignedToFilter.value; // Preserve current selection
             assignedToFilter.innerHTML = '<option value="">כל המשתמשים</option>';
             if (this.users && this.users.length > 0) {
                 this.users
@@ -1029,6 +1030,10 @@ class UnifiedLeadManagerClass {
                         option.textContent = user.full_name || user.username;
                         assignedToFilter.appendChild(option);
                     });
+            }
+            // Restore the previous selection if it exists
+            if (currentAssignedTo) {
+                assignedToFilter.value = currentAssignedTo;
             }
 
             this.applyFilters();
