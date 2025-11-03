@@ -1916,10 +1916,21 @@ class UnifiedLeadManagerClass {
 
         // Fetch activities for this lead
         let activities = [];
+        let lastStatusRemark = '';
         try {
             const response = await fetch(`/leads/${leadId}`);
             const data = await response.json();
             activities = data.activities || [];
+
+            // Find the last status change activity and extract the remark
+            const lastStatusChange = activities.find(a => a.activity_type === 'status_change');
+            if (lastStatusChange && lastStatusChange.description) {
+                // Extract just the remark part after "הערה:"
+                const remarkMatch = lastStatusChange.description.match(/הערה:\s*(.+?)(?:\s*על ידי:|$)/);
+                if (remarkMatch && remarkMatch[1]) {
+                    lastStatusRemark = remarkMatch[1].trim();
+                }
+            }
         } catch (error) {
             console.error('Error loading activities:', error);
         }
@@ -1965,7 +1976,7 @@ class UnifiedLeadManagerClass {
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #dc2626;">הערת עדכון (חובה):</label>
                         <textarea id="statusNoteModal${leadId}" placeholder="הוסף הערה על העדכון (שדה חובה)..."
                                 style="width: 100%; padding: 10px; border: 2px solid #dc2626; border-radius: 8px; height: 100px; resize: vertical;"
-                                autofocus required></textarea>
+                                autofocus required>${lastStatusRemark}</textarea>
                         <small style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;">* שדה חובה - יש להזין הערה לפני עדכון הסטטוס</small>
                     </div>
                 </div>
