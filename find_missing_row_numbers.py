@@ -46,6 +46,14 @@ def clean_phone(phone):
         return ''
     return str(phone).strip().replace('-', '').replace(' ', '').replace('+972', '0').replace('972', '0')
 
+def clean_email(email):
+    """Clean email for comparison - remove trailing dots and extra whitespace"""
+    if not email:
+        return ''
+    # Strip whitespace, convert to lowercase, remove trailing dots
+    cleaned = email.strip().lower().rstrip('.')
+    return cleaned
+
 def find_row_numbers_for_campaign(campaign):
     """Find row numbers for leads missing them in a specific campaign"""
     try:
@@ -122,16 +130,24 @@ def find_row_numbers_for_campaign(campaign):
         # Create lookup dictionaries for faster matching
         leads_by_email = {}
         leads_by_phone = {}
+        leads_by_name = {}
 
         for lead in leads_without_rows:
             if lead['email']:
-                leads_by_email[lead['email'].lower().strip()] = lead
+                cleaned_email = clean_email(lead['email'])
+                if cleaned_email:
+                    leads_by_email[cleaned_email] = lead
             if lead['phone']:
                 clean_phone_num = clean_phone(lead['phone'])
                 if clean_phone_num:
                     leads_by_phone[clean_phone_num] = lead
+            if lead['name']:
+                # Store by normalized name (lowercase, stripped) for fallback matching
+                normalized_name = lead['name'].strip().lower()
+                if normalized_name:
+                    leads_by_name[normalized_name] = lead
 
-        logger.info(f"Searching sheet for {len(leads_by_email)} emails and {len(leads_by_phone)} phones")
+        logger.info(f"Searching sheet for {len(leads_by_email)} emails, {len(leads_by_phone)} phones, {len(leads_by_name)} names")
 
         # Search through sheet rows
         for row_data in reader:
@@ -142,15 +158,16 @@ def find_row_numbers_for_campaign(campaign):
                 continue
 
             try:
-                # Try to extract email and phone from row using common column names
+                # Try to extract email, phone, and name from row using common column names
                 row_email = None
                 row_phone = None
+                row_name = None
 
                 # Look for email in common columns
                 for col in row_data.keys():
                     col_lower = col.lower()
-                    if 'email' in col_lower or 'מייל' in col_lower or 'אימייל' in col_lower:
-                        row_email = row_data[col].strip().lower() if row_data[col] else None
+                    if 'email' in col_lower or 'מייל' in col_lower or 'אימייל' in col_lower or 'דוא' in col_lower:
+                        row_email = clean_email(row_data[col]) if row_data[col] else None
                         break
 
                 # Look for phone in common columns
@@ -160,12 +177,26 @@ def find_row_numbers_for_campaign(campaign):
                         row_phone = clean_phone(row_data[col]) if row_data[col] else None
                         break
 
-                # Try to match by email or phone
+                # Look for name in common columns
+                for col in row_data.keys():
+                    col_lower = col.lower()
+                    if 'name' in col_lower or 'שם' in col_lower:
+                        row_name = row_data[col].strip().lower() if row_data[col] else None
+                        break
+
+                # Try to match by email, phone, or name (in priority order)
                 matched_lead = None
+                match_method = None
+
                 if row_email and row_email in leads_by_email:
                     matched_lead = leads_by_email[row_email]
+                    match_method = 'email'
                 elif row_phone and row_phone in leads_by_phone:
                     matched_lead = leads_by_phone[row_phone]
+                    match_method = 'phone'
+                elif row_name and row_name in leads_by_name:
+                    matched_lead = leads_by_name[row_name]
+                    match_method = 'name'
 
                 if matched_lead:
                     # Update raw_data with row_number and sheet_url
@@ -184,20 +215,29 @@ def find_row_numbers_for_campaign(campaign):
                     """, (json.dumps(raw_data), matched_lead['id']))
 
                     updated += 1
-                    logger.info(f"✓ Found lead '{matched_lead['name']}' at row {current_row}")
+                    logger.info(f"✓ Found lead '{matched_lead['name']}' at row {current_row} (matched by {match_method})")
 
                     # Remove from lookup to avoid duplicate matches
                     if row_email and row_email in leads_by_email:
                         del leads_by_email[row_email]
                     if row_phone and row_phone in leads_by_phone:
                         del leads_by_phone[row_phone]
+                    if row_name and row_name in leads_by_name:
+                        del leads_by_name[row_name]
 
             except Exception as e:
                 logger.error(f"Error processing row {current_row}: {e}")
                 continue
 
-        # Count leads that weren't found
-        not_found = len(leads_by_email) + len(leads_by_phone)
+        # Count leads that weren't found (avoid double counting - a lead might be in multiple dicts)
+        remaining_lead_ids = set()
+        for lead in leads_by_email.values():
+            remaining_lead_ids.add(lead['id'])
+        for lead in leads_by_phone.values():
+            remaining_lead_ids.add(lead['id'])
+        for lead in leads_by_name.values():
+            remaining_lead_ids.add(lead['id'])
+        not_found = len(remaining_lead_ids)
 
         conn.commit()
         cur.close()
