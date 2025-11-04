@@ -4406,15 +4406,15 @@ def sync_all_campaigns():
 @app.route('/admin/campaigns/migrate-row-numbers', methods=['POST'])
 @campaign_manager_required
 def migrate_row_numbers():
-    """One-time migration to populate row_number for existing leads"""
+    """Find row numbers for leads by searching sheets with email/phone (smarter method)"""
     try:
         data = request.get_json() or {}
         selected_campaign_ids = data.get('campaign_ids', [])
 
-        logger.info(f"=== Starting row number migration for {len(selected_campaign_ids)} campaigns ===")
+        logger.info(f"=== Starting smart row number search for {len(selected_campaign_ids)} campaigns ===")
 
-        # Import the migration function directly
-        from migrate_row_numbers import migrate_campaign, get_db_connection
+        # Import the smarter search function
+        from find_missing_row_numbers import find_row_numbers_for_campaign
 
         conn = get_db_connection()
         if not conn:
@@ -4457,15 +4457,15 @@ def migrate_row_numbers():
         total_not_found = 0
 
         for campaign in campaigns:
-            result = migrate_campaign(campaign)
+            result = find_row_numbers_for_campaign(campaign)
             if result['success']:
-                total_updated += result['updated']
-                total_not_found += result['not_found']
+                total_updated += result.get('updated', 0)
+                total_not_found += result.get('not_found', 0)
             results.append(result)
 
         return jsonify({
             'success': True,
-            'message': 'Migration completed successfully',
+            'message': f'Smart search completed: {total_updated} leads updated',
             'results': results,
             'summary': {
                 'total_updated': total_updated,
@@ -4475,84 +4475,6 @@ def migrate_row_numbers():
 
     except Exception as e:
         logger.error(f"Error in migration: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/admin/campaigns/find-missing-row-numbers', methods=['POST'])
-@campaign_manager_required
-def find_missing_row_numbers():
-    """Find row numbers for leads by searching sheets with email/phone"""
-    try:
-        data = request.get_json() or {}
-        selected_campaign_ids = data.get('campaign_ids', [])
-
-        logger.info(f"=== Starting row number search for {len(selected_campaign_ids)} campaigns ===")
-
-        # Import the function from our new script
-        from find_missing_row_numbers import find_row_numbers_for_campaign
-
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'error': 'Database not available'}), 500
-
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-        # Get selected campaigns or all if none selected
-        if selected_campaign_ids:
-            placeholders = ','.join(['%s'] * len(selected_campaign_ids))
-            cur.execute(f"""
-                SELECT id, campaign_name, sheet_url
-                FROM campaigns
-                WHERE id IN ({placeholders})
-                AND sheet_url IS NOT NULL AND sheet_url != ''
-                ORDER BY id
-            """, selected_campaign_ids)
-        else:
-            cur.execute("""
-                SELECT id, campaign_name, sheet_url
-                FROM campaigns
-                WHERE sheet_url IS NOT NULL AND sheet_url != ''
-                ORDER BY id
-            """)
-
-        campaigns = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        if not campaigns:
-            return jsonify({
-                'success': True,
-                'message': 'No campaigns found',
-                'results': [],
-                'summary': {'total_updated': 0, 'total_not_found': 0}
-            })
-
-        results = []
-        total_updated = 0
-        total_not_found = 0
-
-        for campaign in campaigns:
-            result = find_row_numbers_for_campaign(campaign)
-            results.append(result)
-
-            if result['success']:
-                total_updated += result.get('updated', 0)
-                total_not_found += result.get('not_found', 0)
-
-        return jsonify({
-            'success': True,
-            'message': f'Found row numbers: {total_updated} updated, {total_not_found} not found',
-            'results': results,
-            'summary': {
-                'campaigns_processed': len(campaigns),
-                'total_updated': total_updated,
-                'total_not_found': total_not_found
-            }
-        })
-
-    except Exception as e:
-        logger.error(f"Error finding row numbers: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
