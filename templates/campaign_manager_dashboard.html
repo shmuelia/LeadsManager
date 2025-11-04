@@ -785,10 +785,15 @@
 
         // Migrate row numbers (one-time)
         async function migrateRowNumbers() {
-            // Show campaign selection modal
-            const campaigns = await fetch('/admin/campaigns/api').then(r => r.json());
+            try {
+                // Show campaign selection modal
+                const response = await fetch('/admin/campaigns/api');
+                const data = await response.json();
 
-            const campaignsWithSheets = campaigns.filter(c => c.sheet_url);
+                // Handle different response formats
+                const campaigns = Array.isArray(data) ? data : (data.campaigns || []);
+
+                const campaignsWithSheets = campaigns.filter(c => c.sheet_url);
 
             if (campaignsWithSheets.length === 0) {
                 alert('לא נמצאו קמפיינים עם Google Sheets');
@@ -835,6 +840,11 @@
                 </div>
             `;
             document.body.appendChild(modal);
+
+            } catch (error) {
+                console.error('Error loading campaigns:', error);
+                alert('שגיאה בטעינת הקמפיינים: ' + error.message);
+            }
         }
 
         async function executeMigration() {
