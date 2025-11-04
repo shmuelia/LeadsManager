@@ -85,10 +85,10 @@ def get_google_sheets_client():
         # Parse JSON credentials
         creds_dict = json.loads(creds_json)
         
-        # Define the scopes - include write access for updating sheets
+        # Define the scopes - read-only access
         scopes = [
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive'
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
+            'https://www.googleapis.com/auth/drive.readonly'
         ]
         
         # Create credentials
@@ -144,78 +144,6 @@ def get_tab_name_for_gid(spreadsheet_id, gid):
     if tab_names:
         return tab_names.get(str(gid), f"gid_{gid}")
     return f"gid_{gid}"
-
-def update_google_sheet_status(sheet_url, row_number, new_status):
-    """Update the status of a lead in Google Sheets
-
-    Args:
-        sheet_url: Full Google Sheets URL
-        row_number: Row number to update (1-indexed)
-        new_status: New status value to set
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    try:
-        logger.info(f"Attempting to update Google Sheet at row {row_number} with status {new_status}")
-
-        # Extract spreadsheet ID and gid from URL
-        sheet_id_match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
-        if not sheet_id_match:
-            logger.error(f"Could not extract spreadsheet ID from URL: {sheet_url}")
-            return False
-
-        spreadsheet_id = sheet_id_match.group(1)
-
-        # Extract gid
-        gid_match = re.search(r'[#&]gid=([0-9]+)', sheet_url)
-        gid = gid_match.group(1) if gid_match else '0'
-
-        # Get Google Sheets client
-        client = get_google_sheets_client()
-        if not client:
-            logger.error("Could not initialize Google Sheets client")
-            return False
-
-        # Open the spreadsheet and worksheet
-        spreadsheet = client.open_by_key(spreadsheet_id)
-
-        # Find worksheet by gid
-        worksheet = None
-        for ws in spreadsheet.worksheets():
-            if str(ws.id) == str(gid):
-                worksheet = ws
-                break
-
-        if not worksheet:
-            logger.error(f"Could not find worksheet with gid {gid}")
-            return False
-
-        # Get header row to find status column
-        headers = worksheet.row_values(1)
-
-        # Look for status column (could be "Status", "סטטוס", etc.)
-        status_col = None
-        for idx, header in enumerate(headers, start=1):
-            if header.lower() in ['status', 'סטטוס', 'סטאטוס']:
-                status_col = idx
-                break
-
-        if not status_col:
-            logger.warning(f"Could not find status column in headers: {headers}")
-            # Try to find it anyway - assume it's in a common position (column 5 or 6)
-            # Or we can just skip the update
-            return False
-
-        # Update the cell
-        worksheet.update_cell(row_number, status_col, new_status)
-        logger.info(f"Successfully updated Google Sheet row {row_number}, column {status_col} with status {new_status}")
-        return True
-
-    except Exception as e:
-        logger.error(f"Error updating Google Sheet: {e}")
-        logger.exception(e)
-        return False
 
 def get_db_connection():
     """Get database connection using centralized DatabaseManager"""
@@ -2571,17 +2499,6 @@ def update_lead_status(lead_id):
         cur.close()
         conn.close()
 
-        # Update Google Sheet if we have the necessary information
-        if raw_data and isinstance(raw_data, dict):
-            sheet_url = raw_data.get('sheet_url')
-            row_number = raw_data.get('row_number')
-
-            if sheet_url and row_number:
-                logger.info(f"Updating Google Sheet for lead {lead_id}: sheet_url={sheet_url}, row={row_number}")
-                update_google_sheet_status(sheet_url, row_number, new_status)
-            else:
-                logger.info(f"No Google Sheet info for lead {lead_id} - sheet_url: {sheet_url}, row: {row_number}")
-
         return jsonify({
             'status': 'success',
             'message': 'סטטוס עודכן בהצלחה'
@@ -4258,11 +4175,11 @@ def sync_all_campaigns():
 
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # Get all active campaigns with sheet URLs
+        # Get all campaigns with sheet URLs (including non-active ones)
         cur.execute("""
             SELECT id, campaign_name, sheet_url
             FROM campaigns
-            WHERE active = true AND sheet_url IS NOT NULL AND sheet_url != ''
+            WHERE sheet_url IS NOT NULL AND sheet_url != ''
             ORDER BY id
         """)
         campaigns = cur.fetchall()
