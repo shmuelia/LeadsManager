@@ -121,16 +121,27 @@ def migrate_campaign(campaign):
                 lead = cur.fetchone()
 
                 if lead:
-                    # Update raw_data with row_number
+                    # Update raw_data with row_number and sheet_url
                     raw_data = lead['raw_data'] if lead['raw_data'] else {}
                     if isinstance(raw_data, str):
                         raw_data = json.loads(raw_data)
 
-                    # Only update if row_number doesn't exist
+                    # Check if we need to update (missing row_number OR missing sheet_url)
+                    needs_update = False
+
                     if 'row_number' not in raw_data:
                         raw_data['row_number'] = current_row
-                        raw_data['sheet_id'] = campaign_full.get('sheet_id', '')
+                        needs_update = True
 
+                    if 'sheet_url' not in raw_data:
+                        raw_data['sheet_url'] = campaign_full.get('sheet_url', '')
+                        needs_update = True
+
+                    if 'sheet_id' not in raw_data:
+                        raw_data['sheet_id'] = campaign_full.get('sheet_id', '')
+                        needs_update = True
+
+                    if needs_update:
                         cur.execute("""
                             UPDATE leads
                             SET raw_data = %s
