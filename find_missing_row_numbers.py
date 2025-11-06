@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script to find row numbers for leads by searching Google Sheets using email or phone
-This handles leads that were imported before row_number tracking was added
+Script to find and update row numbers for leads by scanning Google Sheets
+For each row in each sheet, finds the matching lead in DB and updates row_number + sheet_url
 """
 
 import os
@@ -55,7 +55,7 @@ def clean_email(email):
     return cleaned
 
 def find_row_numbers_for_campaign(campaign):
-    """Find row numbers for leads missing them in a specific campaign"""
+    """Scan Google Sheet and update row numbers for matching leads in DB"""
     try:
         conn = get_db_connection()
         if not conn:
@@ -83,25 +83,8 @@ def find_row_numbers_for_campaign(campaign):
             conn.close()
             return {'success': False, 'error': 'No sheet URL'}
 
-        # Get ALL leads for this campaign that are missing row_number
-        # This includes Facebook leads that might have been copied to Google Sheets
-        cur.execute("""
-            SELECT id, name, email, phone, raw_data
-            FROM leads
-            WHERE customer_id = %s
-            AND campaign_name = %s
-            AND raw_data->>'row_number' IS NULL
-        """, (campaign_full['customer_id'], campaign_full['campaign_name']))
-
-        leads_without_rows = cur.fetchall()
-
-        if not leads_without_rows:
-            logger.info(f"Campaign {campaign['campaign_name']}: All leads have row numbers")
-            cur.close()
-            conn.close()
-            return {'success': True, 'updated': 0, 'not_found': 0}
-
-        logger.info(f"Campaign {campaign['campaign_name']}: Found {len(leads_without_rows)} leads without row numbers")
+        logger.info(f"Processing campaign: {campaign['campaign_name']}")
+        logger.info(f"Sheet URL: {sheet_url}")
 
         # Extract spreadsheet ID and gid from URL
         sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
@@ -118,6 +101,7 @@ def find_row_numbers_for_campaign(campaign):
         csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
 
         # Fetch CSV data
+        logger.info(f"Fetching sheet data...")
         response = requests.get(csv_url, timeout=30)
         response.raise_for_status()
         response.encoding = 'utf-8'
@@ -126,31 +110,10 @@ def find_row_numbers_for_campaign(campaign):
 
         updated = 0
         not_found = 0
+        skipped = 0
         current_row = 1  # Start at row 1 (header is row 0 in sheets, row 1 in our counting)
 
-        # Create lookup dictionaries for faster matching
-        leads_by_email = {}
-        leads_by_phone = {}
-        leads_by_name = {}
-
-        for lead in leads_without_rows:
-            if lead['email']:
-                cleaned_email = clean_email(lead['email'])
-                if cleaned_email:
-                    leads_by_email[cleaned_email] = lead
-            if lead['phone']:
-                clean_phone_num = clean_phone(lead['phone'])
-                if clean_phone_num:
-                    leads_by_phone[clean_phone_num] = lead
-            if lead['name']:
-                # Store by normalized name (lowercase, stripped) for fallback matching
-                normalized_name = lead['name'].strip().lower()
-                if normalized_name:
-                    leads_by_name[normalized_name] = lead
-
-        logger.info(f"Searching sheet for {len(leads_by_email)} emails, {len(leads_by_phone)} phones, {len(leads_by_name)} names")
-
-        # Search through sheet rows
+        # Iterate through each row in the sheet
         for row_data in reader:
             current_row += 1
 
@@ -159,7 +122,7 @@ def find_row_numbers_for_campaign(campaign):
                 continue
 
             try:
-                # Try to extract email, phone, and name from row using common column names
+                # Extract email, phone, and name from row using common column names
                 row_email = None
                 row_phone = None
                 row_name = None
@@ -169,43 +132,113 @@ def find_row_numbers_for_campaign(campaign):
                     col_lower = col.lower()
                     if 'email' in col_lower or 'מייל' in col_lower or 'אימייל' in col_lower or 'דוא' in col_lower:
                         row_email = clean_email(row_data[col]) if row_data[col] else None
-                        break
+                        if row_email:
+                            break
 
                 # Look for phone in common columns
                 for col in row_data.keys():
                     col_lower = col.lower()
                     if 'phone' in col_lower or 'טלפון' in col_lower or 'פלאפון' in col_lower:
                         row_phone = clean_phone(row_data[col]) if row_data[col] else None
-                        break
+                        if row_phone:
+                            break
 
                 # Look for name in common columns
                 for col in row_data.keys():
                     col_lower = col.lower()
                     if 'name' in col_lower or 'שם' in col_lower:
-                        row_name = row_data[col].strip().lower() if row_data[col] else None
-                        break
+                        row_name = row_data[col].strip() if row_data[col] else None
+                        if row_name:
+                            break
 
-                # Try to match by email, phone, or name (in priority order)
+                # Skip if no identifying information
+                if not row_email and not row_phone and not row_name:
+                    continue
+
+                # Search for matching lead in database
+                # Try multiple strategies in order of reliability
                 matched_lead = None
                 match_method = None
 
-                if row_email and row_email in leads_by_email:
-                    matched_lead = leads_by_email[row_email]
-                    match_method = 'email'
-                elif row_phone and row_phone in leads_by_phone:
-                    matched_lead = leads_by_phone[row_phone]
-                    match_method = 'phone'
-                elif row_name and row_name in leads_by_name:
-                    matched_lead = leads_by_name[row_name]
-                    match_method = 'name'
+                # Strategy 1: Match by email (most reliable)
+                if row_email:
+                    cur.execute("""
+                        SELECT id, name, email, phone, campaign_name, raw_data
+                        FROM leads
+                        WHERE customer_id = %s
+                        AND LOWER(TRIM(TRAILING '.' FROM email)) = %s
+                        LIMIT 1
+                    """, (campaign_full['customer_id'], row_email))
+
+                    result = cur.fetchone()
+                    if result:
+                        matched_lead = result
+                        match_method = 'email'
+
+                # Strategy 2: Match by phone (reliable)
+                if not matched_lead and row_phone:
+                    # Clean the phone in the query too
+                    cur.execute("""
+                        SELECT id, name, email, phone, campaign_name, raw_data
+                        FROM leads
+                        WHERE customer_id = %s
+                        AND REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+972', '0'), '972', '0') = %s
+                        LIMIT 1
+                    """, (campaign_full['customer_id'], row_phone))
+
+                    result = cur.fetchone()
+                    if result:
+                        matched_lead = result
+                        match_method = 'phone'
+
+                # Strategy 3: Match by name + email (strong match)
+                if not matched_lead and row_name and row_email:
+                    cur.execute("""
+                        SELECT id, name, email, phone, campaign_name, raw_data
+                        FROM leads
+                        WHERE customer_id = %s
+                        AND LOWER(name) = LOWER(%s)
+                        AND LOWER(TRIM(TRAILING '.' FROM email)) = %s
+                        LIMIT 1
+                    """, (campaign_full['customer_id'], row_name, row_email))
+
+                    result = cur.fetchone()
+                    if result:
+                        matched_lead = result
+                        match_method = 'name+email'
+
+                # Strategy 4: Match by name + phone (strong match)
+                if not matched_lead and row_name and row_phone:
+                    cur.execute("""
+                        SELECT id, name, email, phone, campaign_name, raw_data
+                        FROM leads
+                        WHERE customer_id = %s
+                        AND LOWER(name) = LOWER(%s)
+                        AND REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+972', '0'), '972', '0') = %s
+                        LIMIT 1
+                    """, (campaign_full['customer_id'], row_name, row_phone))
+
+                    result = cur.fetchone()
+                    if result:
+                        matched_lead = result
+                        match_method = 'name+phone'
 
                 if matched_lead:
-                    # Update raw_data with row_number, sheet_url, and source
+                    # Check if this lead already has a row_number for THIS SPECIFIC sheet
                     raw_data = matched_lead['raw_data'] if matched_lead['raw_data'] else {}
                     if isinstance(raw_data, str):
                         raw_data = json.loads(raw_data)
 
-                    # Update all Google Sheets related fields
+                    existing_row = raw_data.get('row_number')
+                    existing_sheet = raw_data.get('sheet_url')
+
+                    # Skip if already has row_number for this exact sheet
+                    if existing_row and existing_sheet == sheet_url:
+                        skipped += 1
+                        logger.info(f"  Row {current_row}: Skipped '{matched_lead['name']}' - already has row {existing_row} for this sheet")
+                        continue
+
+                    # Update raw_data with row_number and sheet_url
                     raw_data['row_number'] = current_row
                     raw_data['sheet_url'] = sheet_url
                     raw_data['sheet_id'] = campaign_full.get('sheet_id', '')
@@ -214,6 +247,7 @@ def find_row_numbers_for_campaign(campaign):
                     if 'source' not in raw_data:
                         raw_data['source'] = 'google_sheets'
 
+                    # Update the lead
                     cur.execute("""
                         UPDATE leads
                         SET raw_data = %s
@@ -221,40 +255,26 @@ def find_row_numbers_for_campaign(campaign):
                     """, (json.dumps(raw_data), matched_lead['id']))
 
                     updated += 1
-                    logger.info(f"✓ Found lead '{matched_lead['name']}' at row {current_row} (matched by {match_method})")
-
-                    # Remove from lookup to avoid duplicate matches
-                    if row_email and row_email in leads_by_email:
-                        del leads_by_email[row_email]
-                    if row_phone and row_phone in leads_by_phone:
-                        del leads_by_phone[row_phone]
-                    if row_name and row_name in leads_by_name:
-                        del leads_by_name[row_name]
+                    logger.info(f"  Row {current_row}: ✓ Updated '{matched_lead['name']}' (campaign: {matched_lead['campaign_name']}, matched by: {match_method})")
+                else:
+                    not_found += 1
+                    logger.debug(f"  Row {current_row}: ✗ Not found - name: {row_name}, email: {row_email}, phone: {row_phone}")
 
             except Exception as e:
                 logger.error(f"Error processing row {current_row}: {e}")
                 continue
 
-        # Count leads that weren't found (avoid double counting - a lead might be in multiple dicts)
-        remaining_lead_ids = set()
-        for lead in leads_by_email.values():
-            remaining_lead_ids.add(lead['id'])
-        for lead in leads_by_phone.values():
-            remaining_lead_ids.add(lead['id'])
-        for lead in leads_by_name.values():
-            remaining_lead_ids.add(lead['id'])
-        not_found = len(remaining_lead_ids)
-
         conn.commit()
         cur.close()
         conn.close()
 
-        logger.info(f"Campaign {campaign['campaign_name']}: {updated} updated, {not_found} not found")
+        logger.info(f"Campaign {campaign['campaign_name']}: {updated} updated, {skipped} skipped, {not_found} not found")
 
         return {
             'success': True,
             'campaign_name': campaign['campaign_name'],
             'updated': updated,
+            'skipped': skipped,
             'not_found': not_found
         }
 
@@ -299,6 +319,7 @@ def main():
 
         # Process each campaign
         total_updated = 0
+        total_skipped = 0
         total_not_found = 0
 
         for campaign in campaigns:
@@ -306,10 +327,11 @@ def main():
 
             if result['success']:
                 total_updated += result.get('updated', 0)
+                total_skipped += result.get('skipped', 0)
                 total_not_found += result.get('not_found', 0)
 
         logger.info("=== Process Completed ===")
-        logger.info(f"Total: {total_updated} leads updated, {total_not_found} not found in sheets")
+        logger.info(f"Total: {total_updated} leads updated, {total_skipped} skipped (already had row), {total_not_found} not found in DB")
 
     except Exception as e:
         logger.error(f"Process failed: {e}")
