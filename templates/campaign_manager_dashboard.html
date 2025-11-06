@@ -678,7 +678,30 @@
             document.getElementById('syncCampaignId').value = campaign.id;
             document.getElementById('syncCampaignName').value = campaign.campaign_name;
             document.getElementById('syncSheetUrl').value = campaign.sheet_url || '';
-            document.getElementById('syncStartRow').value = 2;
+
+            // Get the last row number from database and suggest next row
+            fetch(`/admin/campaigns/${campaign.id}/last-row-number`)
+                .then(response => response.json())
+                .then(data => {
+                    const suggestedStartRow = data.last_row_number ? data.last_row_number + 1 : 2;
+                    document.getElementById('syncStartRow').value = suggestedStartRow;
+
+                    // Show a helpful message if we have a last row
+                    if (data.last_row_number) {
+                        const startRowInput = document.getElementById('syncStartRow');
+                        const helpText = startRowInput.nextElementSibling;
+                        if (helpText && helpText.tagName === 'SMALL') {
+                            helpText.innerHTML = `השורה הראשונה לסנכרון (שורה אחרונה בDB: ${data.last_row_number}, מציע: ${suggestedStartRow})`;
+                            helpText.style.color = '#059669';
+                            helpText.style.fontWeight = '600';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching last row number:', error);
+                    document.getElementById('syncStartRow').value = 2;
+                });
+
             document.getElementById('syncEndRow').value = '';
             document.getElementById('syncResetTracking').checked = false;
 

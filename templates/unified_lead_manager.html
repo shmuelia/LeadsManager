@@ -976,6 +976,7 @@ class UnifiedLeadManagerClass {
             
             // Update campaign filter
             const campaignFilter = document.getElementById('campaignFilter');
+            const currentCampaign = campaignFilter.value; // Preserve current selection
             campaignFilter.innerHTML = '<option value="">כל הקמפיינים</option>';
             Array.from(this.campaigns).sort().forEach(campaign => {
                 const option = document.createElement('option');
@@ -983,6 +984,10 @@ class UnifiedLeadManagerClass {
                 option.textContent = campaign.substring(0, 30) + (campaign.length > 30 ? '...' : '');
                 campaignFilter.appendChild(option);
             });
+            // Restore the previous selection if it exists
+            if (currentCampaign && this.campaigns.has(currentCampaign)) {
+                campaignFilter.value = currentCampaign;
+            }
 
             // Update assigned to filter with users
             const assignedToFilter = document.getElementById('assignedToFilter');

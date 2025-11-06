@@ -3828,6 +3828,52 @@ def preview_sheet():
         logger.error(f"Preview error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/campaigns/<int:campaign_id>/last-row-number', methods=['GET'])
+@campaign_manager_required
+def get_last_row_number(campaign_id):
+    """Get the highest row_number for a campaign from database"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get campaign details
+        cur.execute("SELECT campaign_name, customer_id FROM campaigns WHERE id = %s", (campaign_id,))
+        campaign = cur.fetchone()
+
+        if not campaign:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Campaign not found'}), 404
+
+        # Find the highest row_number in raw_data for this campaign
+        cur.execute("""
+            SELECT MAX(CAST(raw_data->>'row_number' AS INTEGER)) as last_row_number
+            FROM leads
+            WHERE customer_id = %s
+            AND campaign_name = %s
+            AND raw_data->>'row_number' IS NOT NULL
+            AND raw_data->>'row_number' != '-1'
+        """, (campaign['customer_id'], campaign['campaign_name']))
+
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        last_row = result['last_row_number'] if result and result['last_row_number'] else None
+
+        return jsonify({
+            'success': True,
+            'last_row_number': last_row,
+            'campaign_name': campaign['campaign_name']
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting last row number: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/campaigns/fetch-columns', methods=['POST'])
 @campaign_manager_required
 def fetch_sheet_columns():
