@@ -3831,7 +3831,7 @@ def preview_sheet():
 @app.route('/admin/campaigns/<int:campaign_id>/last-row-number', methods=['GET'])
 @campaign_manager_required
 def get_last_row_number(campaign_id):
-    """Get the highest row_number for a campaign from database"""
+    """Get the highest row_number for a campaign from database by sheet_url"""
     try:
         conn = get_db_connection()
         if not conn:
@@ -3839,8 +3839,8 @@ def get_last_row_number(campaign_id):
 
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # Get campaign details
-        cur.execute("SELECT campaign_name, customer_id FROM campaigns WHERE id = %s", (campaign_id,))
+        # Get campaign details including sheet_url
+        cur.execute("SELECT campaign_name, customer_id, sheet_url FROM campaigns WHERE id = %s", (campaign_id,))
         campaign = cur.fetchone()
 
         if not campaign:
@@ -3848,15 +3848,27 @@ def get_last_row_number(campaign_id):
             conn.close()
             return jsonify({'error': 'Campaign not found'}), 404
 
-        # Find the highest row_number in raw_data for this campaign
+        sheet_url = campaign.get('sheet_url')
+        if not sheet_url:
+            cur.close()
+            conn.close()
+            return jsonify({
+                'success': True,
+                'last_row_number': None,
+                'campaign_name': campaign['campaign_name'],
+                'message': 'No sheet URL configured'
+            })
+
+        # Find the highest row_number in raw_data by SHEET_URL (not campaign name)
+        # This handles cases where multiple campaigns share the same Google Sheet
         cur.execute("""
             SELECT MAX(CAST(raw_data->>'row_number' AS INTEGER)) as last_row_number
             FROM leads
             WHERE customer_id = %s
-            AND campaign_name = %s
+            AND raw_data->>'sheet_url' = %s
             AND raw_data->>'row_number' IS NOT NULL
             AND raw_data->>'row_number' != '-1'
-        """, (campaign['customer_id'], campaign['campaign_name']))
+        """, (campaign['customer_id'], sheet_url))
 
         result = cur.fetchone()
         cur.close()
@@ -3867,7 +3879,8 @@ def get_last_row_number(campaign_id):
         return jsonify({
             'success': True,
             'last_row_number': last_row,
-            'campaign_name': campaign['campaign_name']
+            'campaign_name': campaign['campaign_name'],
+            'sheet_url': sheet_url
         })
 
     except Exception as e:
