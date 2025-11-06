@@ -83,13 +83,14 @@ def find_row_numbers_for_campaign(campaign):
             conn.close()
             return {'success': False, 'error': 'No sheet URL'}
 
-        # Get leads for this campaign that are missing row_number
+        # Get ALL leads for this campaign that are missing row_number
+        # This includes Facebook leads that might have been copied to Google Sheets
         cur.execute("""
             SELECT id, name, email, phone, raw_data
             FROM leads
             WHERE customer_id = %s
             AND campaign_name = %s
-            AND (raw_data->>'row_number' IS NULL OR raw_data->>'sheet_url' IS NULL)
+            AND raw_data->>'row_number' IS NULL
         """, (campaign_full['customer_id'], campaign_full['campaign_name']))
 
         leads_without_rows = cur.fetchall()
@@ -199,14 +200,19 @@ def find_row_numbers_for_campaign(campaign):
                     match_method = 'name'
 
                 if matched_lead:
-                    # Update raw_data with row_number and sheet_url
+                    # Update raw_data with row_number, sheet_url, and source
                     raw_data = matched_lead['raw_data'] if matched_lead['raw_data'] else {}
                     if isinstance(raw_data, str):
                         raw_data = json.loads(raw_data)
 
+                    # Update all Google Sheets related fields
                     raw_data['row_number'] = current_row
                     raw_data['sheet_url'] = sheet_url
                     raw_data['sheet_id'] = campaign_full.get('sheet_id', '')
+
+                    # Mark source as google_sheets if not already set
+                    if 'source' not in raw_data:
+                        raw_data['source'] = 'google_sheets'
 
                     cur.execute("""
                         UPDATE leads
