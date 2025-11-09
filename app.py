@@ -2446,6 +2446,7 @@ def add_activity():
         }), 500
 
 @app.route('/leads/<int:lead_id>/status', methods=['PUT'])
+@login_required
 def update_lead_status(lead_id):
     """Update lead status"""
     try:
@@ -2468,6 +2469,11 @@ def update_lead_status(lead_id):
         new_status = data.get('status')
         user_name = data.get('user_name', 'אנונימי')
         note = data.get('note', '').strip()
+
+        # Only campaign managers and admins can close leads
+        user_role = session.get('role')
+        if new_status == 'closed' and user_role not in ['admin', 'campaign_manager']:
+            return jsonify({'error': 'רק מנהלי קמפיין יכולים לסגור לידים'}), 403
 
         # Make note mandatory for status changes
         if not note:
@@ -2597,16 +2603,17 @@ def fix_phone_numbers():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/mass-close', methods=['POST'])
+@campaign_manager_required
 def mass_close_leads():
-    """Admin: Mass close multiple leads"""
+    """Campaign Manager/Admin: Mass close multiple leads"""
     try:
         data = request.get_json()
         lead_ids = data.get('lead_ids', [])
-        user_name = data.get('user_name', 'Admin')
-        
+        user_name = session.get('full_name', session.get('username', 'Admin'))
+
         if not lead_ids:
             return jsonify({'error': 'No leads selected'}), 400
-            
+
         conn = get_db_connection()
         if not conn:
             return jsonify({'error': 'Database not available'}), 500
