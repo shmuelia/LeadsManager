@@ -1792,9 +1792,13 @@ class UnifiedLeadManagerClass {
             { value: 'qualified', label: 'מוכשר' },
             { value: 'interested', label: 'מתעניין' },
             { value: 'hired', label: 'התקבל' },
-            { value: 'rejected', label: 'נדחה' },
-            { value: 'closed', label: 'סגור' }
+            { value: 'rejected', label: 'נדחה' }
         ];
+
+        // Only campaign managers and admins can close leads
+        if (this.userRole === 'admin' || this.userRole === 'campaign_manager') {
+            statusOptions.push({ value: 'closed', label: 'סגור' });
+        }
         
         const statusList = statusOptions.map((status, index) => 
             `${index + 1}. ${status.label}`
@@ -1899,6 +1903,7 @@ class UnifiedLeadManagerClass {
                         </button>
                     </div>
 
+                    ${this.userRole === 'admin' || this.userRole === 'campaign_manager' ? `
                     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                         <button class="mobile-status-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;"
                                 onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'closed', this.closest('.modal-overlay'))">
@@ -1906,6 +1911,7 @@ class UnifiedLeadManagerClass {
                             <div>סגור ליד לצמיתות</div>
                         </button>
                     </div>
+                    ` : ''}
                 </div>
             </div>
         `;
