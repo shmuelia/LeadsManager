@@ -232,13 +232,17 @@ def find_row_numbers_for_campaign(campaign):
                     existing_row = raw_data.get('row_number')
                     existing_sheet = raw_data.get('sheet_url')
 
-                    # Skip if already has row_number for this exact sheet
-                    if existing_row and existing_sheet == sheet_url:
+                    # Skip ONLY if already has the SAME row_number for the SAME sheet_url
+                    if existing_row == current_row and existing_sheet == sheet_url:
                         skipped += 1
                         logger.info(f"  Row {current_row}: Skipped '{matched_lead['name']}' - already has row {existing_row} for this sheet")
                         continue
 
                     # Update raw_data with row_number and sheet_url
+                    # This will update if:
+                    # - No sheet_url exists
+                    # - Different sheet_url
+                    # - Different row_number for same sheet
                     raw_data['row_number'] = current_row
                     raw_data['sheet_url'] = sheet_url
                     raw_data['sheet_id'] = campaign_full.get('sheet_id', '')
