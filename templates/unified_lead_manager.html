@@ -1266,8 +1266,15 @@ class UnifiedLeadManagerClass {
             return `
                 <div class="lead-card status-${lead.status}" data-lead-id="${lead.id}">
                     <div class="lead-card-header">
-                        <div>
-                            <div class="lead-card-name">${lead.name || 'לא צוין'}</div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" class="lead-checkbox" value="${lead.id}"
+                                   onchange="UnifiedLeadManager.toggleLead(${lead.id}, this.checked)"
+                                   onclick="event.stopPropagation()"
+                                   style="width: 20px; height: 20px; cursor: pointer;"
+                                   title="בחר את הליד ${lead.name || 'זה'} לביצוע פעולות קבוצתיות">
+                            <div>
+                                <div class="lead-card-name">${lead.name || 'לא צוין'}</div>
+                            </div>
                         </div>
                         <div class="lead-card-status">
                             <span class="status-badge status-${lead.status}"
