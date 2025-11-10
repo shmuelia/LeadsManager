@@ -2132,13 +2132,21 @@ class UnifiedLeadManagerClass {
         const bulkPanel = document.getElementById('bulkActionsPanel');
         const selectedCount = document.getElementById('selectedCount');
 
+        console.log('🔍 updateBulkActionsPanel called, selectedLeads.size:', this.selectedLeads.size);
+        console.log('🔍 bulkPanel element:', bulkPanel);
+        console.log('🔍 selectedCount element:', selectedCount);
+
         if (bulkPanel && selectedCount) {
             if (this.selectedLeads.size > 0) {
+                console.log('✅ Showing bulk panel, selected count:', this.selectedLeads.size);
                 bulkPanel.style.display = 'block';
                 selectedCount.textContent = this.selectedLeads.size;
             } else {
+                console.log('❌ Hiding bulk panel');
                 bulkPanel.style.display = 'none';
             }
+        } else {
+            console.error('⚠️ bulkPanel or selectedCount element not found!');
         }
     }
 
