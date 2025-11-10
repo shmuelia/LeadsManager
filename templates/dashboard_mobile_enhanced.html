@@ -723,6 +723,24 @@
             outline-offset: 2px;
         }
 
+        /* Email Status Styling */
+        .email-status {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .email-status.enabled {
+            background: #dcfce7;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
         /* Bottom Sheet Modal */
         .bottom-sheet {
             position: fixed;
@@ -902,6 +920,9 @@
                 <h1 class="header-title">🎯 לידים שלי v3.29</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
+                <button class="header-btn haptic-light" onclick="window.location.href='/admin/campaigns'" aria-label="ניהול קמפיינים">
+                    🎯
+                </button>
                 <button class="header-btn haptic-light" onclick="toggleSearch()" aria-label="חיפוש">
                     🔍
                 </button>
@@ -917,6 +938,20 @@
             </div>
         </header>
         
+        {% if session.get('role') in ['admin', 'campaign_manager'] %}
+        <!-- Email Notification Status -->
+        <div class="email-status" id="email-status" style="background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 12px; margin: 10px 16px; border-radius: 8px; text-align: center; font-weight: 600; font-size: 12px;">
+            📧 התראות אימייל: בודק הגדרות...
+        </div>
+
+        <!-- Add Lead Button -->
+        <div style="padding: 10px 16px;">
+            <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="openAddLeadModal()" style="width: 100%;">
+                ➕ הוסף ליד ידנית
+            </button>
+        </div>
+        {% endif %}
+
         <!-- Quick Filters -->
         <div class="quick-filters">
             <div class="filter-chip haptic-light" onclick="filterLeads('all')">
@@ -954,6 +989,62 @@
                 </div>
                 <div class="bottom-sheet-actions">
                     <button class="modal-btn modal-btn-primary" onclick="leadManager.closeDetails()">סגור</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Lead Modal -->
+        <div id="addLeadModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>➕ הוסף ליד ידנית</h3>
+                    <button class="modal-close" onclick="closeAddLeadModal()">✖️</button>
+                </div>
+                <div class="modal-body">
+                    <form id="addLeadForm">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">לקוח <span style="color:red;">*</span></label>
+                            <select id="addLeadCustomerId" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="1" selected>לקוח #1</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם קמפיין <span style="color:red;">*</span></label>
+                            <select id="addLeadCampaignName" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="">בחר קמפיין...</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם מלא <span style="color:red;">*</span></label>
+                            <input type="text" id="addLeadName" placeholder="שם הליד" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">טלפון <span style="color:red;">*</span></label>
+                            <input type="text" id="addLeadPhone" placeholder="972501234567" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל</label>
+                            <input type="email" id="addLeadEmail" placeholder="example@gmail.com" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">סטטוס</label>
+                            <select id="addLeadStatus" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="new">חדש</option>
+                                <option value="contacted">נוצר קשר</option>
+                                <option value="qualified">מתאים</option>
+                                <option value="converted">הומר</option>
+                                <option value="lost">אבוד</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">הערות</label>
+                            <input type="text" id="addLeadNotes" placeholder="הערות נוספות..." style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-primary" onclick="submitAddLead()">הוסף ליד</button>
+                    <button class="action-btn btn-secondary" onclick="closeAddLeadModal()">ביטול</button>
                 </div>
             </div>
         </div>
@@ -2053,12 +2144,163 @@
             window.location.href = '/logout';
         }
 
+        // Add Lead Modal Functions
+        let campaigns = [];
+        let customers = [];
+
+        async function openAddLeadModal() {
+            const modal = document.getElementById('addLeadModal');
+            document.getElementById('addLeadForm').reset();
+            await loadCustomers();
+            await loadCampaignsForLead();
+            modal.style.display = 'flex';
+        }
+
+        function closeAddLeadModal() {
+            document.getElementById('addLeadModal').style.display = 'none';
+        }
+
+        async function loadCustomers() {
+            try {
+                const r = await fetch('/admin/customers/api');
+                const data = await r.json();
+                customers = data || [];
+
+                if (customers.length === 0) {
+                    document.getElementById('addLeadCustomerId').innerHTML = '<option value="">אין לקוחות זמינים</option>';
+                    return;
+                }
+
+                const customerOptions = customers.map(c =>
+                    `<option value="${c.id}" ${c.id === 1 ? 'selected' : ''}>${c.name}</option>`
+                ).join('');
+
+                document.getElementById('addLeadCustomerId').innerHTML = customerOptions;
+            } catch(e) {
+                console.error('Error loading customers:', e);
+                document.getElementById('addLeadCustomerId').innerHTML = '<option value="">שגיאה בטעינת לקוחות</option>';
+            }
+        }
+
+        async function loadCampaignsForLead() {
+            try {
+                const selectedCustomerId = document.getElementById('addLeadCustomerId').value;
+                if (!selectedCustomerId) {
+                    document.getElementById('addLeadCampaignName').innerHTML = '<option value="">בחר לקוח תחילה...</option>';
+                    return;
+                }
+
+                const r = await fetch('/admin/campaigns/api');
+                const data = await r.json();
+                const allCampaigns = data.campaigns || [];
+
+                const customerCampaigns = allCampaigns.filter(c =>
+                    c.customer_id == selectedCustomerId && c.active
+                );
+
+                if (customerCampaigns.length === 0) {
+                    document.getElementById('addLeadCampaignName').innerHTML = '<option value="">אין קמפיינים זמינים ללקוח זה</option>';
+                    return;
+                }
+
+                const campaignOptions = '<option value="">בחר קמפיין...</option>' +
+                    customerCampaigns.map(c =>
+                        `<option value="${c.campaign_name}">${c.campaign_name}</option>`
+                    ).join('');
+
+                document.getElementById('addLeadCampaignName').innerHTML = campaignOptions;
+            } catch(e) {
+                console.error('Error loading campaigns:', e);
+                document.getElementById('addLeadCampaignName').innerHTML = '<option value="">שגיאה בטעינת קמפיינים</option>';
+            }
+        }
+
+        async function submitAddLead() {
+            const phone = document.getElementById('addLeadPhone').value.trim();
+            const email = document.getElementById('addLeadEmail').value.trim();
+
+            if (!phone && !email) {
+                alert('נדרש לפחות טלפון או אימייל');
+                return;
+            }
+
+            const data = {
+                customer_id: parseInt(document.getElementById('addLeadCustomerId').value),
+                campaign_name: document.getElementById('addLeadCampaignName').value,
+                name: document.getElementById('addLeadName').value,
+                phone: phone || null,
+                email: email || null,
+                status: document.getElementById('addLeadStatus').value,
+                notes: document.getElementById('addLeadNotes').value
+            };
+
+            try {
+                const response = await fetch('/admin/leads/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('✅ הליד נוסף בהצלחה! ID: ' + result.lead_id);
+                    closeAddLeadModal();
+                    if (leadManager) {
+                        await leadManager.loadLeads();
+                        leadManager.renderLeads();
+                    }
+                } else {
+                    alert('❌ שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            }
+        }
+
+        // Check email notification status
+        function checkEmailStatus() {
+            fetch('/email-status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusDiv = document.getElementById('email-status');
+                    if (statusDiv) {
+                        if (data.enabled) {
+                            statusDiv.style.background = '#dcfce7';
+                            statusDiv.style.borderColor = '#10b981';
+                            statusDiv.style.color = '#065f46';
+                            statusDiv.innerHTML = `📧 התראות אימייל פעילות - שולח מ: ${data.sender_email}`;
+                        } else {
+                            statusDiv.innerHTML = '📧 התראות אימייל לא מוגדרות - פנה למנהל המערכת';
+                        }
+                    }
+                })
+                .catch(error => {
+                    const statusDiv = document.getElementById('email-status');
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '📧 לא ניתן לבדוק סטטוס התראות';
+                    }
+                });
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Enhanced Mobile Dashboard v3.0 Starting...');
 
             // Create lead manager instance
             leadManager = new MobileLeadManager();
+
+            // Check email status for campaign managers and admins
+            const userRole = '{{ session.get("role") }}';
+            if (userRole === 'admin' || userRole === 'campaign_manager') {
+                checkEmailStatus();
+
+                // Setup customer change listener for add lead modal
+                const customerSelect = document.getElementById('addLeadCustomerId');
+                if (customerSelect) {
+                    customerSelect.addEventListener('change', loadCampaignsForLead);
+                }
+            }
 
             // Add global haptic feedback
             document.addEventListener('touchstart', function(e) {
