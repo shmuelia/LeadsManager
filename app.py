@@ -1388,6 +1388,11 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
             title = f'שלום {role_title}, ליד חדש הגיע!'
             instruction = 'כנס למערכת לניהול והקצאת הליד:'
             target_url = '/campaign-manager'
+        elif email_type == "reminder":
+            subject = f'⏰ תזכורת: ליד ממתין - {lead_name}'
+            title = f'שלום {to_username}, תזכורת על ליד שהוקצה אליך!'
+            instruction = 'הליד ממתין לטיפולך. כנס למערכת לעדכון סטטוס:'
+            target_url = '/dashboard'
         else:  # assignment
             subject = f'📋 הוקצה לך ליד חדש - {lead_name}'
             title = f'שלום {to_username}, הוקצה לך ליד חדש על ידי {assigned_to}!'
@@ -3335,6 +3340,120 @@ def assign_lead_campaign_manager(lead_id):
         
     except Exception as e:
         logger.error(f"Error assigning lead: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/leads/send-reminder', methods=['POST'])
+@campaign_manager_required
+def send_reminder_email():
+    """Campaign Manager & Admin: Send reminder emails to users for selected leads"""
+    try:
+        data = request.get_json()
+        lead_ids = data.get('lead_ids', [])
+
+        if not lead_ids:
+            return jsonify({'error': 'לא נבחרו לידים'}), 400
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get user's customer context
+        user_role = session.get('role')
+        if user_role == 'admin':
+            selected_customer_id = session.get('selected_customer_id', 1)
+        else:  # campaign_manager
+            selected_customer_id = session.get('selected_customer_id') or session.get('customer_id')
+
+        if not selected_customer_id:
+            logger.error(f"No customer_id found in session for {session.get('username')}")
+            return jsonify({'error': 'No customer assigned to your account'}), 400
+
+        # Get leads with their assigned users
+        placeholders = ','.join(['%s'] * len(lead_ids))
+        cur.execute(f"""
+            SELECT l.id, l.name, l.phone, l.email, l.platform, l.campaign_name,
+                   l.assigned_to, l.customer_id, l.status,
+                   u.email as user_email, u.full_name as user_full_name, u.customer_id as user_customer_id
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_to = u.username
+            WHERE l.id IN ({placeholders})
+            AND l.customer_id = %s
+            AND l.assigned_to IS NOT NULL
+            AND u.email IS NOT NULL
+            AND u.active = true
+        """, tuple(lead_ids) + (selected_customer_id,))
+
+        leads = cur.fetchall()
+
+        if not leads:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'לא נמצאו לידים מוקצים עם משתמשים פעילים'}), 400
+
+        # Send reminder emails
+        successful_reminders = 0
+        failed_reminders = 0
+
+        for lead in leads:
+            try:
+                # Create reminder email
+                email_sent = send_email_notification(
+                    customer_id=lead['user_customer_id'],
+                    to_email=lead['user_email'],
+                    to_username=lead['user_full_name'],
+                    lead_name=lead['name'],
+                    lead_phone=lead['phone'],
+                    lead_email=lead['email'],
+                    platform=lead['platform'],
+                    campaign_name=lead['campaign_name'],
+                    email_type="reminder",
+                    assigned_to=session.get('full_name', 'מנהל קמפיין')
+                )
+
+                if email_sent:
+                    successful_reminders += 1
+
+                    # Log reminder activity
+                    cur.execute("""
+                        INSERT INTO lead_activities
+                        (lead_id, user_name, activity_type, description, customer_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (
+                        lead['id'],
+                        session.get('username', 'מנהל'),
+                        'reminder_sent',
+                        f'תזכורת נשלחה ל-{lead["user_full_name"]} על ידי {session.get("full_name", "מנהל קמפיין")}',
+                        selected_customer_id
+                    ))
+
+                    logger.info(f"Reminder email sent to {lead['user_email']} for lead {lead['id']}")
+                else:
+                    failed_reminders += 1
+                    logger.warning(f"Failed to send reminder email to {lead['user_email']} for lead {lead['id']}")
+
+            except Exception as e:
+                failed_reminders += 1
+                logger.error(f"Error sending reminder for lead {lead['id']}: {e}")
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        message = f'נשלחו {successful_reminders} תזכורות בהצלחה'
+        if failed_reminders > 0:
+            message += f', {failed_reminders} נכשלו'
+
+        return jsonify({
+            'status': 'success',
+            'message': message,
+            'successful': successful_reminders,
+            'failed': failed_reminders
+        })
+
+    except Exception as e:
+        logger.error(f"Error sending reminder emails: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/customers')

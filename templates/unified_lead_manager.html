@@ -792,6 +792,27 @@
         </div>
     </div>
 
+    <!-- Bulk Actions Panel (Campaign Manager & Admin Only) -->
+    {% if session.get('role') in ['campaign_manager', 'admin'] %}
+    <div class="bulk-actions-panel" id="bulkActionsPanel" style="display: none; background: #f0f9ff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 2px solid #3b82f6;">
+        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <span style="font-weight: 600; color: #1e40af;">
+                <span id="selectedCount">0</span> לידים נבחרו
+            </span>
+            <button class="action-btn btn-reminder" onclick="window.UnifiedLeadManager.sendReminders()"
+                    style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"
+                    title="שלח תזכורת למשתמשים על הלידים שנבחרו (רק לידים מוקצים)">
+                ⏰ שלח תזכורת
+            </button>
+            <button class="action-btn btn-secondary" onclick="window.UnifiedLeadManager.clearSelection()"
+                    style="background: #e2e8f0; color: #1e293b; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;"
+                    title="בטל את בחירת כל הלידים">
+                ביטול בחירה
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Leads Display (Cards + Table) -->
     <div class="leads-display" style="position: relative; margin-top: 20px;">
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
@@ -2095,6 +2116,7 @@ class UnifiedLeadManagerClass {
                 this.selectedLeads.delete(leadId);
             }
         });
+        this.updateBulkActionsPanel();
     }
     
     toggleLead(leadId, checked) {
@@ -2103,8 +2125,90 @@ class UnifiedLeadManagerClass {
         } else {
             this.selectedLeads.delete(leadId);
         }
+        this.updateBulkActionsPanel();
     }
-    
+
+    updateBulkActionsPanel() {
+        const bulkPanel = document.getElementById('bulkActionsPanel');
+        const selectedCount = document.getElementById('selectedCount');
+
+        if (bulkPanel && selectedCount) {
+            if (this.selectedLeads.size > 0) {
+                bulkPanel.style.display = 'block';
+                selectedCount.textContent = this.selectedLeads.size;
+            } else {
+                bulkPanel.style.display = 'none';
+            }
+        }
+    }
+
+    clearSelection() {
+        this.selectedLeads.clear();
+        const checkboxes = document.querySelectorAll('.lead-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        this.updateBulkActionsPanel();
+    }
+
+    async sendReminders() {
+        if (this.selectedLeads.size === 0) {
+            this.showToast('לא נבחרו לידים', 'warning');
+            return;
+        }
+
+        // Check if user has permission (campaign_manager or admin only)
+        if (this.userRole !== 'campaign_manager' && this.userRole !== 'admin') {
+            this.showToast('אין לך הרשאה לשלוח תזכורות', 'error');
+            return;
+        }
+
+        // Get selected lead IDs
+        const leadIds = Array.from(this.selectedLeads);
+
+        // Check how many are assigned
+        const assignedLeads = this.leads.filter(lead =>
+            leadIds.includes(lead.id) && lead.assigned_to
+        );
+
+        if (assignedLeads.length === 0) {
+            this.showToast('אף אחד מהלידים שנבחרו לא מוקצה למשתמש', 'warning');
+            return;
+        }
+
+        const confirmMessage = `האם לשלוח תזכורת על ${assignedLeads.length} לידים מוקצים?`;
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            this.showToast('שולח תזכורות...', 'info');
+
+            const response = await fetch('/leads/send-reminder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    lead_ids: leadIds
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showToast(data.message, 'success');
+                this.clearSelection();
+                await this.loadLeads(); // Refresh to show new activities
+            } else {
+                this.showToast(data.error || 'שגיאה בשליחת תזכורות', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending reminders:', error);
+            this.showToast('שגיאה בשליחת תזכורות', 'error');
+        }
+    }
+
     async refreshLeads() {
         await this.loadLeads();
         this.showToast('הרשימה עודכנה', 'success');
