@@ -2131,11 +2131,14 @@ class UnifiedLeadManagerClass {
     updateBulkActionsPanel() {
         const bulkPanel = document.getElementById('bulkActionsPanel');
         const selectedCount = document.getElementById('selectedCount');
+        const quickSelectedCount = document.getElementById('quickSelectedCount');
+        const quickSelectedNumber = document.getElementById('quickSelectedNumber');
 
         console.log('🔍 updateBulkActionsPanel called, selectedLeads.size:', this.selectedLeads.size);
         console.log('🔍 bulkPanel element:', bulkPanel);
         console.log('🔍 selectedCount element:', selectedCount);
 
+        // Update both the bulk panel (in unified_lead_manager) and quick actions (in campaign_manager_dashboard)
         if (bulkPanel && selectedCount) {
             if (this.selectedLeads.size > 0) {
                 console.log('✅ Showing bulk panel, selected count:', this.selectedLeads.size);
@@ -2145,8 +2148,16 @@ class UnifiedLeadManagerClass {
                 console.log('❌ Hiding bulk panel');
                 bulkPanel.style.display = 'none';
             }
-        } else {
-            console.error('⚠️ bulkPanel or selectedCount element not found!');
+        }
+
+        // Update quick actions counter (campaign manager dashboard)
+        if (quickSelectedCount && quickSelectedNumber) {
+            if (this.selectedLeads.size > 0) {
+                quickSelectedCount.style.display = 'block';
+                quickSelectedNumber.textContent = this.selectedLeads.size;
+            } else {
+                quickSelectedCount.style.display = 'none';
+            }
         }
     }
 

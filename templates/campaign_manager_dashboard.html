@@ -267,7 +267,29 @@
         <div class="email-status" id="email-status">
             � התראות אימייל: בודק הגדרות...
         </div>
-        
+
+        <!-- Quick Actions Bar for Campaign Manager -->
+        <div style="background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h3 style="margin: 0 0 5px 0; color: #1e293b;">⚡ פעולות מהירות</h3>
+                    <p style="margin: 0; color: #64748b; font-size: 14px;">שלח תזכורות למשתמשים על לידים שהוקצו להם</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span id="quickSelectedCount" style="display: none; font-weight: 600; color: #3b82f6; padding: 8px 15px; background: #eff6ff; border-radius: 8px;">
+                        <span id="quickSelectedNumber">0</span> נבחרו
+                    </span>
+                    <button onclick="window.UnifiedLeadManager && window.UnifiedLeadManager.sendReminders()"
+                            style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px 24px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3); transition: all 0.2s;"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(59, 130, 246, 0.4)'"
+                            onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.3)'"
+                            title="בחר לידים בטבלה למטה ולחץ כאן לשלוח תזכורת למשתמשים">
+                        ⏰ שלח תזכורת ללידים נבחרים
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Include Unified Lead Manager Component -->
         {% include 'unified_lead_manager.html' %}
         
