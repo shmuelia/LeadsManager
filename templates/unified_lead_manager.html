@@ -2178,7 +2178,27 @@ class UnifiedLeadManagerClass {
     }
 
     async sendReminders() {
+        console.log('🔍 sendReminders called');
+        console.log('🔍 selectedLeads:', this.selectedLeads);
+        console.log('🔍 selectedLeads.size:', this.selectedLeads.size);
+
+        // Sync selectedLeads with actual checked checkboxes
+        const checkedBoxes = document.querySelectorAll('.lead-checkbox:checked');
+        console.log('🔍 Checked checkboxes:', checkedBoxes);
+
+        // If selectedLeads is empty but checkboxes are checked, sync them
+        if (this.selectedLeads.size === 0 && checkedBoxes.length > 0) {
+            console.log('⚠️ Syncing selectedLeads from checked checkboxes');
+            this.selectedLeads.clear();
+            checkedBoxes.forEach(cb => {
+                const leadId = parseInt(cb.value);
+                this.selectedLeads.add(leadId);
+            });
+            console.log('✅ After sync, selectedLeads.size:', this.selectedLeads.size);
+        }
+
         if (this.selectedLeads.size === 0) {
+            console.error('⚠️ No leads selected!');
             this.showToast('לא נבחרו לידים', 'warning');
             return;
         }

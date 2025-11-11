@@ -21,7 +21,8 @@
       "Bash(heroku config:set:*)",
       "WebSearch",
       "Bash(cd:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(powershell.exe -File deploy.ps1 \"Fix: Auto-sync selectedLeads from checked checkboxes to handle selection state properly\")"
     ],
     "deny": [],
     "ask": []
