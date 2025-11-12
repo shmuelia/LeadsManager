@@ -253,6 +253,9 @@
             <div class="sync-header">
                 <h2>🔄 סנכרון קמפיינים מ-Google Sheets</h2>
                 <div style="display: flex; gap: 10px;">
+                    <button class="btn-add-lead" onclick="syncAllCampaigns()" style="background: #10b981;">
+                        🔄 סנכרן הכל
+                    </button>
                     <button class="btn-add-lead" onclick="openAddLeadModal()">
                         ➕ הוסף ליד ידנית
                     </button>
@@ -859,6 +862,65 @@
             .catch(error => {
                 document.getElementById('email-status').innerHTML = '📧 לא ניתן לבדוק סטטוס התראות';
             });
+
+        // Sync All Campaigns Function
+        async function syncAllCampaigns() {
+            if (!confirm('האם לסנכרן את כל הקמפיינים הפעילים? זה עשוי לקחת זמן...')) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן...';
+
+            try {
+                const response = await fetch('/admin/campaigns/sync-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Build summary message
+                    let message = `✅ סנכרון הושלם בהצלחה!\n\n`;
+                    message += `📊 סה"כ קמפיינים: ${result.total_campaigns}\n`;
+                    message += `🆕 לידים חדשים: ${result.total_new_leads}\n`;
+                    message += `🔄 כפילויות שדולגו: ${result.total_duplicates}\n`;
+
+                    if (result.total_errors > 0) {
+                        message += `⚠️ שגיאות: ${result.total_errors}\n`;
+                    }
+
+                    message += `\n━━━━━━━━━━━━━━━━━━━━━\n\nפירוט:\n`;
+
+                    result.results.forEach(r => {
+                        if (r.success) {
+                            message += `\n✅ ${r.campaign_name}:\n`;
+                            message += `   • לידים חדשים: ${r.new_leads}\n`;
+                            if (r.duplicates > 0) {
+                                message += `   • כפילויות: ${r.duplicates}\n`;
+                            }
+                        } else {
+                            message += `\n❌ ${r.campaign_name}: ${r.error}\n`;
+                        }
+                    });
+
+                    alert(message);
+
+                    // Reload campaigns grid
+                    loadCampaigns();
+                } else {
+                    alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
     </script>
     
     <!-- Version Footer -->
