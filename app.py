@@ -4360,11 +4360,12 @@ def sync_all_campaigns():
 
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # Get all campaigns with sheet URLs (including non-active ones)
+        # Get all ACTIVE campaigns with sheet URLs
         cur.execute("""
             SELECT id, campaign_name, sheet_url
             FROM campaigns
-            WHERE sheet_url IS NOT NULL AND sheet_url != ''
+            WHERE active = true
+            AND sheet_url IS NOT NULL AND sheet_url != ''
             ORDER BY id
         """)
         campaigns = cur.fetchall()

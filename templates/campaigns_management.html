@@ -64,6 +64,7 @@
         <div class="actions-bar">
             <button class="btn-create" onclick="openCreateModal()">+ קמפיין חדש</button>
             <button class="btn-create" onclick="openAddLeadModal()" style="margin-right: 10px; background: #3b82f6;">➕ הוסף ליד ידנית</button>
+            <button class="btn-create" onclick="syncAllCampaigns()" style="margin-right: 10px; background: #10b981;">🔄 סנכרן את כל הקמפיינים הפעילים</button>
         </div>
 
         <div class="table-wrapper">
@@ -839,6 +840,69 @@
         async function sync(id) {
             // This function is now just a wrapper to open the config modal
             openSyncConfigModal(id);
+        }
+
+        async function syncAllCampaigns() {
+            if (!confirm('האם לסנכרן את כל הקמפיינים הפעילים? זה עשוי לקחת זמן...')) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ מסנכרן את כל הקמפיינים...';
+
+            try {
+                const response = await fetch('/admin/campaigns/sync-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Build detailed result message
+                    let message = `✅ סנכרון הושלם בהצלחה!\n\n`;
+                    message += `סה"כ קמפיינים: ${result.total_campaigns}\n`;
+                    message += `סה"כ לידים חדשים: ${result.total_new_leads}\n`;
+                    message += `סה"כ כפילויות: ${result.total_duplicates}\n`;
+                    message += `סה"כ שגיאות: ${result.total_errors}\n\n`;
+                    message += `פירוט לפי קמפיין:\n`;
+                    message += `${'='.repeat(50)}\n`;
+
+                    result.results.forEach(r => {
+                        if (r.success) {
+                            message += `\n✅ ${r.campaign_name} (Tab GID: ${r.tab_gid}):\n`;
+                            message += `   לידים חדשים: ${r.new_leads}\n`;
+                            message += `   כפילויות: ${r.duplicates}\n`;
+                            message += `   שגיאות: ${r.errors}\n`;
+                            message += `   שורה אחרונה: ${r.last_synced_row}\n`;
+                        } else {
+                            message += `\n❌ ${r.campaign_name}: ${r.error}\n`;
+                        }
+                    });
+
+                    // Show in sync result modal
+                    const modal = document.getElementById('syncResultModal');
+                    const title = document.getElementById('syncResultTitle');
+                    const content = document.getElementById('syncResultContent');
+
+                    title.textContent = '✅ סנכרון כל הקמפיינים הושלם';
+                    content.className = 'result-box result-success';
+                    content.textContent = message;
+                    modal.style.display = 'block';
+
+                    // Reload campaigns table
+                    load();
+                } else {
+                    alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         }
 
         function openAddLeadModal() {
