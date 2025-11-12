@@ -53,9 +53,64 @@ class LeadsService {
         user_name: userName,
       }),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to update lead status');
+    }
+    return response.json();
+  }
+
+  async syncAllPreview(): Promise<{
+    success: boolean;
+    total_campaigns: number;
+    total_new_leads: number;
+    previews: Array<{
+      campaign_id: number;
+      campaign_name: string;
+      new_leads_count: number;
+      last_synced_row: number;
+      total_rows: number;
+      error?: string;
+    }>;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/admin/campaigns/sync-all-preview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get sync preview');
+    }
+    return response.json();
+  }
+
+  async syncAll(): Promise<{
+    success: boolean;
+    total_campaigns: number;
+    total_new_leads: number;
+    total_duplicates: number;
+    total_errors: number;
+    results: Array<{
+      campaign_id: number;
+      campaign_name: string;
+      success: boolean;
+      new_leads?: number;
+      duplicates?: number;
+      errors?: number;
+      error?: string;
+    }>;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/admin/campaigns/sync-all`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to sync campaigns');
     }
     return response.json();
   }

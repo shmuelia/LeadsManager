@@ -39,6 +39,7 @@ const LeadsListScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   const loadLeads = async () => {
     try {
@@ -50,6 +51,98 @@ const LeadsListScreen: React.FC<Props> = ({ navigation }) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    try {
+      setSyncing(true);
+
+      // Step 1: Get preview
+      const previewResult = await LeadsService.syncAllPreview();
+
+      if (!previewResult.success) {
+        Alert.alert('שגיאה', 'לא ניתן לטעון תצוגה מקדימה');
+        return;
+      }
+
+      // Step 2: Build preview message
+      let previewMessage = `📊 תצוגה מקדימה - סנכרון כל הקמפיינים\n\n`;
+      previewMessage += `סה"כ קמפיינים פעילים: ${previewResult.total_campaigns}\n`;
+      previewMessage += `סה"כ לידים חדשים לייבוא: ${previewResult.total_new_leads}\n\n`;
+      previewMessage += `פירוט לפי קמפיין:\n`;
+      previewMessage += `${'='.repeat(40)}\n`;
+
+      previewResult.previews.forEach(p => {
+        if (p.error) {
+          previewMessage += `\n❌ ${p.campaign_name}: ${p.error}\n`;
+        } else {
+          previewMessage += `\n✅ ${p.campaign_name}:\n`;
+          previewMessage += `   • לידים חדשים: ${p.new_leads_count}\n`;
+          previewMessage += `   • שורה אחרונה בDB: ${p.last_synced_row}\n`;
+        }
+      });
+
+      // Step 3: Show confirmation
+      Alert.alert(
+        'סנכרון קמפיינים',
+        previewMessage,
+        [
+          {
+            text: 'ביטול',
+            style: 'cancel',
+          },
+          {
+            text: 'המשך בסנכרון',
+            onPress: async () => {
+              try {
+                // Step 4: Execute sync
+                const syncResult = await LeadsService.syncAll();
+
+                if (!syncResult.success) {
+                  Alert.alert('שגיאה', 'הסנכרון נכשל');
+                  return;
+                }
+
+                // Step 5: Build results message
+                let resultsMessage = `✅ סנכרון הושלם בהצלחה!\n\n`;
+                resultsMessage += `📊 סה"כ קמפיינים: ${syncResult.total_campaigns}\n`;
+                resultsMessage += `🆕 לידים חדשים: ${syncResult.total_new_leads}\n`;
+                resultsMessage += `🔄 כפילויות שדולגו: ${syncResult.total_duplicates}\n`;
+
+                if (syncResult.total_errors > 0) {
+                  resultsMessage += `⚠️ שגיאות: ${syncResult.total_errors}\n`;
+                }
+
+                resultsMessage += `\n${'━'.repeat(30)}\n\nפירוט:\n`;
+
+                syncResult.results.forEach(r => {
+                  if (r.success) {
+                    resultsMessage += `\n✅ ${r.campaign_name}:\n`;
+                    resultsMessage += `   • לידים חדשים: ${r.new_leads}\n`;
+                    if (r.duplicates && r.duplicates > 0) {
+                      resultsMessage += `   • כפילויות: ${r.duplicates}\n`;
+                    }
+                  } else {
+                    resultsMessage += `\n❌ ${r.campaign_name}: ${r.error}\n`;
+                  }
+                });
+
+                Alert.alert('תוצאות סנכרון', resultsMessage);
+
+                // Reload leads
+                loadLeads();
+              } catch (syncError) {
+                Alert.alert('שגיאה', 'הסנכרון נכשל: ' + (syncError as Error).message);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('שגיאה', 'שגיאה בטעינת תצוגה מקדימה: ' + (error as Error).message);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -205,7 +298,20 @@ const LeadsListScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.searchbar}
         right={() => <IconButton icon="magnify" />}
       />
-      
+
+      {/* Sync All Button */}
+      <Button
+        mode="contained"
+        icon="sync"
+        onPress={handleSyncAll}
+        loading={syncing}
+        disabled={syncing}
+        style={styles.syncButton}
+        buttonColor="#10b981"
+      >
+        {syncing ? 'מסנכרן...' : '🔄 סנכרן את כל הקמפיינים'}
+      </Button>
+
       <FlatList
         data={filteredLeads}
         renderItem={renderLeadItem}
@@ -232,6 +338,11 @@ const styles = StyleSheet.create({
   searchbar: {
     margin: 16,
     marginBottom: 8,
+    elevation: 2,
+  },
+  syncButton: {
+    marginHorizontal: 16,
+    marginBottom: 12,
     elevation: 2,
   },
   listContent: {
