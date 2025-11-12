@@ -60,7 +60,7 @@ if not git_hash:
 
 APP_VERSION = f"v{git_hash}"
 BUILD_TIME = datetime.now().strftime('%Y-%m-%d %H:%M')
-logger.info(f"🚀 LeadsManager starting - Version: {APP_VERSION} | Build: {BUILD_TIME}")
+logger.info(f"🚀 LeadsManager starting - Version: {APP_VERSION} | Build: {BUILD_TIME} | Sync-All Feature Ready")
 
 # Email configuration
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
