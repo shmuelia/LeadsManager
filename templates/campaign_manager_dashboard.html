@@ -865,16 +865,52 @@
 
         // Sync All Campaigns Function
         async function syncAllCampaigns() {
-            if (!confirm('האם לסנכרן את כל הקמפיינים הפעילים? זה עשוי לקחת זמן...')) {
-                return;
-            }
-
             const btn = event.target;
             const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ מסנכרן...';
 
             try {
+                // Step 1: Get preview
+                btn.disabled = true;
+                btn.textContent = '⏳ בודק קמפיינים...';
+
+                const previewResponse = await fetch('/admin/campaigns/sync-all-preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const previewResult = await previewResponse.json();
+
+                if (!previewResponse.ok || !previewResult.success) {
+                    alert('❌ שגיאה בטעינת תצוגה מקדימה: ' + (previewResult.error || 'שגיאה לא ידועה'));
+                    return;
+                }
+
+                // Step 2: Show preview and get confirmation
+                let previewMessage = `📊 תצוגה מקדימה - סנכרון כל הקמפיינים\n\n`;
+                previewMessage += `סה"כ קמפיינים פעילים: ${previewResult.total_campaigns}\n`;
+                previewMessage += `סה"כ לידים חדשים לייבוא: ${previewResult.total_new_leads}\n\n`;
+                previewMessage += `פירוט לפי קמפיין:\n`;
+                previewMessage += `${'='.repeat(50)}\n`;
+
+                previewResult.previews.forEach(p => {
+                    if (p.error) {
+                        previewMessage += `\n❌ ${p.campaign_name}: ${p.error}\n`;
+                    } else {
+                        previewMessage += `\n✅ ${p.campaign_name}:\n`;
+                        previewMessage += `   • לידים חדשים: ${p.new_leads_count}\n`;
+                        previewMessage += `   • שורה אחרונה בDB: ${p.last_synced_row}\n`;
+                    }
+                });
+
+                previewMessage += `\n\nהאם להמשיך בסנכרון?`;
+
+                if (!confirm(previewMessage)) {
+                    return;
+                }
+
+                // Step 3: Execute sync
+                btn.textContent = '⏳ מסנכרן...';
+
                 const response = await fetch('/admin/campaigns/sync-all', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }

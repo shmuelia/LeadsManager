@@ -4349,10 +4349,14 @@ def create_lead_manual():
         except:
             pass
 
-@app.route('/admin/campaigns/sync-all', methods=['POST'])
+@app.route('/admin/campaigns/sync-all-preview', methods=['POST'])
 @campaign_manager_required
-def sync_all_campaigns():
-    """Sync all active campaigns by calling individual sync endpoint for each"""
+def sync_all_campaigns_preview():
+    """Preview how many new leads will be imported for each active campaign"""
+    import requests
+    import csv
+    from io import StringIO
+
     try:
         conn = get_db_connection()
         if not conn:
@@ -4362,12 +4366,155 @@ def sync_all_campaigns():
 
         # Get all ACTIVE campaigns with sheet URLs
         cur.execute("""
-            SELECT id, campaign_name, sheet_url
+            SELECT id, campaign_name, sheet_url, customer_id, sheet_id, column_mapping, last_synced_row
             FROM campaigns
             WHERE active = true
             AND sheet_url IS NOT NULL AND sheet_url != ''
-            ORDER BY id
+            ORDER BY campaign_name
         """)
+        campaigns = cur.fetchall()
+
+        if not campaigns:
+            return jsonify({
+                'success': True,
+                'message': 'No active campaigns with sheet URLs found',
+                'previews': []
+            })
+
+        previews = []
+        total_new_leads = 0
+
+        for campaign in campaigns:
+            try:
+                # Extract GID from URL
+                sheet_url = campaign['sheet_url']
+                sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+                if not sheet_id_match:
+                    previews.append({
+                        'campaign_id': campaign['id'],
+                        'campaign_name': campaign['campaign_name'],
+                        'error': 'Invalid Sheet URL'
+                    })
+                    continue
+
+                spreadsheet_id = sheet_id_match.group(1)
+                gid_match = re.search(r'gid=(\d+)', sheet_url)
+                gid = gid_match.group(1) if gid_match else '0'
+                gid_key = f'gid_{gid}'
+
+                # Get last synced row
+                last_synced_data = campaign.get('last_synced_row') or {}
+                if isinstance(last_synced_data, int):
+                    last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
+                last_synced_row = last_synced_data.get(gid_key, 1)
+
+                # Fetch CSV
+                csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+                response = requests.get(csv_url, timeout=10)
+                response.raise_for_status()
+                response.encoding = 'utf-8'
+
+                reader = csv.DictReader(StringIO(response.text))
+                column_mapping = campaign.get('column_mapping') or {}
+
+                # Count potential new leads
+                new_count = 0
+                current_row = 1
+
+                for row_data in reader:
+                    current_row += 1
+
+                    # Skip if already synced or empty
+                    if current_row <= last_synced_row or not any(row_data.values()):
+                        continue
+
+                    # Extract fields based on column mapping
+                    if column_mapping and column_mapping.get('name'):
+                        name = row_data.get(column_mapping['name'], '')
+                        phone = row_data.get(column_mapping.get('phone', ''), '')
+                        email = row_data.get(column_mapping.get('email', ''), '')
+                    else:
+                        name = (row_data.get('שם מלא') or row_data.get('שם') or row_data.get('name') or row_data.get('Name') or '')
+                        phone = (row_data.get('מס פלאפון') or row_data.get('טלפון') or row_data.get('מספר טלפון') or
+                                row_data.get('phone') or row_data.get('Phone Number') or '')
+                        email = (row_data.get('מייל') or row_data.get('אימייל') or row_data.get('דוא"ל') or
+                                row_data.get('email') or row_data.get('Email') or '')
+
+                    # Check if has required fields (same validation as sync)
+                    if name and phone and email:
+                        new_count += 1
+
+                total_new_leads += new_count
+
+                previews.append({
+                    'campaign_id': campaign['id'],
+                    'campaign_name': campaign['campaign_name'],
+                    'new_leads_count': new_count,
+                    'last_synced_row': last_synced_row,
+                    'total_rows': current_row
+                })
+
+            except Exception as e:
+                logger.error(f"Preview error for {campaign['campaign_name']}: {str(e)}")
+                previews.append({
+                    'campaign_id': campaign['id'],
+                    'campaign_name': campaign['campaign_name'],
+                    'error': str(e)
+                })
+
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'total_campaigns': len(campaigns),
+            'total_new_leads': total_new_leads,
+            'previews': previews
+        })
+
+    except Exception as e:
+        logger.error(f"Error in sync-all preview: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/campaigns/sync-all', methods=['POST'])
+@campaign_manager_required
+def sync_all_campaigns():
+    """Sync all active campaigns - executes individual sync for each"""
+    import requests
+    import csv
+    from io import StringIO
+
+    try:
+        # Get user's customer_id for permission checking
+        user_customer_id = session.get('customer_id')
+        user_role = session.get('role')
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get all ACTIVE campaigns with sheet URLs that user has access to
+        if user_role == 'campaign_manager':
+            cur.execute("""
+                SELECT id, campaign_name, sheet_url, customer_id
+                FROM campaigns
+                WHERE active = true
+                AND sheet_url IS NOT NULL AND sheet_url != ''
+                AND customer_id = %s
+                ORDER BY campaign_name
+            """, (user_customer_id,))
+        else:
+            # Admin can sync all
+            cur.execute("""
+                SELECT id, campaign_name, sheet_url, customer_id
+                FROM campaigns
+                WHERE active = true
+                AND sheet_url IS NOT NULL AND sheet_url != ''
+                ORDER BY campaign_name
+            """)
+
         campaigns = cur.fetchall()
         cur.close()
         conn.close()
@@ -4386,70 +4533,168 @@ def sync_all_campaigns():
         total_duplicates = 0
         total_errors = 0
 
-        # Sync each campaign by making internal request to individual sync endpoint
+        # Sync each campaign using inline sync logic (same as individual sync)
         for campaign in campaigns:
+            campaign_result = {
+                'campaign_id': campaign['id'],
+                'campaign_name': campaign['campaign_name'],
+                'success': False
+            }
+
             try:
                 logger.info(f"Syncing campaign: {campaign['campaign_name']} (ID: {campaign['id']})")
 
-                # Make internal call to the sync_campaign endpoint
-                # This ensures we use the EXACT same logic as individual sync
-                with app.test_request_context(
-                    path=f'/admin/campaigns/sync/{campaign["id"]}',
-                    method='POST',
-                    json={},  # Empty JSON - will use default behavior (continue from last row)
-                    headers={'Content-Type': 'application/json'}
-                ):
-                    # Copy session data to test context
-                    from flask import session as flask_session
-                    for key, value in session.items():
-                        flask_session[key] = value
+                conn = get_db_connection()
+                if not conn:
+                    campaign_result['error'] = 'Database not available'
+                    results.append(campaign_result)
+                    continue
 
-                    # Call the sync function directly
-                    response = sync_campaign(campaign['id'])
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                conn.autocommit = False
 
-                    # Parse response
-                    if isinstance(response, tuple):
-                        response_data, status_code = response
-                        result = response_data.get_json() if hasattr(response_data, 'get_json') else response_data
-                    else:
-                        result = response.get_json() if hasattr(response, 'get_json') else response
-                        status_code = 200
+                # Get full campaign data
+                cur.execute("SELECT * FROM campaigns WHERE id = %s", (campaign['id'],))
+                full_campaign = cur.fetchone()
 
-                    if status_code == 200 and result:
-                        total_new_leads += result.get('new_leads', 0)
-                        total_duplicates += result.get('duplicates', 0)
-                        total_errors += result.get('errors', 0)
+                sheet_url = full_campaign['sheet_url']
+                column_mapping = full_campaign.get('column_mapping') or {}
+                sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
 
-                        results.append({
-                            'campaign_id': campaign['id'],
-                            'campaign_name': campaign['campaign_name'],
-                            'tab_gid': result.get('tab_gid', '0'),
-                            'success': True,
-                            'new_leads': result.get('new_leads', 0),
-                            'duplicates': result.get('duplicates', 0),
-                            'errors': result.get('errors', 0),
-                            'last_synced_row': result.get('last_synced_row', 0)
-                        })
+                if not sheet_id_match:
+                    campaign_result['error'] = 'Invalid Sheet URL'
+                    results.append(campaign_result)
+                    cur.close()
+                    conn.close()
+                    continue
 
-                        logger.info(f"✅ {campaign['campaign_name']}: {result.get('new_leads', 0)} new, {result.get('duplicates', 0)} duplicates")
-                    else:
-                        error_msg = result.get('error', 'Unknown error') if result else 'Unknown error'
-                        results.append({
-                            'campaign_id': campaign['id'],
-                            'campaign_name': campaign['campaign_name'],
-                            'success': False,
-                            'error': error_msg
-                        })
-                        logger.error(f"❌ {campaign['campaign_name']}: {error_msg}")
+                spreadsheet_id = sheet_id_match.group(1)
+                gid_match = re.search(r'gid=(\d+)', sheet_url)
+                gid = gid_match.group(1) if gid_match else '0'
+                gid_key = f'gid_{gid}'
+
+                csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+                response = requests.get(csv_url, timeout=30)
+                response.raise_for_status()
+                response.encoding = 'utf-8'
+
+                reader = csv.DictReader(StringIO(response.text))
+
+                # Get last synced row
+                last_synced_data = full_campaign.get('last_synced_row') or {}
+                if isinstance(last_synced_data, int):
+                    last_synced_data = {'gid_0': last_synced_data} if last_synced_data > 1 else {}
+                last_synced_row = last_synced_data.get(gid_key, 1)
+
+                new_leads, duplicates, errors, current_row = 0, 0, 0, 1
+
+                # Process each row
+                for row_data in reader:
+                    current_row += 1
+                    if current_row <= last_synced_row or not any(row_data.values()):
+                        continue
+
+                    try:
+                        custom_data = {}
+                        # Extract fields using column mapping
+                        if column_mapping and column_mapping.get('name'):
+                            name = row_data.get(column_mapping['name'], '')
+                            phone = row_data.get(column_mapping.get('phone', ''), '')
+                            email = row_data.get(column_mapping.get('email', ''), '')
+                            campaign_name_from_row = row_data.get(column_mapping.get('campaign', ''), '')
+                            date_from_row = row_data.get(column_mapping.get('date', ''), '')
+
+                            if 'custom_fields' in column_mapping:
+                                for field_name in column_mapping['custom_fields']:
+                                    field_value = row_data.get(field_name, '')
+                                    if field_value:
+                                        custom_data[field_name] = field_value
+                        else:
+                            # Fallback
+                            name = (row_data.get('שם מלא') or row_data.get('שם') or row_data.get('name') or row_data.get('Name') or '')
+                            phone = (row_data.get('מס פלאפון') or row_data.get('טלפון') or row_data.get('מספר טלפון') or
+                                    row_data.get('phone') or row_data.get('Phone Number') or '')
+                            email = (row_data.get('מייל') or row_data.get('אימייל') or row_data.get('דוא"ל') or
+                                    row_data.get('email') or row_data.get('Email') or '')
+                            campaign_name_from_row = ''
+                            date_from_row = ''
+
+                        if phone:
+                            phone = str(phone).strip().replace('-', '').replace(' ', '')
+
+                        # Skip if missing required fields
+                        if not name or not phone or not email:
+                            continue
+
+                        # Check for duplicates
+                        cur.execute(
+                            "SELECT id FROM leads WHERE customer_id = %s AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s)) LIMIT 1",
+                            (full_campaign['customer_id'], phone or '', email or ''))
+                        if cur.fetchone():
+                            duplicates += 1
+                            continue
+
+                        final_campaign_name = campaign_name_from_row if (column_mapping and campaign_name_from_row) else full_campaign['campaign_name']
+                        raw_data = {
+                            'source': 'google_sheets',
+                            'sheet_id': full_campaign['sheet_id'],
+                            'sheet_url': full_campaign.get('sheet_url'),
+                            'campaign_name': final_campaign_name,
+                            'row_number': current_row
+                        }
+                        if date_from_row:
+                            raw_data['date'] = date_from_row
+                        raw_data.update({k: v for k, v in row_data.items() if v})
+
+                        cur.execute(
+                            "INSERT INTO leads (customer_id, name, email, phone, status, campaign_name, raw_data, custom_data, received_at) VALUES (%s, %s, %s, %s, 'new', %s, %s, %s, CURRENT_TIMESTAMP) RETURNING id",
+                            (full_campaign['customer_id'], name, email, phone, final_campaign_name, json.dumps(raw_data), json.dumps(custom_data)))
+                        lead_id = cur.fetchone()['id']
+
+                        cur.execute(
+                            "INSERT INTO lead_activities (lead_id, user_name, activity_type, description) VALUES (%s, %s, 'lead_received', %s)",
+                            (lead_id, 'system', f"Lead imported from Google Sheet: {full_campaign['campaign_name']}, Row {current_row}"))
+                        new_leads += 1
+
+                    except Exception as row_error:
+                        logger.error(f"Row {current_row} error: {str(row_error)}")
+                        errors += 1
+
+                # Update last synced row
+                last_synced_data[gid_key] = current_row
+                cur.execute(
+                    "UPDATE campaigns SET last_synced_row = %s::jsonb, last_synced_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (json.dumps(last_synced_data), campaign['id']))
+
+                conn.commit()
+                cur.close()
+                conn.close()
+
+                total_new_leads += new_leads
+                total_duplicates += duplicates
+                total_errors += errors
+
+                campaign_result.update({
+                    'success': True,
+                    'tab_gid': gid,
+                    'new_leads': new_leads,
+                    'duplicates': duplicates,
+                    'errors': errors,
+                    'last_synced_row': current_row
+                })
+                results.append(campaign_result)
+                logger.info(f"✅ {campaign['campaign_name']}: {new_leads} new, {duplicates} duplicates")
 
             except Exception as campaign_error:
                 logger.error(f"Error syncing {campaign['campaign_name']}: {str(campaign_error)}")
-                results.append({
-                    'campaign_id': campaign['id'],
-                    'campaign_name': campaign['campaign_name'],
-                    'success': False,
-                    'error': str(campaign_error)
-                })
+                campaign_result['error'] = str(campaign_error)
+                results.append(campaign_result)
+                try:
+                    if conn:
+                        conn.rollback()
+                        conn.close()
+                except:
+                    pass
 
         logger.info(f"=== Sync all complete: {total_new_leads} new leads total ===")
 
