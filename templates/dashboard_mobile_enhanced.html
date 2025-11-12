@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🚀 Mobile Dashboard v3.30 - ניהול לידים מתקדם</title>
+    <title>🚀 Mobile Dashboard {{ version }} - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
@@ -47,7 +47,7 @@
             max-width: 100vw;
             margin: 0;
             padding: 0;
-            padding-bottom: 80px; /* Consistent spacing for all roles */
+            padding-bottom: 20px; /* No bottom nav needed */
             min-height: 100vh;
             position: relative;
         }
@@ -917,7 +917,7 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.30</h1>
+                <h1 class="header-title">🎯 לידים שלי {{ version }}</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
                 <button class="header-btn haptic-light" onclick="syncAllCampaigns()" aria-label="סנכרן קמפיינים" title="סנכרן את כל הקמפיינים">
@@ -1052,51 +1052,7 @@
             </div>
         </div>
         
-        <!-- Bottom Navigation - Only for admin/campaign_manager -->
-        {% if session.get('role') in ['admin', 'campaign_manager'] %}
-        <nav class="bottom-nav">
-            <div class="nav-items">
-                <div class="nav-item active haptic-light" onclick="navigateTo('dashboard')">
-                    <div class="nav-icon">🏠</div>
-                    <div class="nav-label">בית</div>
-                </div>
-                <div class="nav-item haptic-light" onclick="navigateTo('leads')">
-                    <div class="nav-icon">📋</div>
-                    <div class="nav-label">לידים</div>
-                </div>
-                <div class="nav-item haptic-light" onclick="navigateTo('reports')">
-                    <div class="nav-icon">📊</div>
-                    <div class="nav-label">דוחות</div>
-                </div>
-                <div class="nav-item haptic-light" onclick="navigateTo('profile')">
-                    <div class="nav-icon">👤</div>
-                    <div class="nav-label">פרופיל</div>
-                </div>
-            </div>
-        </nav>
-        {% else %}
-        <!-- Placeholder for consistent spacing -->
-        <nav class="bottom-nav" style="visibility: hidden; pointer-events: none;">
-            <div class="nav-items">
-                <div class="nav-item">
-                    <div class="nav-icon">🏠</div>
-                    <div class="nav-label">בית</div>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">📋</div>
-                    <div class="nav-label">לידים</div>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">📊</div>
-                    <div class="nav-label">דוחות</div>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">👤</div>
-                    <div class="nav-label">פרופיל</div>
-                </div>
-            </div>
-        </nav>
-        {% endif %}
+        <!-- Bottom Navigation Removed - Using header buttons only -->
     </div>
     
     <script>
@@ -2000,32 +1956,6 @@
         
 
         // Legacy navigation functions for onclick handlers
-        function navigateTo(section) {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            event.currentTarget.classList.add('active');
-
-            // Navigate to appropriate section
-            switch(section) {
-                case 'dashboard':
-                    window.location.href = '/dashboard';
-                    break;
-                case 'leads':
-                    leadManager.loadLeads();
-                    break;
-                case 'calls':
-                    alert('📞 יומן שיחות - בקרוב!');
-                    break;
-                case 'reports':
-                    window.location.href = '/reports';
-                    break;
-                case 'profile':
-                    window.location.href = '/logout';
-                    break;
-            }
-        }
-
         function addNewLead() {
             leadManager.hapticFeedback('medium');
             showAddLeadModal();
