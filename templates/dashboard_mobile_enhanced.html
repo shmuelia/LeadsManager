@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🚀 Mobile Dashboard v3.29 - ניהול לידים מתקדם</title>
+    <title>🚀 Mobile Dashboard v3.30 - ניהול לידים מתקדם</title>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         * {
@@ -917,9 +917,12 @@
 
         <!-- Enhanced Mobile Header -->
         <header class="mobile-header">
-                <h1 class="header-title">🎯 לידים שלי v3.29</h1>
+                <h1 class="header-title">🎯 לידים שלי v3.30</h1>
             <div class="header-actions">
                 {% if session.get('role') in ['admin', 'campaign_manager'] %}
+                <button class="header-btn haptic-light" onclick="syncAllCampaigns()" aria-label="סנכרן קמפיינים" title="סנכרן את כל הקמפיינים">
+                    🔄
+                </button>
                 <button class="header-btn haptic-light" onclick="window.location.href='/admin/campaigns'" aria-label="ניהול קמפיינים">
                     🎯
                 </button>
@@ -2255,6 +2258,102 @@
                 }
             } catch(e) {
                 alert('❌ שגיאה: ' + e.message);
+            }
+        }
+
+        // Sync All Campaigns Function
+        async function syncAllCampaigns() {
+            const btn = event.target;
+            const originalContent = btn.innerHTML;
+
+            try {
+                // Step 1: Get preview
+                btn.disabled = true;
+                btn.innerHTML = '⏳';
+
+                const previewResponse = await fetch('/admin/campaigns/sync-all-preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const previewResult = await previewResponse.json();
+
+                if (!previewResponse.ok || !previewResult.success) {
+                    alert('❌ שגיאה בטעינת תצוגה מקדימה: ' + (previewResult.error || 'שגיאה לא ידועה'));
+                    return;
+                }
+
+                // Step 2: Show preview and get confirmation
+                let previewMessage = `📊 תצוגה מקדימה - סנכרון כל הקמפיינים\n\n`;
+                previewMessage += `סה"כ קמפיינים פעילים: ${previewResult.total_campaigns}\n`;
+                previewMessage += `סה"כ לידים חדשים לייבוא: ${previewResult.total_new_leads}\n\n`;
+                previewMessage += `פירוט לפי קמפיין:\n`;
+                previewMessage += `${'='.repeat(40)}\n`;
+
+                previewResult.previews.forEach(p => {
+                    if (p.error) {
+                        previewMessage += `\n❌ ${p.campaign_name}: ${p.error}\n`;
+                    } else {
+                        previewMessage += `\n✅ ${p.campaign_name}:\n`;
+                        previewMessage += `   • לידים חדשים: ${p.new_leads_count}\n`;
+                        previewMessage += `   • שורה אחרונה בDB: ${p.last_synced_row}\n`;
+                    }
+                });
+
+                previewMessage += `\n\nהאם להמשיך בסנכרון?`;
+
+                if (!confirm(previewMessage)) {
+                    return;
+                }
+
+                // Step 3: Execute sync
+                const response = await fetch('/admin/campaigns/sync-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Build summary message
+                    let message = `✅ סנכרון הושלם בהצלחה!\n\n`;
+                    message += `📊 סה"כ קמפיינים: ${result.total_campaigns}\n`;
+                    message += `🆕 לידים חדשים: ${result.total_new_leads}\n`;
+                    message += `🔄 כפילויות שדולגו: ${result.total_duplicates}\n`;
+
+                    if (result.total_errors > 0) {
+                        message += `⚠️ שגיאות: ${result.total_errors}\n`;
+                    }
+
+                    message += `\n━━━━━━━━━━━━━━━━━━━━━\n\nפירוט:\n`;
+
+                    result.results.forEach(r => {
+                        if (r.success) {
+                            message += `\n✅ ${r.campaign_name}:\n`;
+                            message += `   • לידים חדשים: ${r.new_leads}\n`;
+                            if (r.duplicates > 0) {
+                                message += `   • כפילויות: ${r.duplicates}\n`;
+                            }
+                        } else {
+                            message += `\n❌ ${r.campaign_name}: ${r.error}\n`;
+                        }
+                    });
+
+                    alert(message);
+
+                    // Reload leads
+                    if (leadManager) {
+                        await leadManager.loadLeads();
+                        leadManager.renderLeads();
+                    }
+                } else {
+                    alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
+                }
+            } catch(e) {
+                alert('❌ שגיאה: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
             }
         }
 
