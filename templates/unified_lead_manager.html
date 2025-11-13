@@ -1501,29 +1501,15 @@ class UnifiedLeadManagerClass {
                         <h3 style="margin-bottom: 15px; color: #1e293b;">📊 מצב הליד</h3>
                         <div style="display: grid; gap: 12px;">
                             <div><strong>סטטוס נוכחי:</strong> <span class="status-badge status-${lead.status}" style="margin-right: 8px;">${this.getStatusLabel(lead.status)}</span></div>
-                            <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
-                            ${this.role === 'campaign_manager' || this.role === 'admin' ? `
-                            <div style="margin-top: 10px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #059669;">👤 שיוך ליוזר:</label>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <select id="quickAssignUser_${lead.id}" style="flex: 1; padding: 10px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
-                                        <option value="">בחר משתמש...</option>
-                                        ${this.users.filter(u => u.role === 'user').map(u => `
-                                            <option value="${u.username}" ${lead.assigned_to === u.username ? 'selected' : ''}>
-                                                ${u.full_name} (${u.username})
-                                            </option>
-                                        `).join('')}
-                                    </select>
-                                    <button onclick="leadManager.quickAssignLead(${lead.id})"
-                                            style="padding: 10px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                                                   color: white; border: none; border-radius: 8px; font-weight: bold;
-                                                   cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-                                                   transition: all 0.2s ease;">
-                                        ✓ שיוך
-                                    </button>
-                                </div>
+                            <div>
+                                <strong>מוקצה ל:</strong>
+                                ${this.role === 'campaign_manager' || this.role === 'admin' ? `
+                                    <a href="#" onclick="event.preventDefault(); window.UnifiedLeadManager.showAssignModal(${lead.id}); return false;"
+                                       style="color: #10b981; text-decoration: underline; cursor: pointer; font-weight: 600;">
+                                        ${lead.assigned_to || 'לחץ לשיוך למשתמש'}
+                                    </a>
+                                ` : `${lead.assigned_to || 'לא מוקצה'}`}
                             </div>
-                            ` : ''}
                             <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                         </div>
                     </div>
@@ -1817,6 +1803,11 @@ class UnifiedLeadManagerClass {
             console.error('Assignment error:', error);
             this.showToast('שגיאה בהקצאת הליד', 'error');
         }
+    }
+
+    // Alias for quickAssign - used by clickable assignment link
+    async showAssignModal(leadId) {
+        return this.quickAssign(leadId);
     }
 
     async quickAssignLead(leadId) {
