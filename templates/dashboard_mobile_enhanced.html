@@ -1515,6 +1515,10 @@
                         console.error('Error parsing raw data:', e);
                     }
 
+                    // Debug: Log user role
+                    console.log('🔍 User Role:', this.userRole);
+                    console.log('🔍 Should show assign?', this.userRole === 'campaign_manager' || this.userRole === 'admin');
+
                     // Format the details HTML with enhanced Zapier data display
                     content.innerHTML = `
                         <!-- Basic Lead Information -->
@@ -1526,7 +1530,6 @@
                                 <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
                                 <div><strong>סטטוס:</strong> <span class="status-badge status-${lead.status || 'new'}">${this.getStatusLabel(lead.status)}</span></div>
                                 <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
-                                ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
                                 <div style="margin-top: 10px;">
                                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">שיוך ליוזר:</label>
                                     <div style="display: flex; gap: 8px;">
@@ -1538,7 +1541,6 @@
                                         </button>
                                     </div>
                                 </div>
-                                ` : ''}
                                 <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                             </div>
                         </div>
@@ -1642,10 +1644,8 @@
                     // Store current lead ID for potential actions
                     this.currentLeadId = leadId;
 
-                    // Load users into assignment dropdown if role is campaign_manager or admin
-                    if (this.userRole === 'campaign_manager' || this.userRole === 'admin') {
-                        this.loadUsersForAssignment(leadId);
-                    }
+                    // Load users into assignment dropdown
+                    this.loadUsersForAssignment(leadId);
 
                 } catch (error) {
                     console.error('Error loading lead details:', error);
