@@ -1502,6 +1502,28 @@ class UnifiedLeadManagerClass {
                         <div style="display: grid; gap: 12px;">
                             <div><strong>סטטוס נוכחי:</strong> <span class="status-badge status-${lead.status}" style="margin-right: 8px;">${this.getStatusLabel(lead.status)}</span></div>
                             <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
+                            ${this.role === 'campaign_manager' || this.role === 'admin' ? `
+                            <div style="margin-top: 10px;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #059669;">👤 שיוך ליוזר:</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <select id="quickAssignUser_${lead.id}" style="flex: 1; padding: 10px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
+                                        <option value="">בחר משתמש...</option>
+                                        ${this.users.filter(u => u.role === 'user').map(u => `
+                                            <option value="${u.username}" ${lead.assigned_to === u.username ? 'selected' : ''}>
+                                                ${u.full_name} (${u.username})
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                    <button onclick="leadManager.quickAssignLead(${lead.id})"
+                                            style="padding: 10px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                                                   color: white; border: none; border-radius: 8px; font-weight: bold;
+                                                   cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+                                                   transition: all 0.2s ease;">
+                                        ✓ שיוך
+                                    </button>
+                                </div>
+                            </div>
+                            ` : ''}
                             <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                         </div>
                     </div>
@@ -1781,9 +1803,9 @@ class UnifiedLeadManagerClass {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ assigned_to: assignedTo })
             });
-            
+
             const result = await response.json();
-            
+
             if (response.ok) {
                 this.showToast(result.message || 'הליד הוקצה בהצלחה', 'success');
                 await this.loadLeads();
@@ -1796,7 +1818,42 @@ class UnifiedLeadManagerClass {
             this.showToast('שגיאה בהקצאת הליד', 'error');
         }
     }
-    
+
+    async quickAssignLead(leadId) {
+        const select = document.getElementById(`quickAssignUser_${leadId}`);
+        const assignedTo = select ? select.value : '';
+
+        if (!assignedTo) {
+            this.showToast('אנא בחר משתמש', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/leads/${leadId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assigned_to: assignedTo })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showToast(`✓ הליד שויך ל-${assignedTo}`, 'success');
+                // Close the detail modal
+                const detailModal = document.getElementById('leadDetailModal');
+                if (detailModal) detailModal.style.display = 'none';
+                // Reload leads
+                await this.loadLeads();
+                this.renderLeads();
+            } else {
+                this.showToast(result.error || 'שגיאה בשיוך הליד', 'error');
+            }
+        } catch (error) {
+            console.error('Quick assignment error:', error);
+            this.showToast('שגיאה בשיוך הליד', 'error');
+        }
+    }
+
     async quickStatusChange(leadId) {
         console.log('🔍 DEBUGGING: quickStatusChange called for leadId:', leadId);
         const lead = this.leads.find(l => l.id === leadId);
