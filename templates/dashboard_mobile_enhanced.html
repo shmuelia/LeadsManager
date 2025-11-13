@@ -1526,6 +1526,19 @@
                                 <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
                                 <div><strong>סטטוס:</strong> <span class="status-badge status-${lead.status || 'new'}">${this.getStatusLabel(lead.status)}</span></div>
                                 <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
+                                ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
+                                <div style="margin-top: 10px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">שיוך ליוזר:</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
+                                            <option value="">בחר משתמש...</option>
+                                        </select>
+                                        <button onclick="leadManager.assignLead(${lead.id})" style="padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                                            שיוך
+                                        </button>
+                                    </div>
+                                </div>
+                                ` : ''}
                                 <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                             </div>
                         </div>
@@ -1629,6 +1642,11 @@
                     // Store current lead ID for potential actions
                     this.currentLeadId = leadId;
 
+                    // Load users into assignment dropdown if role is campaign_manager or admin
+                    if (this.userRole === 'campaign_manager' || this.userRole === 'admin') {
+                        this.loadUsersForAssignment(leadId);
+                    }
+
                 } catch (error) {
                     console.error('Error loading lead details:', error);
                     content.innerHTML = `
@@ -1647,6 +1665,59 @@
                 const modal = document.getElementById('leadDetailsModal');
                 modal.style.display = 'none';
                 this.currentLeadId = null;
+            }
+
+            async loadUsersForAssignment(leadId) {
+                try {
+                    const response = await fetch('/users');
+                    const data = await response.json();
+                    const users = data.users || [];
+
+                    const select = document.getElementById(`assignUserSelect_${leadId}`);
+                    if (select) {
+                        const userOptions = users
+                            .filter(u => u.role === 'user')
+                            .map(u => `<option value="${u.username}">${u.full_name} (${u.username})</option>`)
+                            .join('');
+                        select.innerHTML = '<option value="">בחר משתמש...</option>' + userOptions;
+                    }
+                } catch (error) {
+                    console.error('Error loading users:', error);
+                }
+            }
+
+            async assignLead(leadId) {
+                const select = document.getElementById(`assignUserSelect_${leadId}`);
+                const selectedUser = select ? select.value : '';
+
+                if (!selectedUser) {
+                    alert('אנא בחר משתמש');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/leads/${leadId}/assign`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            assigned_to: selectedUser,
+                            user_name: this.username
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert(`✅ הליד שויך ל-${selectedUser}`);
+                        this.closeDetails();
+                        await this.loadLeads();
+                        this.renderLeads();
+                    } else {
+                        alert('❌ שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
+                    }
+                } catch (error) {
+                    alert('❌ שגיאה: ' + error.message);
+                }
             }
 
             async updateStatus(leadId) {
