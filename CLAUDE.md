@@ -22,7 +22,14 @@ A Flask-based lead management system built for Hebrew-speaking businesses' HR de
 - **`templates/unified_lead_manager.html`** - Single component serving all roles (admin/campaign_manager/user)
   - Desktop: Table view (>768px)
   - Mobile: Card view (≤768px)
-  - JavaScript class `UnifiedLeadManager` handles all interactions
+  - JavaScript class `UnifiedLeadManagerClass` handles all interactions
+  - Template variables injected: `{{ session.get("role") }}`, `{{ session.get("username") }}`
+  - Key properties: `this.userRole`, `this.username`, `this.leads`, `this.filteredLeads`, `this.selectedLeads`
+- **`templates/dashboard_mobile_enhanced.html`** - Mobile web version for campaign managers
+  - Dynamic version display using `{{ version }}` template variable
+  - Sync all campaigns functionality
+  - Lead assignment from detail popups
+- **`templates/campaign_manager_dashboard.html`** - PC version for campaign managers
 
 ### Multi-Tenant Customer System
 **Customer Isolation Architecture:**
@@ -91,9 +98,20 @@ curl https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/check-recent-w
 ```
 
 ### Deployment Commands
+
+**CRITICAL: Always use deploy.ps1 for deployments**
+
 ```bash
-# Deploy to development environment
-git push heroku main
+# Deploy with commit message (REQUIRED METHOD)
+powershell.exe -File deploy.ps1 "Your commit message here"
+
+# What deploy.ps1 does:
+# 1. Adds all changed files (git add .)
+# 2. Commits with custom message
+# 3. Pushes to GitHub (git push origin main)
+# 4. Pushes to Heroku (git push heroku main)
+# 5. Opens campaign manager page in browser
+# 6. Reminds to hard refresh (Ctrl+Shift+R)
 
 # Monitor deployment logs
 heroku logs --tail --app eadmanager-fresh-2024-dev
@@ -101,6 +119,12 @@ heroku logs --tail --app eadmanager-fresh-2024-dev
 # Check application health
 curl https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/
 ```
+
+**Why use deploy.ps1:**
+- Keeps GitHub and Heroku in sync
+- Consistent deployment process
+- Automatically opens app for testing
+- Browser caching reminder
 
 ## Critical Webhook Field Handling
 
@@ -143,6 +167,17 @@ phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.ge
 - `/campaign-manager` - Campaign manager dashboard
 - `/dashboard` - User dashboard with unified lead manager
 
+### Campaign Sync Operations
+- `/admin/campaigns/sync-all-preview` - Preview what will be synced across all active campaigns
+- `/admin/campaigns/sync-all` - Execute sync for all active campaigns (respects column mapping, last synced row)
+- `/admin/campaigns/<id>/sync` - Sync individual campaign from Google Sheets
+- Campaign sync logic:
+  - Only syncs campaigns with `active = true`
+  - Tracks last synced row per sheet tab using JSONB column (`last_synced_row`)
+  - Uses column mapping to extract fields (handles variations: "Phone Number:", "Email:", Hebrew fields)
+  - Validates required fields: name AND phone AND email
+  - Skips duplicates based on email+campaign combination
+
 ## Authentication & Testing
 
 ### Test Credentials
@@ -180,6 +215,20 @@ SECRET_KEY    # Flask session secret (optional, has default)
 
 ## Common Issues & Solutions
 
+### Browser Caching After Deployment
+**Issue**: Changes not visible after deployment
+**Solution**: Always hard refresh with Ctrl+Shift+R (or Cmd+Shift+R on Mac)
+- Browser caches HTML, CSS, and JavaScript aggressively
+- Incognito mode can help test if issue is cache-related
+- Version numbers in templates help verify correct version is loaded
+
+### Template Variable Access Issues
+**Issue**: JavaScript trying to access `this.role` returns undefined
+**Solution**: Use `this.userRole` instead in UnifiedLeadManagerClass
+- Template injects `{{ session.get("role") }}` into `this.userRole` property
+- Common mistake: using `this.role` instead of `this.userRole`
+- Same applies to `this.username` (not `this.user`)
+
 ### Webhook Data Not Extracting
 **Issue**: Zapier sends fields with colons (`:`) that aren't standard
 **Solution**: Webhook now handles `Phone Number:`, `Email:`, `Full Name:` variants
@@ -215,3 +264,68 @@ if session.get('role') == 'campaign_manager':
     customer_id = session.get('customer_id')
     cur.execute("SELECT * FROM leads WHERE customer_id = %s", (customer_id,))
 ```
+
+## Key Frontend Patterns
+
+### UnifiedLeadManagerClass Structure
+The main JavaScript class managing all lead operations:
+
+```javascript
+class UnifiedLeadManagerClass {
+    constructor() {
+        this.userRole = '{{ session.get("role") }}';  // NOT this.role
+        this.username = '{{ session.get("username") }}';
+        this.leads = [];
+        this.filteredLeads = [];
+        this.selectedLeads = new Set();
+    }
+
+    // Key methods:
+    async loadLeads() - Fetches leads from API
+    async viewLead(leadId) - Opens lead detail modal
+    async assignLeadFromModal(leadId) - Assigns lead to user from popup
+    async loadUsersForAssignment(leadId) - Populates user dropdown
+}
+```
+
+### Adding Features to Lead Detail Popup
+When adding UI elements to the lead detail popup in `unified_lead_manager.html`:
+
+1. **Check role conditionally**: Use `this.userRole` (not `this.role`)
+   ```javascript
+   ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
+       // Your HTML here
+   ` : ''}
+   ```
+
+2. **Load data after modal opens**: Add logic after `modal.style.display = 'block'` in `showLeadModal()`
+   ```javascript
+   modal.style.display = 'block';
+
+   if (this.userRole === 'campaign_manager' || this.userRole === 'admin') {
+       this.loadUsersForAssignment(lead.id);
+   }
+   ```
+
+3. **Use unique IDs**: Include lead ID in element IDs to avoid conflicts
+   ```javascript
+   <select id="assignUserSelect_${lead.id}">
+   ```
+
+### Google Sheets Campaign Sync
+Campaigns table includes:
+- `sheet_url` - Google Sheets URL
+- `column_mapping` - JSONB mapping of sheet columns to lead fields
+- `last_synced_row` - JSONB tracking last row synced per sheet tab
+- `active` - Boolean to control which campaigns sync
+
+Sync process (app.py lines 4352-4600):
+1. Extract gid from sheet URL to identify specific tab
+2. Fetch CSV export using `{sheet_url}/export?format=csv&gid={gid}`
+3. Use column mapping to extract fields from each row
+4. Track last synced row in JSONB: `{"gid_123": 45}` means row 45 was last synced for tab with gid=123
+5. Only process rows after last synced row
+6. Validate required fields (name AND phone AND email)
+7. Check for duplicates (email + campaign_name combination)
+8. Create lead and activity records
+9. Update last_synced_row JSONB
