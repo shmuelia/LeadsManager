@@ -1502,13 +1502,18 @@ class UnifiedLeadManagerClass {
                         <div style="display: grid; gap: 12px;">
                             <div><strong>סטטוס נוכחי:</strong> <span class="status-badge status-${lead.status}" style="margin-right: 8px;">${this.getStatusLabel(lead.status)}</span></div>
                             <div>
-                                <strong>מוקצה ל:</strong>
+                                <strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}
                                 ${this.role === 'campaign_manager' || this.role === 'admin' ? `
-                                    <a href="#" onclick="event.preventDefault(); window.UnifiedLeadManager.showAssignModal(${lead.id}); return false;"
-                                       style="color: #10b981; text-decoration: underline; cursor: pointer; font-weight: 600;">
-                                        ${lead.assigned_to || 'לחץ לשיוך למשתמש'}
-                                    </a>
-                                ` : `${lead.assigned_to || 'לא מוקצה'}`}
+                                    <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                                        <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
+                                            <option value="">בחר משתמש...</option>
+                                        </select>
+                                        <button onclick="window.UnifiedLeadManager.assignLeadFromModal(${lead.id})"
+                                                style="padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;">
+                                            שיוך
+                                        </button>
+                                    </div>
+                                ` : ''}
                             </div>
                             <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
                         </div>
@@ -1685,10 +1690,82 @@ class UnifiedLeadManagerClass {
                 </div>
             </div>
         `;
-        
+
         modal.style.display = 'block';
+
+        // Load users for assignment dropdown if campaign manager or admin
+        if (this.role === 'campaign_manager' || this.role === 'admin') {
+            this.loadUsersForAssignment(lead.id);
+        }
     }
-    
+
+    async loadUsersForAssignment(leadId) {
+        try {
+            const response = await fetch('/admin/users/api');
+            if (!response.ok) {
+                console.error('Failed to load users');
+                return;
+            }
+
+            const data = await response.json();
+            const users = data.users || data;
+
+            const select = document.getElementById(`assignUserSelect_${leadId}`);
+            if (!select) return;
+
+            // Clear existing options except the first one
+            select.innerHTML = '<option value="">בחר משתמש...</option>';
+
+            // Add users to dropdown
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                option.textContent = `${user.full_name} (${user.username})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+    }
+
+    async assignLeadFromModal(leadId) {
+        const select = document.getElementById(`assignUserSelect_${leadId}`);
+        if (!select) {
+            this.showToast('שגיאה: לא נמצא שדה בחירת משתמש', 'error');
+            return;
+        }
+
+        const assignedTo = select.value;
+        if (!assignedTo) {
+            this.showToast('אנא בחר משתמש', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/leads/${leadId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assigned_to: assignedTo })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showToast(`✓ הליד שויך ל-${assignedTo}`, 'success');
+                // Close the modal
+                this.closeModal();
+                // Reload leads
+                await this.loadLeads();
+                this.renderLeads();
+            } else {
+                this.showToast(result.error || 'שגיאה בשיוך הליד', 'error');
+            }
+        } catch (error) {
+            console.error('Assignment error:', error);
+            this.showToast('שגיאה בשיוך הליד', 'error');
+        }
+    }
+
     getActivityLabel(type) {
         const labels = {
             'lead_received': 'ליד התקבל',
@@ -1804,12 +1881,6 @@ class UnifiedLeadManagerClass {
             this.showToast('שגיאה בהקצאת הליד', 'error');
         }
     }
-
-    // Alias for quickAssign - used by clickable assignment link
-    async showAssignModal(leadId) {
-        return this.quickAssign(leadId);
-    }
-
     async quickAssignLead(leadId) {
         const select = document.getElementById(`quickAssignUser_${leadId}`);
         const assignedTo = select ? select.value : '';
