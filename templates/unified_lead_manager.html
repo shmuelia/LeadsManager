@@ -1503,7 +1503,7 @@ class UnifiedLeadManagerClass {
                             <div><strong>סטטוס נוכחי:</strong> <span class="status-badge status-${lead.status}" style="margin-right: 8px;">${this.getStatusLabel(lead.status)}</span></div>
                             <div>
                                 <strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}
-                                ${this.role === 'campaign_manager' || this.role === 'admin' ? `
+                                ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
                                     <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
                                         <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
                                             <option value="">בחר משתמש...</option>
@@ -1694,7 +1694,7 @@ class UnifiedLeadManagerClass {
         modal.style.display = 'block';
 
         // Load users for assignment dropdown if campaign manager or admin
-        if (this.role === 'campaign_manager' || this.role === 'admin') {
+        if (this.userRole === 'campaign_manager' || this.userRole === 'admin') {
             this.loadUsersForAssignment(lead.id);
         }
     }
