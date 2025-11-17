@@ -919,34 +919,25 @@
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    // Build summary message
-                    let message = `✅ סנכרון הושלם בהצלחה!\n\n`;
-                    message += `📊 סה"כ קמפיינים: ${result.total_campaigns}\n`;
-                    message += `🆕 לידים חדשים: ${result.total_new_leads}\n`;
-                    message += `🔄 כפילויות שדולגו: ${result.total_duplicates}\n`;
+                    // Show single concise success message
+                    let message = `✅ סנכרון הושלם!\n\n`;
+                    message += `📊 קמפיינים: ${result.total_campaigns} | `;
+                    message += `🆕 לידים חדשים: ${result.total_new_leads} | `;
+                    message += `🔄 כפילויות: ${result.total_duplicates}`;
 
                     if (result.total_errors > 0) {
-                        message += `⚠️ שגיאות: ${result.total_errors}\n`;
+                        message += `\n⚠️ שגיאות: ${result.total_errors}`;
                     }
-
-                    message += `\n━━━━━━━━━━━━━━━━━━━━━\n\nפירוט:\n`;
-
-                    result.results.forEach(r => {
-                        if (r.success) {
-                            message += `\n✅ ${r.campaign_name}:\n`;
-                            message += `   • לידים חדשים: ${r.new_leads}\n`;
-                            if (r.duplicates > 0) {
-                                message += `   • כפילויות: ${r.duplicates}\n`;
-                            }
-                        } else {
-                            message += `\n❌ ${r.campaign_name}: ${r.error}\n`;
-                        }
-                    });
 
                     alert(message);
 
-                    // Reload campaigns grid
+                    // Reload campaigns grid AND leads list
                     loadCampaigns();
+
+                    // Refresh the unified lead manager if it exists
+                    if (window.UnifiedLeadManager) {
+                        window.UnifiedLeadManager.loadLeads();
+                    }
                 } else {
                     alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
                 }
