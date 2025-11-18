@@ -4283,13 +4283,17 @@ def create_lead_manual():
         conn.autocommit = False
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        # Check for duplicates
-        phone = data.get('phone', '').strip()
-        email = data.get('email', '').strip()
-        
+        # Check for duplicates with normalized comparison
+        phone = data.get('phone', '').strip().replace('-', '').replace(' ', '').replace('+', '')
+        email = data.get('email', '').strip().lower().rstrip('.')
+
         if phone or email:
             cur.execute(
-                "SELECT id FROM leads WHERE customer_id = %s AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s)) LIMIT 1",
+                """SELECT id FROM leads WHERE customer_id = %s AND (
+                    (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
+                    OR
+                    (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
+                ) LIMIT 1""",
                 (data['customer_id'], phone or '', email or '')
             )
             if cur.fetchone():
@@ -4621,16 +4625,25 @@ def sync_all_campaigns():
                             campaign_name_from_row = ''
                             date_from_row = ''
 
+                        # Clean and normalize phone number - remove dashes, spaces, and plus signs
                         if phone:
-                            phone = str(phone).strip().replace('-', '').replace(' ', '')
+                            phone = str(phone).strip().replace('-', '').replace(' ', '').replace('+', '')
+
+                        # Clean and normalize email - remove trailing dots and convert to lowercase
+                        if email:
+                            email = str(email).strip().lower().rstrip('.')
 
                         # Skip if missing required fields
                         if not name or not phone or not email:
                             continue
 
-                        # Check for duplicates
+                        # Check for duplicates with normalized comparison
                         cur.execute(
-                            "SELECT id FROM leads WHERE customer_id = %s AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s)) LIMIT 1",
+                            """SELECT id FROM leads WHERE customer_id = %s AND (
+                                (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
+                                OR
+                                (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
+                            ) LIMIT 1""",
                             (full_campaign['customer_id'], phone or '', email or ''))
                         if cur.fetchone():
                             duplicates += 1

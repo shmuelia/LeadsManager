@@ -22,7 +22,8 @@
       "WebSearch",
       "Bash(cd:*)",
       "Bash(dir:*)",
-      "Bash(powershell.exe -File deploy.ps1 \"Fix: Auto-sync selectedLeads from checked checkboxes to handle selection state properly\")"
+      "Bash(powershell.exe -File deploy.ps1 \"Fix: Auto-sync selectedLeads from checked checkboxes to handle selection state properly\")",
+      "Bash(powershell.exe -File deploy.ps1 \"Fix: Normalize phone and email in duplicate detection to prevent re-importing existing leads\")"
     ],
     "deny": [],
     "ask": []

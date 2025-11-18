@@ -112,9 +112,13 @@ def sync_campaign(campaign):
                     logger.warning(f"Campaign {campaign['campaign_name']} has no column mapping configured")
                     break
 
-                # Clean phone number - remove dashes and spaces
+                # Clean and normalize phone number - remove dashes, spaces, and plus signs
                 if phone:
-                    phone = str(phone).strip().replace('-', '').replace(' ', '')
+                    phone = str(phone).strip().replace('-', '').replace(' ', '').replace('+', '')
+
+                # Clean and normalize email - remove trailing dots and convert to lowercase
+                if email:
+                    email = str(email).strip().lower().rstrip('.')
 
                 # Validate required fields - need name AND (phone OR email)
                 if not name or (not phone and not email):
@@ -125,10 +129,15 @@ def sync_campaign(campaign):
 
                 # Check for duplicates by phone/email (for backward compatibility with old leads)
                 # This prevents re-importing existing leads that don't have row_number yet
+                # Normalize stored values for comparison
                 cur.execute("""
                     SELECT id FROM leads
                     WHERE customer_id = %s
-                    AND ((phone IS NOT NULL AND phone = %s) OR (email IS NOT NULL AND email = %s))
+                    AND (
+                        (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
+                        OR
+                        (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
+                    )
                     LIMIT 1
                 """, (campaign_full['customer_id'], phone or '', email or ''))
 
