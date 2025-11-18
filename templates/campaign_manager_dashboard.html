@@ -665,8 +665,8 @@
                     grid.innerHTML = syncableCampaigns.map(c => {
                         // Format last sync time to Israel time
                         let lastSyncText = 'מעולם לא סונכרן';
-                        if (c.last_sync_at) {
-                            const syncDate = new Date(c.last_sync_at);
+                        if (c.last_synced_at) {
+                            const syncDate = new Date(c.last_synced_at);
                             const israelTime = syncDate.toLocaleString('he-IL', {
                                 timeZone: 'Asia/Jerusalem',
                                 year: 'numeric',

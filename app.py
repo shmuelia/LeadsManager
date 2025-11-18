@@ -3555,7 +3555,7 @@ def get_campaigns_api():
                     c.sheet_id,
                     c.sheet_url,
                     c.active,
-                    c.last_sync_at,
+                    c.last_synced_at,
                     cu.name as customer_name
                 FROM campaigns c
                 LEFT JOIN customers cu ON c.customer_id = cu.id
@@ -3573,7 +3573,7 @@ def get_campaigns_api():
                     c.sheet_id,
                     c.sheet_url,
                     c.active,
-                    c.last_sync_at,
+                    c.last_synced_at,
                     cu.name as customer_name
                 FROM campaigns c
                 LEFT JOIN customers cu ON c.customer_id = cu.id
