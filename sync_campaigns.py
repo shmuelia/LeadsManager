@@ -127,19 +127,21 @@ def sync_campaign(campaign):
                 # Determine final campaign name
                 final_campaign_name = campaign_name_from_row if campaign_name_from_row else campaign_full['campaign_name']
 
-                # Check for duplicates by phone/email (for backward compatibility with old leads)
-                # This prevents re-importing existing leads that don't have row_number yet
+                # Check for duplicates by phone/email within the SAME campaign
+                # This prevents re-importing the same lead to the same campaign
+                # but allows the same person to be imported to different campaigns
                 # Normalize stored values for comparison
                 cur.execute("""
                     SELECT id FROM leads
                     WHERE customer_id = %s
+                    AND campaign_name = %s
                     AND (
                         (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
                         OR
                         (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
                     )
                     LIMIT 1
-                """, (campaign_full['customer_id'], phone or '', email or ''))
+                """, (campaign_full['customer_id'], final_campaign_name, phone or '', email or ''))
 
                 existing = cur.fetchone()
 

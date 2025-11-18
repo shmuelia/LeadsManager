@@ -4637,19 +4637,20 @@ def sync_all_campaigns():
                         if not name or not phone or not email:
                             continue
 
-                        # Check for duplicates with normalized comparison
+                        final_campaign_name = campaign_name_from_row if (column_mapping and campaign_name_from_row) else full_campaign['campaign_name']
+
+                        # Check for duplicates within the SAME campaign (normalized comparison)
+                        # Allows same person to be imported to different campaigns
                         cur.execute(
-                            """SELECT id FROM leads WHERE customer_id = %s AND (
+                            """SELECT id FROM leads WHERE customer_id = %s AND campaign_name = %s AND (
                                 (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
                                 OR
                                 (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
                             ) LIMIT 1""",
-                            (full_campaign['customer_id'], phone or '', email or ''))
+                            (full_campaign['customer_id'], final_campaign_name, phone or '', email or ''))
                         if cur.fetchone():
                             duplicates += 1
                             continue
-
-                        final_campaign_name = campaign_name_from_row if (column_mapping and campaign_name_from_row) else full_campaign['campaign_name']
                         raw_data = {
                             'source': 'google_sheets',
                             'sheet_id': full_campaign['sheet_id'],
