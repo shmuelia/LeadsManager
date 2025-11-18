@@ -175,7 +175,7 @@ def sync_campaign(campaign):
         # Update last sync timestamp
         cur.execute("""
             UPDATE campaigns
-            SET last_sync_at = CURRENT_TIMESTAMP
+            SET last_synced_at = CURRENT_TIMESTAMP
             WHERE id = %s
         """, (campaign['id'],))
 
