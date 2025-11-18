@@ -653,24 +653,42 @@
                 const response = await fetch('/admin/campaigns/api');
                 const data = await response.json();
                 campaigns = data.campaigns || [];
-                
+
                 // Filter active campaigns with sheet URLs
                 const syncableCampaigns = campaigns.filter(c => c.active && c.sheet_url);
-                
+
                 const grid = document.getElementById('campaignsGrid');
                 if (syncableCampaigns.length === 0) {
                     grid.innerHTML = '<p style="text-align: center; color: #64748b;">אין קמפיינים פעילים עם קישור Google Sheets</p>';
                     document.getElementById('syncAllBtn').disabled = true;
                 } else {
-                    grid.innerHTML = syncableCampaigns.map(c => `
+                    grid.innerHTML = syncableCampaigns.map(c => {
+                        // Format last sync time to Israel time
+                        let lastSyncText = 'מעולם לא סונכרן';
+                        if (c.last_sync_at) {
+                            const syncDate = new Date(c.last_sync_at);
+                            const israelTime = syncDate.toLocaleString('he-IL', {
+                                timeZone: 'Asia/Jerusalem',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            lastSyncText = `סונכרן לאחרונה: ${israelTime}`;
+                        }
+
+                        return `
                         <div class="campaign-card">
                             <div class="campaign-info">
                                 <h3>${c.campaign_name}</h3>
                                 <p>${c.customer_name || 'ללא לקוח'}</p>
+                                <p style="font-size: 12px; color: #64748b; margin-top: 5px;">${lastSyncText}</p>
                             </div>
                             <button class="btn-sync" onclick="syncCampaign(${c.id}, '${c.campaign_name.replace(/'/g, "\\'")}')">🔄 סנכרן</button>
                         </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             } catch(e) {
                 console.error('Error loading campaigns:', e);
