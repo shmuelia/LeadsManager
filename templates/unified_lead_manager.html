@@ -272,6 +272,8 @@
     .lead-card.status-contacted::before { background: #3b82f6; }
     .lead-card.status-qualified::before { background: #f59e0b; }
     .lead-card.status-interested::before { background: #22c55e; }
+    .lead-card.status-to_schedule_interview::before { background: #8b5cf6; }
+    .lead-card.status-interview_scheduled::before { background: #a78bfa; }
     .lead-card.status-hired::before { background: #10b981; }
     .lead-card.status-rejected::before { background: #ef4444; }
     .lead-card.status-closed::before { background: #9ca3af; }
@@ -448,6 +450,8 @@
     .status-contacted { background: #fed7aa; color: #92400e; }
     .status-qualified { background: #d1fae5; color: #065f46; }
     .status-interested { background: #e9d5ff; color: #6b21a8; }
+    .status-to_schedule_interview { background: #ede9fe; color: #5b21b6; }
+    .status-interview_scheduled { background: #ddd6fe; color: #6d28d9; }
     .status-hired { background: #a7f3d0; color: #047857; }
     .status-rejected { background: #fecaca; color: #991b1b; }
     .status-closed { background: #e5e7eb; color: #374151; }
@@ -654,6 +658,8 @@
         .mobile-status-btn.status-contacted { border-color: #3b82f6; color: #3b82f6; }
         .mobile-status-btn.status-qualified { border-color: #f59e0b; color: #f59e0b; }
         .mobile-status-btn.status-interested { border-color: #22c55e; color: #22c55e; }
+        .mobile-status-btn.status-to_schedule_interview { border-color: #8b5cf6; color: #8b5cf6; }
+        .mobile-status-btn.status-interview_scheduled { border-color: #a78bfa; color: #a78bfa; }
         .mobile-status-btn.status-hired { border-color: #10b981; color: #10b981; }
         .mobile-status-btn.status-rejected { border-color: #ef4444; color: #ef4444; }
         .mobile-status-btn.status-closed { border-color: #9ca3af; color: #9ca3af; }
@@ -747,6 +753,8 @@
                 <option value="contacted">נוצר קשר</option>
                 <option value="qualified">מוכשר</option>
                 <option value="interested">מתעניין</option>
+                <option value="to_schedule_interview">לתאם ראיון</option>
+                <option value="interview_scheduled">נקבע ראיון</option>
                 <option value="hired">התקבל</option>
                 <option value="rejected">נדחה</option>
                 <option value="closed">סגור</option>
@@ -2039,6 +2047,14 @@ class UnifiedLeadManagerClass {
                         <button class="mobile-status-btn status-interested" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'interested', this.closest('.modal-overlay'))">
                             <div class="status-icon">🎯</div>
                             <div>מתעניין</div>
+                        </button>
+                        <button class="mobile-status-btn status-to_schedule_interview" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'to_schedule_interview', this.closest('.modal-overlay'))">
+                            <div class="status-icon">📅</div>
+                            <div>לתאם ראיון</div>
+                        </button>
+                        <button class="mobile-status-btn status-interview_scheduled" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'interview_scheduled', this.closest('.modal-overlay'))">
+                            <div class="status-icon">📆</div>
+                            <div>נקבע ראיון</div>
                         </button>
                         <button class="mobile-status-btn status-hired" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'hired', this.closest('.modal-overlay'))">
                             <div class="status-icon">🎉</div>

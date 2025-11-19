@@ -44,7 +44,7 @@ A Flask-based lead management system built for Hebrew-speaking businesses' HR de
 **Core Tables:**
 - **`customers`** - Multi-tenant customer configurations with webhook settings, API keys, Zapier integration
 - **`leads`** - Lead storage with JSONB raw_data, customer_id isolation, comprehensive status tracking
-  - Status values: 'new', 'contacted', 'qualified', 'interested', 'hired', 'rejected', 'closed'
+  - Status values: 'new', 'contacted', 'qualified', 'interested', 'to_schedule_interview', 'interview_scheduled', 'hired', 'rejected', 'closed'
   - Key fields: `id`, `name`, `email`, `phone`, `status`, `assigned_to`, `customer_id`, `raw_data` (JSONB)
 - **`users`** - Multi-role user management with customer isolation
   - Roles: 'admin' (full access), 'campaign_manager' (customer-scoped), 'user' (assigned leads only)
