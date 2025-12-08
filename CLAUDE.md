@@ -18,6 +18,12 @@ A Flask-based lead management system built for Hebrew-speaking businesses' HR de
   - Multi-tenant logic: Customer isolation via `customer_id` filtering
   - Status change handling: Requires mandatory notes (lines 1788-1848)
   - Webhook field extraction: Handles multiple field formats including colons (`:`)
+  - Campaign sync endpoints: `/admin/campaigns/sync/<id>` (line 3705), `/admin/campaigns/sync-all` (line 4485)
+- **`sync_campaigns.py`** - Automated campaign sync script for Heroku Scheduler
+  - Syncs all active campaigns from Google Sheets
+  - Per-campaign duplicate detection with phone/email normalization
+  - Updates `last_synced_at` timestamp for each campaign
+  - Logs: new leads, duplicates, errors per campaign
 - **`database.py`** - PostgreSQL connection management with Heroku URL parsing
 - **`templates/unified_lead_manager.html`** - Single component serving all roles (admin/campaign_manager/user)
   - Desktop: Table view (>768px)
@@ -43,9 +49,13 @@ A Flask-based lead management system built for Hebrew-speaking businesses' HR de
 ### Database Schema (PostgreSQL)
 **Core Tables:**
 - **`customers`** - Multi-tenant customer configurations with webhook settings, API keys, Zapier integration
+- **`campaigns`** - Campaign definitions with Google Sheets integration
+  - Key fields: `sheet_url`, `column_mapping` (JSONB), `last_synced_at` (timestamp), `active` (boolean)
+  - Used by `sync_campaigns.py` for automated Google Sheets imports
 - **`leads`** - Lead storage with JSONB raw_data, customer_id isolation, comprehensive status tracking
   - Status values: 'new', 'contacted', 'qualified', 'interested', 'to_schedule_interview', 'interview_scheduled', 'hired', 'rejected', 'closed'
-  - Key fields: `id`, `name`, `email`, `phone`, `status`, `assigned_to`, `customer_id`, `raw_data` (JSONB)
+  - Key fields: `id`, `name`, `email`, `phone`, `status`, `assigned_to`, `customer_id`, `campaign_name`, `raw_data` (JSONB)
+  - Duplicate detection: Per-campaign based on normalized phone/email
 - **`users`** - Multi-role user management with customer isolation
   - Roles: 'admin' (full access), 'campaign_manager' (customer-scoped), 'user' (assigned leads only)
 - **`lead_activities`** - Complete audit trail for all lead interactions with customer isolation
@@ -126,6 +136,44 @@ curl https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/
 - Automatically opens app for testing
 - Browser caching reminder
 
+### Automated Campaign Sync (Heroku Scheduler)
+
+**Setup Heroku Scheduler:**
+```bash
+# Add Heroku Scheduler add-on (if not already added)
+heroku addons:create scheduler:standard --app eadmanager-fresh-2024-dev
+
+# Open scheduler dashboard
+heroku addons:open scheduler --app eadmanager-fresh-2024-dev
+
+# Configure job in dashboard:
+# - Command: python sync_campaigns.py
+# - Frequency: Every 10 minutes (or as needed)
+# - Dyno size: Standard-1X
+```
+
+**What `sync_campaigns.py` does:**
+1. Fetches all campaigns where `active = true` and `sheet_url IS NOT NULL`
+2. For each campaign:
+   - Converts Google Sheets URL to CSV export format
+   - Downloads and parses CSV data
+   - Extracts fields using `column_mapping` (JSONB)
+   - Normalizes phone (removes +, -, spaces) and email (lowercase, trim trailing dots)
+   - Checks for duplicates within the SAME campaign (per-campaign policy)
+   - Inserts new leads with `status = 'new'`
+   - Updates `last_synced_at` timestamp
+3. Logs summary: new leads, duplicates, errors per campaign
+
+**Monitor sync logs:**
+```bash
+heroku logs --tail --app eadmanager-fresh-2024-dev --source app
+```
+
+**Manual sync options:**
+- Campaign manager UI: "🔄 סנכרן את כל הקמפיינים" button
+- API endpoint: `/admin/campaigns/sync-all` (POST)
+- Individual campaign: `/admin/campaigns/sync/<id>` (POST)
+
 ## Critical Webhook Field Handling
 
 ### Field Name Variations
@@ -169,14 +217,20 @@ phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.ge
 
 ### Campaign Sync Operations
 - `/admin/campaigns/sync-all-preview` - Preview what will be synced across all active campaigns
-- `/admin/campaigns/sync-all` - Execute sync for all active campaigns (respects column mapping, last synced row)
+- `/admin/campaigns/sync-all` - Execute sync for all active campaigns (respects column mapping)
 - `/admin/campaigns/<id>/sync` - Sync individual campaign from Google Sheets
-- Campaign sync logic:
-  - Only syncs campaigns with `active = true`
-  - Tracks last synced row per sheet tab using JSONB column (`last_synced_row`)
-  - Uses column mapping to extract fields (handles variations: "Phone Number:", "Email:", Hebrew fields)
-  - Validates required fields: name AND phone AND email
-  - Skips duplicates based on email+campaign combination
+
+**Campaign sync logic:**
+- Only syncs campaigns with `active = true` and non-empty `sheet_url`
+- Uses column mapping (JSONB) to extract fields from sheet columns
+- Handles field name variations: "Phone Number:", "Email:", "Full Name:", Hebrew fields, "Raw" prefixes
+- Validates required fields: name AND (phone OR email)
+- **Per-campaign duplicate detection**: Same person can exist in different campaigns but not duplicated within same campaign
+- **Normalization for duplicates**:
+  - Phone: Remove `+`, `-`, spaces (e.g., "+972-50-123-4567" → "972501234567")
+  - Email: Lowercase, trim trailing dots (e.g., "Test@Gmail.com." → "test@gmail.com")
+- Updates `last_synced_at` timestamp after each sync
+- Logs: new leads count, duplicates skipped, errors encountered
 
 ## Authentication & Testing
 
@@ -240,6 +294,28 @@ SECRET_KEY    # Flask session secret (optional, has default)
 ### Database Connection
 **Issue**: `postgres://` URLs deprecated
 **Solution**: Code automatically converts to `postgresql://` format
+
+### Duplicate Leads Appearing After Sync
+**Issue**: Same person appearing as "new" lead in multiple campaigns
+**Explanation**: This is expected behavior with per-campaign duplicate detection
+**Solution**:
+- Per-campaign policy: Same person can legitimately exist in different campaigns
+- Within same campaign: Duplicates are prevented via normalized phone/email matching
+- To mark cross-campaign duplicates as closed:
+  ```sql
+  WITH ranked_leads AS (
+      SELECT id,
+          ROW_NUMBER() OVER (
+              PARTITION BY
+                  COALESCE(REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), ' ', ''), ''),
+                  COALESCE(LOWER(TRIM(TRAILING '.' FROM email)), '')
+              ORDER BY id ASC
+          ) as rn
+      FROM leads WHERE customer_id = 1 AND (email IS NOT NULL OR phone IS NOT NULL)
+  )
+  UPDATE leads SET status = 'closed'
+  WHERE id IN (SELECT id FROM ranked_leads WHERE rn > 1);
+  ```
 
 ## Customer Email Configuration
 
@@ -313,19 +389,41 @@ When adding UI elements to the lead detail popup in `unified_lead_manager.html`:
    ```
 
 ### Google Sheets Campaign Sync
-Campaigns table includes:
-- `sheet_url` - Google Sheets URL
-- `column_mapping` - JSONB mapping of sheet columns to lead fields
-- `last_synced_row` - JSONB tracking last row synced per sheet tab
-- `active` - Boolean to control which campaigns sync
 
-Sync process (app.py lines 4352-4600):
-1. Extract gid from sheet URL to identify specific tab
-2. Fetch CSV export using `{sheet_url}/export?format=csv&gid={gid}`
-3. Use column mapping to extract fields from each row
-4. Track last synced row in JSONB: `{"gid_123": 45}` means row 45 was last synced for tab with gid=123
-5. Only process rows after last synced row
-6. Validate required fields (name AND phone AND email)
-7. Check for duplicates (email + campaign_name combination)
-8. Create lead and activity records
-9. Update last_synced_row JSONB
+**Campaigns table key fields:**
+- `sheet_url` - Google Sheets URL (with optional gid for specific tab)
+- `column_mapping` - JSONB mapping of sheet columns to lead fields
+  ```json
+  {
+    "name": "Full Name",
+    "phone": "Phone Number",
+    "email": "Email",
+    "campaign": "Campaign Name",
+    "custom_fields": ["Custom Field 1", "Custom Field 2"]
+  }
+  ```
+- `last_synced_at` - Timestamp of last successful sync (displayed in campaign manager UI)
+- `active` - Boolean to control which campaigns are included in automated sync
+
+**Sync process** (implemented in both `app.py` and `sync_campaigns.py`):
+1. Extract spreadsheet ID and gid from sheet URL
+2. Convert to CSV export URL: `https://docs.google.com/spreadsheets/d/{id}/export?format=csv&gid={gid}`
+3. Download and parse CSV data
+4. For each row:
+   - Extract fields using `column_mapping` keys
+   - Normalize phone: remove `+`, `-`, spaces → `"972501234567"`
+   - Normalize email: lowercase, trim trailing `.` → `"user@example.com"`
+   - Skip if missing required fields (name AND (phone OR email))
+   - Check for duplicates within SAME campaign using normalized values:
+     ```sql
+     SELECT id FROM leads WHERE customer_id = %s AND campaign_name = %s
+     AND (
+       (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
+       OR (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
+     )
+     ```
+   - Insert new lead with `status = 'new'` if not duplicate
+5. Update `last_synced_at = CURRENT_TIMESTAMP`
+6. Log summary: `{new_leads} new, {duplicates} duplicates, {errors} errors`
+
+**Important**: Per-campaign duplicate policy allows the same person to appear in multiple campaigns but prevents re-importing to the same campaign.

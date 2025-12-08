@@ -156,30 +156,10 @@ def init_database():
         if not conn:
             logger.warning("Skipping database initialization - no connection")
             return False
-            
+
         cur = conn.cursor()
-        
-        # Auto-migrate: Add phone and email notification columns if they don't exist
-        try:
-            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)")
-            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_notifications BOOLEAN DEFAULT true")
-            logger.info("Auto-migration: Added phone columns to users table")
-        except Exception as e:
-            logger.info(f"Phone columns migration (probably already exist): {e}")
-            
-        # Auto-migrate: Add email notification settings to customers table
-        try:
-            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS sender_email VARCHAR(255)")
-            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_server VARCHAR(255) DEFAULT 'smtp.gmail.com'")
-            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_port INTEGER DEFAULT 587")
-            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_username VARCHAR(255)")
-            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS smtp_password VARCHAR(255)")
-            cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS email_notifications_enabled BOOLEAN DEFAULT false")
-            logger.info("Auto-migration: Added email notification columns to customers table")
-        except Exception as e:
-            logger.info(f"Email notification columns migration (probably already exist): {e}")
-        
-        # Create leads table
+
+        # IMPORTANT: Create tables FIRST, before any ALTER migrations
         # Create leads table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS leads (

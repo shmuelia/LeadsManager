@@ -23,7 +23,8 @@
       "Bash(cd:*)",
       "Bash(dir:*)",
       "Bash(powershell.exe -File deploy.ps1 \"Fix: Auto-sync selectedLeads from checked checkboxes to handle selection state properly\")",
-      "Bash(powershell.exe -File deploy.ps1 \"Fix: Normalize phone and email in duplicate detection to prevent re-importing existing leads\")"
+      "Bash(powershell.exe -File deploy.ps1 \"Fix: Normalize phone and email in duplicate detection to prevent re-importing existing leads\")",
+      "Bash(cmd /c \"heroku pg:psql --app eadmanager-fresh-2024-dev -c \"\"\\dt\"\"\")"
     ],
     "deny": [],
     "ask": []
