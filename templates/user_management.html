@@ -137,7 +137,75 @@
             <div class="loading">טוען משתמשים...</div>
         </div>
     </div>
-    
+
+    <!-- User Modal -->
+    <div id="userModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); overflow-y: auto;">
+        <div style="background: white; margin: 20px auto; padding: 30px; border-radius: 16px; width: 90%; max-width: 500px; max-height: calc(100vh - 40px); overflow-y: auto;">
+            <h2 style="color: #6366f1; margin-bottom: 20px;" id="modalTitle">➕ הוסף משתמש חדש</h2>
+            <form id="userForm">
+                <input type="hidden" id="editUserId" value="">
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם משתמש *</label>
+                    <input type="text" id="inputUsername" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">סיסמה <span id="passwordRequired">*</span></label>
+                    <input type="text" id="inputPassword" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם מלא *</label>
+                    <input type="text" id="inputFullName" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל</label>
+                    <input type="email" id="inputEmail" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">טלפון</label>
+                    <input type="text" id="inputPhone" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">תפקיד</label>
+                    <select id="inputRole" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                        <option value="user">משתמש</option>
+                        <option value="campaign_manager">מנהל קמפיין</option>
+                        <option value="admin">מנהל מערכת</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">מחלקה</label>
+                    <input type="text" id="inputDepartment" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">לקוח</label>
+                    <select id="inputCustomer" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                        <option value="">בחר לקוח...</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="inputActive" checked style="width: 18px; height: 18px;">
+                        <span>משתמש פעיל</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" onclick="closeUserModal()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">ביטול</button>
+                    <button type="submit" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">שמור</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Admin-specific functions only
         function goBackToAdmin() {
@@ -248,6 +316,187 @@
             };
             return labels[role] || role;
         }
+
+        // Show user modal for creating new user
+        function showUserModal() {
+            document.getElementById('modalTitle').textContent = '➕ הוסף משתמש חדש';
+            document.getElementById('editUserId').value = '';
+            document.getElementById('passwordRequired').textContent = '*';
+            document.getElementById('inputPassword').required = true;
+
+            // Clear form
+            document.getElementById('inputUsername').value = '';
+            document.getElementById('inputPassword').value = '';
+            document.getElementById('inputFullName').value = '';
+            document.getElementById('inputEmail').value = '';
+            document.getElementById('inputPhone').value = '';
+            document.getElementById('inputRole').value = 'user';
+            document.getElementById('inputDepartment').value = '';
+            document.getElementById('inputCustomer').value = '';
+            document.getElementById('inputActive').checked = true;
+
+            // Load customers for dropdown
+            loadCustomersForModal();
+
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        // Load customers for modal dropdown
+        async function loadCustomersForModal() {
+            try {
+                const response = await fetch('/admin/customers/api');
+                const customers = await response.json();
+
+                const select = document.getElementById('inputCustomer');
+                select.innerHTML = '<option value="">בחר לקוח...</option>';
+
+                customers.forEach(customer => {
+                    if (customer.active) {
+                        const option = document.createElement('option');
+                        option.value = customer.id;
+                        option.textContent = customer.name;
+                        select.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading customers for modal:', error);
+            }
+        }
+
+        // Close user modal
+        function closeUserModal() {
+            document.getElementById('userModal').style.display = 'none';
+        }
+
+        // Edit existing user
+        async function editUser(userId) {
+            try {
+                const response = await fetch('/admin/users/api');
+                const data = await response.json();
+                const user = data.users ? data.users.find(u => u.id === userId) : null;
+
+                if (!user) {
+                    alert('משתמש לא נמצא');
+                    return;
+                }
+
+                document.getElementById('modalTitle').textContent = '✏️ עריכת משתמש';
+                document.getElementById('editUserId').value = userId;
+                document.getElementById('passwordRequired').textContent = '(השאר ריק לשמירת הסיסמה הקיימת)';
+                document.getElementById('inputPassword').required = false;
+
+                // Fill form with user data
+                document.getElementById('inputUsername').value = user.username || '';
+                document.getElementById('inputPassword').value = '';
+                document.getElementById('inputFullName').value = user.full_name || '';
+                document.getElementById('inputEmail').value = user.email || '';
+                document.getElementById('inputPhone').value = user.phone || '';
+                document.getElementById('inputRole').value = user.role || 'user';
+                document.getElementById('inputDepartment').value = user.department || '';
+                document.getElementById('inputActive').checked = user.active;
+
+                // Load customers and select current
+                await loadCustomersForModal();
+                document.getElementById('inputCustomer').value = user.customer_id || '';
+
+                document.getElementById('userModal').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading user:', error);
+                alert('שגיאה בטעינת פרטי המשתמש');
+            }
+        }
+
+        // Toggle user status (active/inactive)
+        async function toggleUserStatus(userId, newStatus) {
+            try {
+                const response = await fetch(`/admin/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: newStatus })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    loadUsers();
+                } else {
+                    alert(result.error || 'שגיאה בעדכון סטטוס המשתמש');
+                }
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                alert('שגיאה בחיבור לשרת');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('userForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const userId = document.getElementById('editUserId').value;
+            const isEdit = userId !== '';
+
+            const formData = {
+                username: document.getElementById('inputUsername').value.trim(),
+                full_name: document.getElementById('inputFullName').value.trim(),
+                email: document.getElementById('inputEmail').value.trim(),
+                phone: document.getElementById('inputPhone').value.trim(),
+                role: document.getElementById('inputRole').value,
+                department: document.getElementById('inputDepartment').value.trim(),
+                customer_id: document.getElementById('inputCustomer').value || null,
+                active: document.getElementById('inputActive').checked
+            };
+
+            const password = document.getElementById('inputPassword').value.trim();
+            if (password) {
+                formData.password = password;
+            }
+
+            // Validation
+            if (!formData.username || !formData.full_name) {
+                alert('שם משתמש ושם מלא הם שדות חובה');
+                return;
+            }
+
+            if (!isEdit && !password) {
+                alert('סיסמה נדרשת עבור משתמש חדש');
+                return;
+            }
+
+            try {
+                let response;
+                if (isEdit) {
+                    response = await fetch(`/admin/users/${userId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                } else {
+                    response = await fetch('/admin/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                }
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert(isEdit ? 'משתמש עודכן בהצלחה' : 'משתמש נוסף בהצלחה');
+                    closeUserModal();
+                    loadUsers();
+                } else {
+                    alert(result.error || 'שגיאה בשמירת המשתמש');
+                }
+            } catch (error) {
+                console.error('Error saving user:', error);
+                alert('שגיאה בחיבור לשרת');
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('userModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeUserModal();
+            }
+        });
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
