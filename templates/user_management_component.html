@@ -164,22 +164,37 @@ function initUserManagement() {
 // Load available customers
 async function loadCustomers() {
     // Customer field may be hidden for non-admins, but load anyway if called
+    console.log('loadCustomers called');
     try {
         const response = await fetch('/admin/customers/api');
+        console.log('Response status:', response.status);
         const customers = await response.json();
-        
+        console.log('Customers loaded:', customers);
+
         const customerSelect = document.getElementById('userCustomer');
+        console.log('Customer select element:', customerSelect);
+
+        if (!customerSelect) {
+            console.error('userCustomer element not found!');
+            return;
+        }
+
         customerSelect.innerHTML = '<option value="">בחר לקוח</option>';
-        
-        customers.forEach(customer => {
-            if (customer.active) {
-                const option = document.createElement('option');
-                option.value = customer.id;
-                option.textContent = customer.name;
-                customerSelect.appendChild(option);
-            }
-        });
-        
+
+        if (Array.isArray(customers)) {
+            customers.forEach(customer => {
+                if (customer.active) {
+                    const option = document.createElement('option');
+                    option.value = customer.id;
+                    option.textContent = customer.name;
+                    customerSelect.appendChild(option);
+                    console.log('Added customer:', customer.name);
+                }
+            });
+        } else {
+            console.error('Customers is not an array:', customers);
+        }
+
         availableCustomers = customers;
     } catch (error) {
         console.error('Error loading customers:', error);
