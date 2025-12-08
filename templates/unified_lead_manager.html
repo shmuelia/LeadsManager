@@ -1260,11 +1260,11 @@ class UnifiedLeadManagerClass {
                     <td><strong>${lead.name || 'לא צוין'}</strong></td>
                     <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 30)}</td>
                     <td>${lead.assigned_full_name || lead.assigned_to || 'לא מוקצה'}</td>
-                    <td>${this.formatDate(lead.created_time || lead.received_at)}</td>
+                    <td>${this.formatDate(lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</td>
                 </tr>
             `;
         }).join('');
-        
+
         // Render cards for mobile
         cardsContainer.innerHTML = this.filteredLeads.map(lead => {
             const priority = this.calculatePriority(lead);
@@ -1298,7 +1298,7 @@ class UnifiedLeadManagerClass {
                     <div class="lead-card-info">
                         <div style="font-size: 16px; margin-bottom: 8px;"><strong>קמפיין:</strong> ${(lead.campaign_name || 'לא צוין').substring(0, 40)}</div>
                         <div style="display: flex; justify-content: space-between;">
-                            <div><strong>תאריך:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                            <div><strong>תאריך:</strong> ${this.formatDate(lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
                         </div>
                         <div style="margin-top: 8px;"><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
                     </div>
@@ -1524,7 +1524,7 @@ class UnifiedLeadManagerClass {
                                     </div>
                                 ` : ''}
                             </div>
-                            <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.created_time || lead.received_at)}</div>
+                            <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
                         </div>
                     </div>
                 </div>
