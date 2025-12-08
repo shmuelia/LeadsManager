@@ -173,21 +173,31 @@ def create_tables():
         cur.execute('CREATE INDEX IF NOT EXISTS idx_campaigns_active ON campaigns(active);')
         print('8. Created indexes')
 
-        # 9. Insert default customer
+        # 9. Drop old irrelevant tables
+        old_tables = ['bankmovmizrachi', 'movement_types', 'movements', 'parameters', 'transaction_assignments']
+        for table in old_tables:
+            try:
+                cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE;")
+                print(f'   Dropped old table: {table}')
+            except Exception as e:
+                print(f'   Could not drop {table}: {e}')
+        print('9. Cleaned up old tables')
+
+        # 10. Insert default customer
         cur.execute("""
             INSERT INTO customers (id, name, webhook_url, zapier_webhook_key, active, timezone)
             VALUES (1, 'מאפיית משמרות - לקוח ברירת מחדל', '/webhook', 'default_webhook_key', true, 'Asia/Jerusalem')
             ON CONFLICT (id) DO NOTHING;
         """)
-        print('9. Inserted default customer')
+        print('10. Inserted default customer')
 
-        # 10. Insert default admin user (password: admin123)
+        # 11. Insert default admin user (password: admin123) - use customer_id=1 (not 0)
         cur.execute("""
             INSERT INTO users (username, password_hash, plain_password, full_name, email, role, department, customer_id, active)
-            VALUES ('admin', '240be518fabd2724ddb6f04eeb9d5b13', 'admin123', 'System Administrator', 'admin@leadmanager.com', 'admin', 'management', 0, true)
+            VALUES ('admin', '240be518fabd2724ddb6f04eeb9d5b13', 'admin123', 'System Administrator', 'admin@leadmanager.com', 'admin', 'management', 1, true)
             ON CONFLICT (username) DO NOTHING;
         """)
-        print('10. Inserted default admin user')
+        print('11. Inserted default admin user')
 
         # Verify tables
         cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
