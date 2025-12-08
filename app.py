@@ -1658,10 +1658,11 @@ def get_leads():
             
             # Get paginated results with optimized query
             cur.execute("""
-                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
-                       l.campaign_name, l.form_name, l.lead_source, l.created_time, 
+                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform,
+                       l.campaign_name, l.form_name, l.lead_source, l.created_time,
                        l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
-                       u.full_name as assigned_full_name
+                       u.full_name as assigned_full_name,
+                       COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
@@ -1687,10 +1688,11 @@ def get_leads():
             
             # Get paginated results
             cur.execute("""
-                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform, 
-                       l.campaign_name, l.form_name, l.lead_source, l.created_time, 
+                SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform,
+                       l.campaign_name, l.form_name, l.lead_source, l.created_time,
                        l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
-                       u.full_name as assigned_full_name
+                       u.full_name as assigned_full_name,
+                       COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
