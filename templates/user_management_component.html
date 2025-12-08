@@ -146,17 +146,19 @@ let userRole = '{{ session.get("role") }}'; // Get current user role
 // Initialize component based on user role
 function initUserManagement() {
     console.log('Initializing user management for role:', userRole);
-    
+
     // Configure UI based on role
     if (userRole === 'campaign_manager') {
         // Hide admin-only fields for campaign managers
-        document.getElementById('roleField').style.display = 'none';
-        document.getElementById('customerField').style.display = 'none';
+        const roleField = document.getElementById('roleField');
+        const customerField = document.getElementById('customerField');
+        if (roleField) roleField.style.display = 'none';
+        if (customerField) customerField.style.display = 'none';
     } else if (userRole === 'admin') {
         // Load customers for admin
         loadCustomers();
     }
-    
+
     // Load users
     loadUsers();
 }
