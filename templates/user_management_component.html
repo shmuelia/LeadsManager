@@ -161,10 +161,9 @@ function initUserManagement() {
     loadUsers();
 }
 
-// Load available customers (admin only)
+// Load available customers
 async function loadCustomers() {
-    if (userRole !== 'admin') return;
-    
+    // Customer field may be hidden for non-admins, but load anyway if called
     try {
         const response = await fetch('/admin/customers/api');
         const customers = await response.json();
@@ -266,7 +265,12 @@ function renderUsersTable(users) {
 // Show user modal for create/edit
 function showUserModal(userId = null) {
     currentEditingUser = null;
-    
+
+    // Always load customers when modal opens (for admins)
+    if (userRole === 'admin' || userRole !== 'campaign_manager') {
+        loadCustomers();
+    }
+
     if (userId) {
         // Edit mode
         const user = availableUsers.find(u => u.id === userId);
