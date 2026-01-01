@@ -1333,7 +1333,7 @@ def create_notification(customer_id, lead_id, notification_type, title, message,
         logger.error(f"Error creating notification: {e}")
         return None
 
-def send_email_notification(customer_id, to_email, to_username, lead_name, lead_phone, lead_email, platform, campaign_name, email_type="new_lead", assigned_to=None):
+def send_email_notification(customer_id, to_email, to_username, lead_name, lead_phone, lead_email, platform, campaign_name, email_type="new_lead", assigned_to=None, note=None):
     """Send email notification for new lead using customer-specific email settings"""
     try:
         # Get customer email settings
@@ -1390,15 +1390,16 @@ def send_email_notification(customer_id, to_email, to_username, lead_name, lead_
         current_time = datetime.now(israel_tz).strftime('%d/%m/%Y %H:%M')
         
         # Hebrew email content
+        note_text = f"\n\n📝 הערה מהמנהל:\n{note}" if note else ""
         text_content = f"""
 {title}
 
 שם: {lead_name}
 טלפון: {lead_phone or 'לא צוין'}
-אימייל: {lead_email or 'לא צוין'}  
+אימייל: {lead_email or 'לא צוין'}
 פלטפורמה: {platform or 'לא ידוע'}
 קמפיין: {campaign_name or 'לא צוין'}
-זמן: {current_time} (שעון ישראל)
+זמן: {current_time} (שעון ישראל){note_text}
 
 {instruction}
 https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}
@@ -1435,7 +1436,9 @@ https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}
                     <p><strong>פלטפורמה:</strong> {platform or 'לא ידוע'}</p>
                     <p><strong>קמפיין:</strong> {campaign_name or 'לא צוין'}</p>
                 </div>
-                
+
+                {f'<div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #f59e0b;"><p style="margin: 0;"><strong>📝 הערה מהמנהל:</strong></p><p style="margin: 8px 0 0 0; white-space: pre-wrap;">{note}</p></div>' if note else ''}
+
                 <div style="text-align: center;">
                     <a href="https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com{target_url}" class="cta-button">
                         🚀 {instruction.replace(':', '')}
@@ -3162,6 +3165,7 @@ def assign_lead_campaign_manager(lead_id):
     try:
         data = request.get_json()
         assigned_to = data.get('assigned_to', '').strip()
+        assignment_note = data.get('note', '').strip()  # Get note from request
         
         conn = get_db_connection()
         if not conn:
@@ -3228,15 +3232,18 @@ def assign_lead_campaign_manager(lead_id):
         """, (assigned_to if assigned_to else None, lead_id))
         
         # Log assignment activity
+        activity_description = f'ליד הוקצה ל{user_full_name}' if assigned_to else 'הקצאת הליד בוטלה'
+        if assignment_note and assigned_to:
+            activity_description += f' | הערה: {assignment_note}'
         cur.execute("""
-            INSERT INTO lead_activities 
+            INSERT INTO lead_activities
             (lead_id, user_name, activity_type, description, customer_id)
             VALUES (%s, %s, %s, %s, %s)
         """, (
-            lead_id, 
+            lead_id,
             session.get('username', 'מנהל'),
             'assignment',
-            f'ליד הוקצה ל{user_full_name}' if assigned_to else 'הקצאת הליד בוטלה',
+            activity_description,
             selected_customer_id
         ))
         
@@ -3251,11 +3258,12 @@ def assign_lead_campaign_manager(lead_id):
                     user_phone = user_contact[0]
                     
                     # Create WhatsApp message
+                    note_text = f"\n\n📝 הערה מהמנהל: {assignment_note}" if assignment_note else ""
                     message = f"""🎯 ליד חדש הוקצה אליך!
 
 📋 שם הליד: {lead_name}
 👤 הוקצה על ידי: {session.get('full_name', session.get('username', 'מנהל'))}
-⏰ זמן הקצאה: {datetime.now().strftime('%H:%M %d/%m/%Y')}
+⏰ זמן הקצאה: {datetime.now().strftime('%H:%M %d/%m/%Y')}{note_text}
 
 🔗 לצפייה בליד: https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/dashboard
 
@@ -3299,7 +3307,8 @@ def assign_lead_campaign_manager(lead_id):
                         platform=platform,
                         campaign_name=campaign_name,
                         email_type="assignment",
-                        assigned_to=session.get('full_name', 'מנהל קמפיין')
+                        assigned_to=session.get('full_name', 'מנהל קמפיין'),
+                        note=assignment_note
                     )
                     if email_sent:
                         logger.info(f"Assignment email sent to {assigned_user[0]}")

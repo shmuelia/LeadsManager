@@ -1513,14 +1513,19 @@ class UnifiedLeadManagerClass {
                             <div>
                                 <strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}
                                 ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
-                                    <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-                                        <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
-                                            <option value="">בחר משתמש...</option>
-                                        </select>
-                                        <button onclick="window.UnifiedLeadManager.assignLeadFromModal(${lead.id})"
-                                                style="padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;">
-                                            שיוך
-                                        </button>
+                                    <div style="margin-top: 10px;">
+                                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                            <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
+                                                <option value="">בחר משתמש...</option>
+                                            </select>
+                                            <button onclick="window.UnifiedLeadManager.assignLeadFromModal(${lead.id})"
+                                                    style="padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;">
+                                                שיוך
+                                            </button>
+                                        </div>
+                                        <textarea id="assignNote_${lead.id}"
+                                                  placeholder="הערה למשתמש (תישלח במייל)..."
+                                                  style="width: 100%; padding: 8px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
                                     </div>
                                 ` : ''}
                             </div>
@@ -1750,11 +1755,15 @@ class UnifiedLeadManagerClass {
             return;
         }
 
+        // Get the note if exists
+        const noteField = document.getElementById(`assignNote_${leadId}`);
+        const note = noteField ? noteField.value.trim() : '';
+
         try {
             const response = await fetch(`/leads/${leadId}/assign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ assigned_to: assignedTo })
+                body: JSON.stringify({ assigned_to: assignedTo, note: note })
             });
 
             const result = await response.json();
