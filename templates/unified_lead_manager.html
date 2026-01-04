@@ -703,31 +703,31 @@
 <div class="lead-manager-container">
     <!-- ===== CUSTOMER SELECTOR (ADMIN ONLY) - AT TOP ===== -->
     <div id="customerSelectorDiv" class="customer-selector" style="display: none; margin-bottom: 20px;"
-         title="בחר לקוח לצפייה בלידים שלו בלבד">
-        <span>🏢 לקוח:</span>
+         data-i18n-title="select_customer_view">
+        <span>🏢 <span data-i18n="ulm_customer">לקוח</span>:</span>
         <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)"
-                title="החלף בין לקוחות שונים לניהול הלידים שלהם">
-            <option value="">בחר לקוח</option>
+                data-i18n-title="switch_customers">
+            <option value="" data-i18n="ulm_select_customer">בחר לקוח</option>
         </select>
     </div>
 
     <!-- ===== ACTION BUTTONS BAR ===== -->
     <div class="action-buttons-bar" style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 15px; flex-wrap: wrap; align-items: center;">
         <div id="leadsCounter" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 16px;">
-            📊 <span id="leadsCountNumber">0</span> לידים
+            📊 <span id="leadsCountNumber">0</span> <span data-i18n="ulm_leads">לידים</span>
         </div>
         <button class="action-btn" onclick="manualRefresh()" style="background: #3b82f6; color: white;"
-                title="רענן את רשימת הלידים">
-            🔄 רענן
+                data-i18n-title="ulm_refresh_list">
+            🔄 <span data-i18n="ulm_refresh">רענן</span>
         </button>
         <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.exportLeads()"
-                title="ייצא את הלידים המפולטרים לקובץ אקסל">
-            📥 ייצא לאקסל
+                data-i18n-title="ulm_export_tooltip">
+            📥 <span data-i18n="ulm_export_excel">ייצא לאקסל</span>
         </button>
         {% if session.get('role') in ['admin', 'campaign_manager'] %}
         <button class="action-btn btn-add-lead" onclick="openAddLeadModal()"
-                title="הוסף ליד חדש באופן ידני">
-            ➕ הוסף ליד ידנית
+                data-i18n-title="ulm_add_lead_tooltip">
+            ➕ <span data-i18n="ulm_add_lead_manual">הוסף ליד ידנית</span>
         </button>
         {% endif %}
     </div>
@@ -736,66 +736,66 @@
     <div class="control-panel">
         <!-- Filters -->
         <div class="filter-group">
-            <label class="filter-label">🔍 חיפוש</label>
+            <label class="filter-label">🔍 <span data-i18n="ulm_search">חיפוש</span></label>
             <input type="text" id="searchFilter" class="filter-input"
-                   placeholder="חפש שם, טלפון, אימייל..."
+                   data-i18n-placeholder="ulm_search_placeholder" placeholder="חפש שם, טלפון, אימייל..."
                    onkeyup="window.UnifiedLeadManager.applyFilters()"
-                   title="חפש לידים לפי שם, מספר טלפון או כתובת אימייל">
+                   data-i18n-title="ulm_search_tooltip">
         </div>
 
         <div class="filter-group">
-            <label class="filter-label">📌 סטטוס</label>
+            <label class="filter-label">📌 <span data-i18n="ulm_status">סטטוס</span></label>
             <select id="statusFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
-                    title="סנן לידים לפי סטטוס הטיפול הנוכחי">
-                <option value="">כל הסטטוסים</option>
-                <option value="not_closed" selected>לא סגור</option>
-                <option value="new">חדש</option>
-                <option value="contacted">נוצר קשר</option>
-                <option value="qualified">מוכשר</option>
-                <option value="interested">מתעניין</option>
-                <option value="to_schedule_interview">לתאם ראיון</option>
-                <option value="interview_scheduled">נקבע ראיון</option>
-                <option value="hired">התקבל</option>
-                <option value="rejected">נדחה</option>
-                <option value="closed">סגור</option>
+                    data-i18n-title="ulm_status_tooltip">
+                <option value="" data-i18n="ulm_all_statuses">כל הסטטוסים</option>
+                <option value="not_closed" selected data-i18n="ulm_not_closed">לא סגור</option>
+                <option value="new" data-i18n="ulm_new">חדש</option>
+                <option value="contacted" data-i18n="ulm_contacted">נוצר קשר</option>
+                <option value="qualified" data-i18n="ulm_qualified">מוכשר</option>
+                <option value="interested" data-i18n="ulm_interested">מתעניין</option>
+                <option value="to_schedule_interview" data-i18n="ulm_to_schedule">לתאם ראיון</option>
+                <option value="interview_scheduled" data-i18n="ulm_interview_set">נקבע ראיון</option>
+                <option value="hired" data-i18n="ulm_hired">התקבל</option>
+                <option value="rejected" data-i18n="ulm_rejected">נדחה</option>
+                <option value="closed" data-i18n="ulm_closed">סגור</option>
             </select>
         </div>
 
         <div class="filter-group">
-            <label class="filter-label">👤 מצב הקצאה</label>
+            <label class="filter-label">👤 <span data-i18n="ulm_assignment_status">מצב הקצאה</span></label>
             <select id="assignmentFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
-                    title="סנן לידים לפי מצב ההקצאה למשתמשים">
-                <option value="">כל ההקצאות</option>
-                <option value="unassigned">לא מוקצה</option>
-                <option value="assigned">מוקצה</option>
-                <option value="mine">שלי</option>
+                    data-i18n-title="ulm_assignment_tooltip">
+                <option value="" data-i18n="ulm_all_assignments">כל ההקצאות</option>
+                <option value="unassigned" data-i18n="ulm_unassigned">לא מוקצה</option>
+                <option value="assigned" data-i18n="ulm_assigned">מוקצה</option>
+                <option value="mine" data-i18n="ulm_mine">שלי</option>
             </select>
         </div>
 
         <div class="filter-group">
-            <label class="filter-label">👥 מוקצה למשתמש</label>
+            <label class="filter-label">👥 <span data-i18n="ulm_assigned_to">מוקצה למשתמש</span></label>
             <select id="assignedToFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
-                    title="סנן לידים לפי משתמש ספציפי שהם מוקצים אליו">
-                <option value="">כל המשתמשים</option>
+                    data-i18n-title="ulm_assigned_to_tooltip">
+                <option value="" data-i18n="ulm_all_users">כל המשתמשים</option>
             </select>
         </div>
 
         <div class="filter-group">
-            <label class="filter-label">📅 תקופה</label>
+            <label class="filter-label">📅 <span data-i18n="ulm_period">תקופה</span></label>
             <select id="dateFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
-                    title="סנן לידים לפי תקופת הגעתם למערכת">
-                <option value="">כל הזמן</option>
-                <option value="today">היום</option>
-                <option value="week">השבוע</option>
-                <option value="month">החודש</option>
+                    data-i18n-title="ulm_period_tooltip">
+                <option value="" data-i18n="ulm_all_time">כל הזמן</option>
+                <option value="today" data-i18n="ulm_today">היום</option>
+                <option value="week" data-i18n="ulm_this_week">השבוע</option>
+                <option value="month" data-i18n="ulm_this_month">החודש</option>
             </select>
         </div>
 
         <div class="filter-group">
-            <label class="filter-label">🎯 קמפיין</label>
+            <label class="filter-label">🎯 <span data-i18n="ulm_campaign">קמפיין</span></label>
             <select id="campaignFilter" class="filter-select" onchange="window.UnifiedLeadManager.refreshAndApplyFilters()"
-                    title="סנן לידים לפי הקמפיין שמהם הם הגיעו">
-                <option value="">כל הקמפיינים</option>
+                    data-i18n-title="ulm_campaign_tooltip">
+                <option value="" data-i18n="ulm_all_campaigns">כל הקמפיינים</option>
             </select>
         </div>
     </div>
@@ -805,17 +805,17 @@
     <div class="bulk-actions-panel" id="bulkActionsPanel" style="display: none; background: #f0f9ff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 2px solid #3b82f6;">
         <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
             <span style="font-weight: 600; color: #1e40af;">
-                <span id="selectedCount">0</span> לידים נבחרו
+                <span id="selectedCount">0</span> <span data-i18n="ulm_leads_selected">לידים נבחרו</span>
             </span>
             <button class="action-btn btn-reminder" onclick="window.UnifiedLeadManager.sendReminders()"
                     style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"
-                    title="שלח תזכורת למשתמשים על הלידים שנבחרו (רק לידים מוקצים)">
-                ⏰ שלח תזכורת
+                    data-i18n-title="ulm_send_reminder_tooltip">
+                ⏰ <span data-i18n="ulm_send_reminder">שלח תזכורת</span>
             </button>
             <button class="action-btn btn-secondary" onclick="window.UnifiedLeadManager.clearSelection()"
                     style="background: #e2e8f0; color: #1e293b; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;"
-                    title="בטל את בחירת כל הלידים">
-                ביטול בחירה
+                    data-i18n-title="ulm_clear_selection_tooltip">
+                <span data-i18n="ulm_clear_selection">ביטול בחירה</span>
             </button>
         </div>
     </div>
@@ -839,14 +839,14 @@
                     <tr>
                         <th style="width: 40px;">
                             <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)"
-                                   title="בחר/בטל בחירה של כל הלידים המוצגים">
+                                   data-i18n-title="ulm_select_all_tooltip">
                         </th>
-                        <th>פעולות</th>
-                        <th>סטטוס</th>
-                        <th>שם</th>
-                        <th>קמפיין</th>
-                        <th>מוקצה ל</th>
-                        <th>תאריך</th>
+                        <th data-i18n="ulm_actions">פעולות</th>
+                        <th data-i18n="ulm_status">סטטוס</th>
+                        <th data-i18n="ulm_name">שם</th>
+                        <th data-i18n="ulm_campaign">קמפיין</th>
+                        <th data-i18n="ulm_assigned_to_col">מוקצה ל</th>
+                        <th data-i18n="ulm_date">תאריך</th>
                     </tr>
                 </thead>
                 <tbody id="leadsTableBody">
