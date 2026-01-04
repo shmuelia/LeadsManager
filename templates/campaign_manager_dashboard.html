@@ -306,49 +306,49 @@
     <!-- Add Lead Modal -->
     <div id="addLeadModal" class="modal">
         <div class="modal-content">
-            <h2 class="modal-header">➕ הוסף ליד ידנית</h2>
+            <h2 class="modal-header">➕ <span data-i18n="add_lead_title">הוסף ליד ידנית</span></h2>
             <form id="addLeadForm">
                 <div class="form-group">
-                    <label>לקוח <span style="color:red;">*</span></label>
+                    <label><span data-i18n="customer">לקוח</span> <span style="color:red;">*</span></label>
                     <select id="addLeadCustomerId" required>
                         <option value="1" selected>לקוח #1</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>שם קמפיין <span style="color:red;">*</span></label>
+                    <label><span data-i18n="campaign_name">שם קמפיין</span> <span style="color:red;">*</span></label>
                     <select id="addLeadCampaignName" required>
-                        <option value="">בחר קמפיין...</option>
+                        <option value="" data-i18n="select_campaign">בחר קמפיין...</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>שם מלא <span style="color:red;">*</span></label>
-                    <input type="text" id="addLeadName" placeholder="שם הליד" required>
+                    <label><span data-i18n="full_name">שם מלא</span> <span style="color:red;">*</span></label>
+                    <input type="text" id="addLeadName" data-i18n-placeholder="lead_name_placeholder" placeholder="שם הליד" required>
                 </div>
                 <div class="form-group">
-                    <label>טלפון <span style="color:red;">*</span></label>
+                    <label><span data-i18n="phone">טלפון</span> <span style="color:red;">*</span></label>
                     <input type="text" id="addLeadPhone" placeholder="972501234567">
                 </div>
                 <div class="form-group">
-                    <label>אימייל</label>
+                    <label data-i18n="email">אימייל</label>
                     <input type="email" id="addLeadEmail" placeholder="example@gmail.com">
                 </div>
                 <div class="form-group">
-                    <label>סטטוס</label>
+                    <label data-i18n="status">סטטוס</label>
                     <select id="addLeadStatus">
-                        <option value="new">חדש</option>
-                        <option value="contacted">נוצר קשר</option>
-                        <option value="qualified">מתאים</option>
-                        <option value="converted">הומר</option>
-                        <option value="lost">אבוד</option>
+                        <option value="new" data-i18n="status_new">חדש</option>
+                        <option value="contacted" data-i18n="status_contacted">נוצר קשר</option>
+                        <option value="qualified" data-i18n="status_qualified">מתאים</option>
+                        <option value="converted" data-i18n="status_converted">הומר</option>
+                        <option value="lost" data-i18n="status_lost">אבוד</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>הערות</label>
-                    <input type="text" id="addLeadNotes" placeholder="הערות נוספות...">
+                    <label data-i18n="notes">הערות</label>
+                    <input type="text" id="addLeadNotes" data-i18n-placeholder="notes_placeholder" placeholder="הערות נוספות...">
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-modal btn-cancel" onclick="closeAddLeadModal()">ביטול</button>
-                    <button type="submit" class="btn-modal">הוסף ליד</button>
+                    <button type="button" class="btn-modal btn-cancel" onclick="closeAddLeadModal()" data-i18n="cancel">ביטול</button>
+                    <button type="submit" class="btn-modal" data-i18n="add_lead">הוסף ליד</button>
                 </div>
             </form>
         </div>
@@ -357,19 +357,19 @@
     <!-- Sync Configuration Modal -->
     <div id="syncConfigModal" class="modal">
         <div class="modal-content" style="max-width: 800px;">
-            <h2 class="modal-header">⚙️ הגדרות סנכרון</h2>
+            <h2 class="modal-header">⚙️ <span data-i18n="sync_settings">הגדרות סנכרון</span></h2>
             <form id="syncConfigForm">
                 <input type="hidden" id="syncCampaignId">
                 <input type="hidden" id="syncSheetUrl">
                 <div class="form-group">
-                    <label>קמפיין</label>
+                    <label data-i18n="campaign">קמפיין</label>
                     <input type="text" id="syncCampaignName" readonly style="background: #f3f4f6;">
                 </div>
 
                 <!-- Preview Button -->
                 <div class="form-group">
                     <button type="button" class="btn-modal" onclick="previewSheet()" style="background: #3b82f6;">
-                        👁️ הצג שורות אחרונות
+                        👁️ <span data-i18n="show_last_rows">הצג שורות אחרונות</span>
                     </button>
                 </div>
 
@@ -377,18 +377,18 @@
                 <div id="sheetPreview" style="display: none; margin-bottom: 15px;">
                     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; max-height: 400px; overflow-y: auto;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <strong style="color: #1f2937;">שורות אחרונות מהגיליון</strong>
+                            <strong style="color: #1f2937;" data-i18n="last_rows_from_sheet">שורות אחרונות מהגיליון</strong>
                             <span id="totalRowsInfo" style="color: #6b7280; font-size: 0.9em;"></span>
                         </div>
                         <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
                             <thead style="background: #e5e7eb;">
                                 <tr>
-                                    <th style="padding: 8px; text-align: center; border: 1px solid #d1d5db;">בחר</th>
-                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">שורה</th>
-                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">שם</th>
-                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">טלפון</th>
-                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">אימייל</th>
-                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;">תאריך</th>
+                                    <th style="padding: 8px; text-align: center; border: 1px solid #d1d5db;" data-i18n="select">בחר</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;" data-i18n="row">שורה</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;" data-i18n="name">שם</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;" data-i18n="phone">טלפון</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;" data-i18n="email">אימייל</th>
+                                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db;" data-i18n="date">תאריך</th>
                                 </tr>
                             </thead>
                             <tbody id="previewTableBody"></tbody>
@@ -397,28 +397,28 @@
                 </div>
 
                 <div class="form-group">
-                    <label>משורה <span style="color:red;">*</span></label>
+                    <label><span data-i18n="from_row">משורה</span> <span style="color:red;">*</span></label>
                     <input type="number" id="syncStartRow" min="2" value="2" required>
-                    <small style="color: #6b7280; display: block; margin-top: 5px;">
+                    <small style="color: #6b7280; display: block; margin-top: 5px;" data-i18n="first_row_help">
                         השורה הראשונה לסנכרון (שורה 1 = כותרות, 2 = נתונים ראשונים)
                     </small>
                 </div>
                 <div class="form-group">
-                    <label>עד שורה (אופציונלי)</label>
+                    <label data-i18n="to_row">עד שורה (אופציונלי)</label>
                     <input type="number" id="syncEndRow" min="2">
-                    <small style="color: #6b7280; display: block; margin-top: 5px;">
+                    <small style="color: #6b7280; display: block; margin-top: 5px;" data-i18n="leave_empty_for_all">
                         השאר ריק לסנכרון עד הסוף
                     </small>
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px;">
                         <input type="checkbox" id="syncResetTracking">
-                        <span>אפס מעקב (התחל מחדש)</span>
+                        <span data-i18n="reset_tracking">אפס מעקב (התחל מחדש)</span>
                     </label>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-modal btn-cancel" onclick="closeSyncConfigModal()">ביטול</button>
-                    <button type="submit" class="btn-modal">▶️ התחל סנכרון</button>
+                    <button type="button" class="btn-modal btn-cancel" onclick="closeSyncConfigModal()" data-i18n="cancel">ביטול</button>
+                    <button type="submit" class="btn-modal">▶️ <span data-i18n="start_sync">התחל סנכרון</span></button>
                 </div>
             </form>
         </div>
@@ -427,11 +427,11 @@
     <!-- Sync Result Modal -->
     <div id="syncResultModal" class="modal">
         <div class="modal-content">
-            <h2 class="modal-header" id="syncResultTitle">📊 תוצאות סנכרון</h2>
+            <h2 class="modal-header" id="syncResultTitle">📊 <span data-i18n="sync_results">תוצאות סנכרון</span></h2>
             <div id="syncResultContent" class="result-box"></div>
-            <button class="copy-btn" onclick="copySyncResult()">📋 העתק לשליחה</button>
+            <button class="copy-btn" onclick="copySyncResult()">📋 <span data-i18n="copy_to_send">העתק לשליחה</span></button>
             <div class="modal-actions">
-                <button type="button" class="btn-modal" onclick="closeSyncResultModal()">סגור</button>
+                <button type="button" class="btn-modal" onclick="closeSyncResultModal()" data-i18n="close">סגור</button>
             </div>
         </div>
     </div>
@@ -492,6 +492,8 @@
                 error_loading_campaigns: 'שגיאה בטעינת קמפיינים',
                 phone_or_email_required: 'נדרש לפחות טלפון או אימייל',
                 lead_added_success: 'הליד נוסף בהצלחה! ID',
+                lead_name_placeholder: 'שם הליד',
+                notes_placeholder: 'הערות נוספות...',
 
                 // Status options
                 status_new: 'חדש',
@@ -585,6 +587,8 @@
                 error_loading_campaigns: 'Error loading campaigns',
                 phone_or_email_required: 'Phone or email is required',
                 lead_added_success: 'Lead added successfully! ID',
+                lead_name_placeholder: 'Lead name',
+                notes_placeholder: 'Additional notes...',
 
                 // Status options
                 status_new: 'New',
