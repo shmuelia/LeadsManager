@@ -233,17 +233,20 @@
     <div class="container">
         <!-- Header at TOP with v3.30 -->
         <div class="header">
-            <h1>🎯 מנהל קמפיין - ניהול לידים <span style="font-size:0.6em; opacity:0.8;">{{ version }}</span></h1>
+            <h1>🎯 <span data-i18n="page_title">מנהל קמפיין - ניהול לידים</span> <span style="font-size:0.6em; opacity:0.8;">{{ version }}</span></h1>
             <div class="user-info">
+                <button class="logout-btn" onclick="toggleLanguage()" id="langToggleBtn" style="background: #6366f1; margin-left: 10px; min-width: 50px;">
+                    EN
+                </button>
                 <div class="user-badge">
                     {{ session.get('full_name', session.get('username')) }}
-                    (מנהל קמפיין)
+                    <span data-i18n="campaign_manager">(מנהל קמפיין)</span>
                 </div>
                 <button class="logout-btn" onclick="window.location.href='/admin/campaigns'" style="background: #10b981; margin-left: 10px;">
-                    🎯 ניהול קמפיינים
+                    🎯 <span data-i18n="manage_campaigns">ניהול קמפיינים</span>
                 </button>
                 <button class="logout-btn" onclick="window.location.href='/logout'">
-                    🚪 יציאה
+                    🚪 <span data-i18n="logout">יציאה</span>
                 </button>
             </div>
         </div>
@@ -251,18 +254,18 @@
         <!-- Sync Campaigns Section - UPDATED WITH SYNC ALL BUTTON -->
         <div class="sync-section">
             <div class="sync-header">
-                <h2>🔄 סנכרון קמפיינים מ-Google Sheets</h2>
+                <h2>🔄 <span data-i18n="sync_campaigns_title">סנכרון קמפיינים מ-Google Sheets</span></h2>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <button class="btn-add-lead" onclick="syncAllCampaigns()" style="background: #10b981; font-weight: bold;">
-                        🔄 סנכרן את כל הקמפיינים
+                        🔄 <span data-i18n="sync_all_campaigns">סנכרן את כל הקמפיינים</span>
                     </button>
                     <button class="btn-add-lead" onclick="openAddLeadModal()">
-                        ➕ הוסף ליד ידנית
+                        ➕ <span data-i18n="add_lead_manual">הוסף ליד ידנית</span>
                     </button>
                 </div>
             </div>
             <div id="campaignsGrid" class="campaigns-grid">
-                <p style="text-align: center; color: #64748b;">טוען קמפיינים...</p>
+                <p style="text-align: center; color: #64748b;" data-i18n="loading_campaigns">טוען קמפיינים...</p>
             </div>
         </div>
         
@@ -275,19 +278,19 @@
         <div style="background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
                 <div>
-                    <h3 style="margin: 0 0 5px 0; color: #1e293b;">⚡ פעולות מהירות</h3>
-                    <p style="margin: 0; color: #64748b; font-size: 14px;">שלח תזכורות למשתמשים על לידים שהוקצו להם</p>
+                    <h3 style="margin: 0 0 5px 0; color: #1e293b;">⚡ <span data-i18n="quick_actions">פעולות מהירות</span></h3>
+                    <p style="margin: 0; color: #64748b; font-size: 14px;" data-i18n="quick_actions_desc">שלח תזכורות למשתמשים על לידים שהוקצו להם</p>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <span id="quickSelectedCount" style="display: none; font-weight: 600; color: #3b82f6; padding: 8px 15px; background: #eff6ff; border-radius: 8px;">
-                        <span id="quickSelectedNumber">0</span> נבחרו
+                        <span id="quickSelectedNumber">0</span> <span data-i18n="selected">נבחרו</span>
                     </span>
                     <button onclick="window.UnifiedLeadManager && window.UnifiedLeadManager.sendReminders()"
                             style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px 24px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3); transition: all 0.2s;"
                             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(59, 130, 246, 0.4)'"
                             onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.3)'"
-                            title="בחר לידים בטבלה למטה ולחץ כאן לשלוח תזכורת למשתמשים">
-                        ⏰ שלח תזכורת ללידים נבחרים
+                            data-i18n-title="send_reminder_tooltip">
+                        ⏰ <span data-i18n="send_reminder_selected">שלח תזכורת ללידים נבחרים</span>
                     </button>
                 </div>
             </div>
@@ -436,6 +439,317 @@
     <script>
         let campaigns = [];
         let customers = [];
+
+        // ========== LANGUAGE SYSTEM ==========
+        const translations = {
+            he: {
+                // Header
+                page_title: 'מנהל קמפיין - ניהול לידים',
+                campaign_manager: '(מנהל קמפיין)',
+                manage_campaigns: 'ניהול קמפיינים',
+                logout: 'יציאה',
+
+                // Sync section
+                sync_campaigns_title: 'סנכרון קמפיינים מ-Google Sheets',
+                sync_all_campaigns: 'סנכרן את כל הקמפיינים',
+                add_lead_manual: 'הוסף ליד ידנית',
+                loading_campaigns: 'טוען קמפיינים...',
+                no_active_campaigns: 'אין קמפיינים פעילים עם קישור Google Sheets',
+                no_customer: 'ללא לקוח',
+                never_synced: 'מעולם לא סונכרן',
+                last_synced: 'סונכרן לאחרונה',
+                sync_btn: 'סנכרן',
+
+                // Quick actions
+                quick_actions: 'פעולות מהירות',
+                quick_actions_desc: 'שלח תזכורות למשתמשים על לידים שהוקצו להם',
+                selected: 'נבחרו',
+                send_reminder_selected: 'שלח תזכורת ללידים נבחרים',
+                send_reminder_tooltip: 'בחר לידים בטבלה למטה ולחץ כאן לשלוח תזכורת למשתמשים',
+
+                // Email status
+                email_checking: 'התראות אימייל: בודק הגדרות...',
+                email_active: 'התראות אימייל פעילות - שולח מ',
+                email_not_configured: 'התראות אימייל לא מוגדרות - פנה למנהל המערכת',
+                email_check_error: 'לא ניתן לבדוק סטטוס התראות',
+
+                // Add Lead Modal
+                add_lead_title: 'הוסף ליד ידנית',
+                customer: 'לקוח',
+                campaign_name: 'שם קמפיין',
+                full_name: 'שם מלא',
+                phone: 'טלפון',
+                email: 'אימייל',
+                status: 'סטטוס',
+                notes: 'הערות',
+                cancel: 'ביטול',
+                add_lead: 'הוסף ליד',
+                select_customer: 'בחר לקוח תחילה...',
+                select_campaign: 'בחר קמפיין...',
+                no_customers: 'אין לקוחות זמינים',
+                no_campaigns_for_customer: 'אין קמפיינים זמינים ללקוח זה',
+                error_loading_customers: 'שגיאה בטעינת לקוחות',
+                error_loading_campaigns: 'שגיאה בטעינת קמפיינים',
+                phone_or_email_required: 'נדרש לפחות טלפון או אימייל',
+                lead_added_success: 'הליד נוסף בהצלחה! ID',
+
+                // Status options
+                status_new: 'חדש',
+                status_contacted: 'נוצר קשר',
+                status_qualified: 'מתאים',
+                status_converted: 'הומר',
+                status_lost: 'אבוד',
+
+                // Sync config modal
+                sync_settings: 'הגדרות סנכרון',
+                campaign: 'קמפיין',
+                show_last_rows: 'הצג שורות אחרונות',
+                from_row: 'משורה',
+                to_row: 'עד שורה (אופציונלי)',
+                reset_tracking: 'אפס מעקב (התחל מחדש)',
+                start_sync: 'התחל סנכרון',
+                first_row_help: 'השורה הראשונה לסנכרון (שורה 1 = כותרות, 2 = נתונים ראשונים)',
+                leave_empty_for_all: 'השאר ריק לסנכרון עד הסוף',
+                last_rows_from_sheet: 'שורות אחרונות מהגיליון',
+                total_rows: 'סה"כ שורות בגיליון',
+                select: 'בחר',
+                row: 'שורה',
+                name: 'שם',
+                date: 'תאריך',
+
+                // Sync result
+                sync_results: 'תוצאות סנכרון',
+                sync_success: 'סנכרון הושלם בהצלחה',
+                sync_error: 'שגיאה בסנכרון',
+                copy_to_send: 'העתק לשליחה',
+                close: 'סגור',
+                copied: 'הועתק!',
+
+                // Alerts
+                syncing: 'מסנכרן...',
+                checking_campaigns: 'בודק קמפיינים...',
+                error: 'שגיאה',
+                campaign_not_found: 'קמפיין לא נמצא',
+                missing_campaign_id: 'מזהה קמפיין חסר',
+                no_sheet_link: 'אין קישור לגיליון',
+                preview_error: 'לא ניתן לטעון תצוגה מקדימה',
+                preview_load_error: 'שגיאה בטעינת תצוגה מקדימה'
+            },
+            en: {
+                // Header
+                page_title: 'Campaign Manager - Lead Management',
+                campaign_manager: '(Campaign Manager)',
+                manage_campaigns: 'Manage Campaigns',
+                logout: 'Logout',
+
+                // Sync section
+                sync_campaigns_title: 'Sync Campaigns from Google Sheets',
+                sync_all_campaigns: 'Sync All Campaigns',
+                add_lead_manual: 'Add Lead Manually',
+                loading_campaigns: 'Loading campaigns...',
+                no_active_campaigns: 'No active campaigns with Google Sheets link',
+                no_customer: 'No customer',
+                never_synced: 'Never synced',
+                last_synced: 'Last synced',
+                sync_btn: 'Sync',
+
+                // Quick actions
+                quick_actions: 'Quick Actions',
+                quick_actions_desc: 'Send reminders to users about leads assigned to them',
+                selected: 'selected',
+                send_reminder_selected: 'Send Reminder to Selected Leads',
+                send_reminder_tooltip: 'Select leads in the table below and click here to send reminders',
+
+                // Email status
+                email_checking: 'Email notifications: Checking settings...',
+                email_active: 'Email notifications active - Sending from',
+                email_not_configured: 'Email notifications not configured - Contact admin',
+                email_check_error: 'Cannot check notification status',
+
+                // Add Lead Modal
+                add_lead_title: 'Add Lead Manually',
+                customer: 'Customer',
+                campaign_name: 'Campaign Name',
+                full_name: 'Full Name',
+                phone: 'Phone',
+                email: 'Email',
+                status: 'Status',
+                notes: 'Notes',
+                cancel: 'Cancel',
+                add_lead: 'Add Lead',
+                select_customer: 'Select customer first...',
+                select_campaign: 'Select campaign...',
+                no_customers: 'No customers available',
+                no_campaigns_for_customer: 'No campaigns available for this customer',
+                error_loading_customers: 'Error loading customers',
+                error_loading_campaigns: 'Error loading campaigns',
+                phone_or_email_required: 'Phone or email is required',
+                lead_added_success: 'Lead added successfully! ID',
+
+                // Status options
+                status_new: 'New',
+                status_contacted: 'Contacted',
+                status_qualified: 'Qualified',
+                status_converted: 'Converted',
+                status_lost: 'Lost',
+
+                // Sync config modal
+                sync_settings: 'Sync Settings',
+                campaign: 'Campaign',
+                show_last_rows: 'Show Last Rows',
+                from_row: 'From Row',
+                to_row: 'To Row (optional)',
+                reset_tracking: 'Reset tracking (start fresh)',
+                start_sync: 'Start Sync',
+                first_row_help: 'First row to sync (row 1 = headers, 2 = first data)',
+                leave_empty_for_all: 'Leave empty to sync all',
+                last_rows_from_sheet: 'Last rows from sheet',
+                total_rows: 'Total rows in sheet',
+                select: 'Select',
+                row: 'Row',
+                name: 'Name',
+                date: 'Date',
+
+                // Sync result
+                sync_results: 'Sync Results',
+                sync_success: 'Sync completed successfully',
+                sync_error: 'Sync error',
+                copy_to_send: 'Copy to send',
+                close: 'Close',
+                copied: 'Copied!',
+
+                // Alerts
+                syncing: 'Syncing...',
+                checking_campaigns: 'Checking campaigns...',
+                error: 'Error',
+                campaign_not_found: 'Campaign not found',
+                missing_campaign_id: 'Missing campaign ID',
+                no_sheet_link: 'No sheet link',
+                preview_error: 'Cannot load preview',
+                preview_load_error: 'Error loading preview'
+            }
+        };
+
+        let currentLang = localStorage.getItem('appLanguage') || 'he';
+
+        function t(key) {
+            return translations[currentLang][key] || translations['he'][key] || key;
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'he' ? 'en' : 'he';
+            localStorage.setItem('appLanguage', currentLang);
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            const html = document.documentElement;
+            const btn = document.getElementById('langToggleBtn');
+
+            // Update direction and lang
+            if (currentLang === 'en') {
+                html.setAttribute('dir', 'ltr');
+                html.setAttribute('lang', 'en');
+                btn.textContent = 'HE';
+            } else {
+                html.setAttribute('dir', 'rtl');
+                html.setAttribute('lang', 'he');
+                btn.textContent = 'EN';
+            }
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.textContent = translations[currentLang][key];
+                }
+            });
+
+            // Update title attributes
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                if (translations[currentLang][key]) {
+                    el.setAttribute('title', translations[currentLang][key]);
+                }
+            });
+
+            // Update placeholder attributes
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (translations[currentLang][key]) {
+                    el.setAttribute('placeholder', translations[currentLang][key]);
+                }
+            });
+
+            // Update email status
+            updateEmailStatusText();
+
+            // Re-render campaigns grid with new language
+            if (campaigns.length > 0) {
+                renderCampaignsGrid();
+            }
+        }
+
+        function updateEmailStatusText() {
+            const statusDiv = document.getElementById('email-status');
+            if (!statusDiv) return;
+
+            // Re-fetch email status with new language
+            fetch('/email-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.enabled) {
+                        statusDiv.className = 'email-status enabled';
+                        statusDiv.innerHTML = `📧 ${t('email_active')}: ${data.sender_email}`;
+                    } else {
+                        statusDiv.innerHTML = `📧 ${t('email_not_configured')}`;
+                    }
+                })
+                .catch(error => {
+                    statusDiv.innerHTML = `📧 ${t('email_check_error')}`;
+                });
+        }
+
+        function renderCampaignsGrid() {
+            const syncableCampaigns = campaigns.filter(c => c.active && c.sheet_url);
+            const grid = document.getElementById('campaignsGrid');
+
+            if (syncableCampaigns.length === 0) {
+                grid.innerHTML = `<p style="text-align: center; color: #64748b;">${t('no_active_campaigns')}</p>`;
+            } else {
+                grid.innerHTML = syncableCampaigns.map(c => {
+                    let lastSyncText = t('never_synced');
+                    if (c.last_synced_at) {
+                        const syncDate = new Date(c.last_synced_at);
+                        const formattedTime = syncDate.toLocaleString(currentLang === 'he' ? 'he-IL' : 'en-US', {
+                            timeZone: 'Asia/Jerusalem',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        lastSyncText = `${t('last_synced')}: ${formattedTime}`;
+                    }
+
+                    return `
+                    <div class="campaign-card">
+                        <div class="campaign-info">
+                            <h3>${c.campaign_name}</h3>
+                            <p>${c.customer_name || t('no_customer')}</p>
+                            <p style="font-size: 12px; color: #64748b; margin-top: 5px;">${lastSyncText}</p>
+                        </div>
+                        <button class="btn-sync" onclick="syncCampaign(${c.id}, '${c.campaign_name.replace(/'/g, "\\'")}')">🔄 ${t('sync_btn')}</button>
+                    </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Apply language on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            applyLanguage();
+        });
         
         // Load customers for the add lead form
         async function loadCustomers() {
@@ -653,46 +967,10 @@
                 const response = await fetch('/admin/campaigns/api');
                 const data = await response.json();
                 campaigns = data.campaigns || [];
-
-                // Filter active campaigns with sheet URLs
-                const syncableCampaigns = campaigns.filter(c => c.active && c.sheet_url);
-
-                const grid = document.getElementById('campaignsGrid');
-                if (syncableCampaigns.length === 0) {
-                    grid.innerHTML = '<p style="text-align: center; color: #64748b;">אין קמפיינים פעילים עם קישור Google Sheets</p>';
-                    document.getElementById('syncAllBtn').disabled = true;
-                } else {
-                    grid.innerHTML = syncableCampaigns.map(c => {
-                        // Format last sync time to Israel time
-                        let lastSyncText = 'מעולם לא סונכרן';
-                        if (c.last_synced_at) {
-                            const syncDate = new Date(c.last_synced_at);
-                            const israelTime = syncDate.toLocaleString('he-IL', {
-                                timeZone: 'Asia/Jerusalem',
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-                            lastSyncText = `סונכרן לאחרונה: ${israelTime}`;
-                        }
-
-                        return `
-                        <div class="campaign-card">
-                            <div class="campaign-info">
-                                <h3>${c.campaign_name}</h3>
-                                <p>${c.customer_name || 'ללא לקוח'}</p>
-                                <p style="font-size: 12px; color: #64748b; margin-top: 5px;">${lastSyncText}</p>
-                            </div>
-                            <button class="btn-sync" onclick="syncCampaign(${c.id}, '${c.campaign_name.replace(/'/g, "\\'")}')">🔄 סנכרן</button>
-                        </div>
-                        `;
-                    }).join('');
-                }
+                renderCampaignsGrid();
             } catch(e) {
                 console.error('Error loading campaigns:', e);
-                document.getElementById('campaignsGrid').innerHTML = '<p style="text-align: center; color: #ef4444;">שגיאה בטעינת קמפיינים</p>';
+                document.getElementById('campaignsGrid').innerHTML = `<p style="text-align: center; color: #ef4444;">${t('error_loading_campaigns')}</p>`;
             }
         }
         
