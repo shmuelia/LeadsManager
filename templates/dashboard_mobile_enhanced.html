@@ -1444,6 +1444,19 @@
                 return labels[status] || 'חדש';
             }
 
+            getActivityLabel(activityType) {
+                const labels = {
+                    'lead_received': 'ליד התקבל',
+                    'status_change': 'שינוי סטטוס',
+                    'assignment': 'הקצאה',
+                    'call': 'שיחה',
+                    'note_added': 'הערה נוספה',
+                    'email_sent': 'אימייל נשלח',
+                    'whatsapp_sent': 'וואטסאפ נשלח'
+                };
+                return labels[activityType] || activityType;
+            }
+
             callLead(event, phone) {
                 event.stopPropagation();
                 this.hapticFeedback('medium');
@@ -1526,6 +1539,7 @@
 
                     const data = await response.json();
                     const lead = data.lead || data; // Handle both response formats
+                    const activities = data.activities || []; // Get activities from API
 
                     // Parse raw data for Zapier information
                     let rawData = {};
@@ -1615,19 +1629,22 @@
                             ` : ''}
                         ` : '<div style="background: #f9fafb; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; color: #6b7280; font-size: 12px;">אין נתונים מהטופס</div>'}
 
-                        <!-- Additional Lead Information -->
+                        <!-- Activity History - All Notes from All Users -->
                         <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px;">
-                            <h3 style="color: #1e293b; margin: 0 0 15px 0; font-size: 14px;">📊 מידע נוסף</h3>
-                            <div style="display: grid; gap: 8px; font-size: 12px;">
-                                <div><strong>מזהה חיצוני:</strong> ${lead.external_lead_id || 'לא צוין'}</div>
-                                <div><strong>שם טופס:</strong> ${lead.form_name || 'לא צוין'}</div>
-                                <div><strong>מקור ליד:</strong> ${lead.lead_source || 'לא צוין'}</div>
-                                <div><strong>עדיפות:</strong> 
-                                    <span class="priority-badge priority-${lead.priority || 0}">
-                                        ${lead.priority === 1 ? '🔴 דחוף' : lead.priority === 2 ? '🟡 בינוני' : '🟢 רגיל'}
-                                    </span>
-                                </div>
-                                ${lead.notes ? `<div><strong>הערות:</strong> ${lead.notes}</div>` : ''}
+                            <h3 style="color: #1e293b; margin: 0 0 15px 0; font-size: 14px;">📈 היסטוריית פעילות והערות</h3>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${activities.length > 0 ? activities.map(activity => `
+                                    <div style="padding: 12px; background: linear-gradient(135deg, #fef7cd 0%, #fef3c7 100%); border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <span style="background: #059669; color: white; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: 600;">
+                                                ${this.getActivityLabel(activity.activity_type)}
+                                            </span>
+                                            <span style="color: #6b7280; font-size: 11px;">${this.formatDate(activity.activity_date)}</span>
+                                        </div>
+                                        <div style="color: #374151; font-size: 13px; line-height: 1.4;">${activity.description || 'אין תיאור'}</div>
+                                        ${activity.user_name ? `<div style="color: #6b7280; font-size: 11px; margin-top: 4px;">👤 ${activity.user_name}</div>` : ''}
+                                    </div>
+                                `).join('') : '<div style="text-align: center; color: #6b7280; font-style: italic; padding: 20px;">אין פעילויות רשומות עדיין</div>'}
                             </div>
                         </div>
                     `;
