@@ -93,6 +93,9 @@
                 <button class="nav-btn" onclick="location.href='/admin/campaigns'">
                     🎯 ניהול קמפיינים
                 </button>
+                <button class="nav-btn warning" onclick="openAddLeadModal()">
+                    ➕ הוסף ליד ידנית
+                </button>
                 <button class="nav-btn danger" onclick="location.href='/admin/duplicates'">
                     🔍 ניהול כפילויות
                 </button>
@@ -143,7 +146,7 @@
         </div>
         
         <!-- Add Lead Modal -->
-        <div id="addLeadModal" class="modal" style="display: none;">
+        <div id="addLeadModal" class="modal" style="display: none;" onclick="if(event.target===this) closeAddLeadModal()">
             <div class="modal-content" style="background: white; margin: 5% auto; padding: 30px; border-radius: 16px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
                 <h2 style="font-size: 1.5rem; margin-bottom: 20px; color: #10b981;">➕ הוסף ליד ידנית</h2>
                 <form id="addLeadForm">
@@ -236,6 +239,77 @@
             event.target.innerHTML = '📋 צפה בלידים';
             event.target.onclick = showLeadManager;
         }
+
+        async function openAddLeadModal() {
+            const modal = document.getElementById('addLeadModal');
+            modal.style.display = 'block';
+
+            // Load customers into dropdown
+            try {
+                const response = await fetch('/admin/customers/api');
+                const data = await response.json();
+                const select = document.getElementById('addLeadCustomerId');
+                select.innerHTML = '<option value="">בחר לקוח...</option>';
+                (data.customers || []).forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+            } catch (e) {
+                console.error('Error loading customers:', e);
+            }
+        }
+
+        function closeAddLeadModal() {
+            document.getElementById('addLeadModal').style.display = 'none';
+            document.getElementById('addLeadForm').reset();
+        }
+
+        // Handle add lead form submission
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('addLeadForm');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const data = {
+                        customer_id: document.getElementById('addLeadCustomerId').value,
+                        campaign_name: document.getElementById('addLeadCampaignName').value,
+                        name: document.getElementById('addLeadName').value,
+                        phone: document.getElementById('addLeadPhone').value,
+                        email: document.getElementById('addLeadEmail').value,
+                        status: document.getElementById('addLeadStatus').value,
+                        notes: document.getElementById('addLeadNotes').value
+                    };
+
+                    if (!data.customer_id || !data.campaign_name || !data.name) {
+                        alert('אנא מלא את כל השדות הנדרשים');
+                        return;
+                    }
+                    if (!data.phone && !data.email) {
+                        alert('נדרש טלפון או אימייל');
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/admin/leads/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert('✅ ליד נוסף בהצלחה!');
+                            closeAddLeadModal();
+                            location.reload();
+                        } else {
+                            alert('❌ שגיאה: ' + (result.error || 'שגיאה לא ידועה'));
+                        }
+                    } catch (err) {
+                        alert('❌ שגיאה: ' + err.message);
+                    }
+                });
+            }
+        });
 
         async function syncAllCampaigns() {
             const btn = document.getElementById('syncAllBtn');
