@@ -55,11 +55,11 @@ if not git_hash:
 
 # Fallback to timestamp-based version
 if not git_hash:
-    git_hash = datetime.now().strftime('%Y%m%d-%H%M')
+    git_hash = datetime.now(pytz.timezone('Asia/Jerusalem')).strftime('%Y%m%d-%H%M')
     logger.info(f"📅 Using timestamp version: {git_hash}")
 
 APP_VERSION = f"v{git_hash}"
-BUILD_TIME = datetime.now().strftime('%Y-%m-%d %H:%M')
+BUILD_TIME = datetime.now(pytz.timezone('Asia/Jerusalem')).strftime('%Y-%m-%d %H:%M')
 logger.info(f"🚀 LeadsManager starting - Version: {APP_VERSION} | Build: {BUILD_TIME} | Sync-All Feature Ready")
 
 # Email configuration
