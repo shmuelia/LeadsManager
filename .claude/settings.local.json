@@ -24,7 +24,11 @@
       "Bash(dir:*)",
       "Bash(powershell.exe -File deploy.ps1 \"Fix: Auto-sync selectedLeads from checked checkboxes to handle selection state properly\")",
       "Bash(powershell.exe -File deploy.ps1 \"Fix: Normalize phone and email in duplicate detection to prevent re-importing existing leads\")",
-      "Bash(cmd /c \"heroku pg:psql --app eadmanager-fresh-2024-dev -c \"\"\\dt\"\"\")"
+      "Bash(cmd /c \"heroku pg:psql --app eadmanager-fresh-2024-dev -c \"\"\\dt\"\"\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__read_page"
     ],
     "deny": [],
     "ask": []
