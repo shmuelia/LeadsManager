@@ -2645,17 +2645,20 @@ def mass_close_leads():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/reports')
-@admin_required
+@campaign_manager_required
 def admin_reports():
-    """Admin: Reports dashboard (closed leads reasons, etc.)"""
+    """Reports dashboard (rejected/closed leads reasons, etc.) — admin + campaign manager."""
     return render_template('admin_reports.html', version=APP_VERSION, build_time=BUILD_TIME)
 
 @app.route('/admin/reports/closed-leads')
-@admin_required
+@campaign_manager_required
 def admin_reports_closed_leads():
-    """Admin: JSON report of closed leads with their closing reason and filters."""
+    """JSON report of rejected/closed leads with their reason and filters."""
     try:
-        selected_customer_id = session.get('selected_customer_id', 1)
+        if session.get('role') == 'admin':
+            selected_customer_id = session.get('selected_customer_id', 1)
+        else:
+            selected_customer_id = session.get('customer_id', 1)
 
         # Filters from query string
         date_from = (request.args.get('date_from') or '').strip()
