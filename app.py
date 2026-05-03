@@ -2644,6 +2644,161 @@ def mass_close_leads():
         logger.error(f"Error in mass close: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/reports')
+@admin_required
+def admin_reports():
+    """Admin: Reports dashboard (closed leads reasons, etc.)"""
+    return render_template('admin_reports.html', version=APP_VERSION, build_time=BUILD_TIME)
+
+@app.route('/admin/reports/closed-leads')
+@admin_required
+def admin_reports_closed_leads():
+    """Admin: JSON report of closed leads with their closing reason and filters."""
+    try:
+        selected_customer_id = session.get('selected_customer_id', 1)
+
+        # Filters from query string
+        date_from = (request.args.get('date_from') or '').strip()
+        date_to = (request.args.get('date_to') or '').strip()
+        campaign = (request.args.get('campaign') or '').strip()
+        assigned_to = (request.args.get('assigned_to') or '').strip()
+        closed_by = (request.args.get('closed_by') or '').strip()
+        reason_q = (request.args.get('reason') or '').strip()
+        new_status = (request.args.get('new_status') or 'closed').strip()
+        prev_status = (request.args.get('previous_status') or '').strip()
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        where = [
+            "l.customer_id = %s",
+            "a.activity_type = 'status_change'",
+            "a.new_status = %s",
+        ]
+        params = [selected_customer_id, new_status]
+
+        if date_from:
+            where.append("a.activity_date >= %s")
+            params.append(date_from)
+        if date_to:
+            # inclusive end-of-day
+            where.append("a.activity_date < (%s::date + INTERVAL '1 day')")
+            params.append(date_to)
+        if campaign:
+            where.append("l.campaign_name = %s")
+            params.append(campaign)
+        if assigned_to:
+            where.append("l.assigned_to = %s")
+            params.append(assigned_to)
+        if closed_by:
+            where.append("a.user_name = %s")
+            params.append(closed_by)
+        if prev_status:
+            where.append("a.previous_status = %s")
+            params.append(prev_status)
+        if reason_q:
+            where.append("a.description ILIKE %s")
+            params.append(f"%{reason_q}%")
+
+        where_sql = " AND ".join(where)
+
+        # Use DISTINCT ON to take the most-recent close activity per lead
+        sql = f"""
+            SELECT DISTINCT ON (l.id)
+                l.id            AS lead_id,
+                l.name          AS lead_name,
+                l.phone         AS lead_phone,
+                l.email         AS lead_email,
+                l.campaign_name,
+                l.assigned_to,
+                u.full_name     AS assigned_to_name,
+                a.user_name     AS closed_by,
+                a.activity_date AS closed_at,
+                a.previous_status,
+                a.new_status,
+                a.description   AS full_description
+            FROM lead_activities a
+            JOIN leads l ON l.id = a.lead_id
+            LEFT JOIN users u
+                   ON u.username = l.assigned_to
+                  AND u.customer_id = l.customer_id
+            WHERE {where_sql}
+            ORDER BY l.id, a.activity_date DESC
+        """
+
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+
+        # Pull filter dropdown values (campaigns / users / closers) — scoped to customer
+        cur.execute(
+            "SELECT DISTINCT campaign_name FROM leads "
+            "WHERE customer_id = %s AND campaign_name IS NOT NULL AND campaign_name <> '' "
+            "ORDER BY campaign_name",
+            (selected_customer_id,),
+        )
+        campaigns = [r['campaign_name'] for r in cur.fetchall()]
+
+        cur.execute(
+            "SELECT username, full_name FROM users "
+            "WHERE customer_id = %s AND active = true ORDER BY full_name NULLS LAST, username",
+            (selected_customer_id,),
+        )
+        users = [dict(r) for r in cur.fetchall()]
+
+        cur.execute(
+            "SELECT DISTINCT a.user_name FROM lead_activities a "
+            "JOIN leads l ON l.id = a.lead_id "
+            "WHERE l.customer_id = %s AND a.activity_type = 'status_change' "
+            "AND a.new_status = 'closed' AND a.user_name IS NOT NULL "
+            "ORDER BY a.user_name",
+            (selected_customer_id,),
+        )
+        closers = [r['user_name'] for r in cur.fetchall()]
+
+        cur.close()
+        conn.close()
+
+        results = []
+        for r in rows:
+            d = dict(r)
+            full_desc = d.pop('full_description', '') or ''
+            # Reason note is everything after "הערה: " when present, otherwise the whole description
+            if 'הערה: ' in full_desc:
+                reason = full_desc.split('הערה: ', 1)[1].strip()
+            else:
+                reason = full_desc.strip()
+            d['reason'] = reason
+            d['description'] = full_desc
+            if d.get('closed_at'):
+                d['closed_at'] = d['closed_at'].isoformat()
+            results.append(d)
+
+        # Aggregate by reason for a quick summary
+        from collections import Counter
+        counter = Counter(r['reason'] or '(ללא הערה)' for r in results)
+        summary = [
+            {'reason': reason, 'count': count}
+            for reason, count in counter.most_common()
+        ]
+
+        return jsonify({
+            'rows': results,
+            'total': len(results),
+            'summary': summary,
+            'filters': {
+                'campaigns': campaigns,
+                'users': users,
+                'closers': closers,
+            },
+        })
+
+    except Exception as e:
+        logger.error(f"Error in closed-leads report: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/users')
 @admin_required
 def manage_users():
