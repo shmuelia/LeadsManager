@@ -2664,7 +2664,7 @@ def admin_reports_closed_leads():
         assigned_to = (request.args.get('assigned_to') or '').strip()
         closed_by = (request.args.get('closed_by') or '').strip()
         reason_q = (request.args.get('reason') or '').strip()
-        new_status = (request.args.get('new_status') or 'closed').strip()
+        new_status = (request.args.get('new_status') or 'rejected').strip()
         prev_status = (request.args.get('previous_status') or '').strip()
 
         conn = get_db_connection()
@@ -2752,7 +2752,7 @@ def admin_reports_closed_leads():
             "SELECT DISTINCT a.user_name FROM lead_activities a "
             "JOIN leads l ON l.id = a.lead_id "
             "WHERE l.customer_id = %s AND a.activity_type = 'status_change' "
-            "AND a.new_status = 'closed' AND a.user_name IS NOT NULL "
+            "AND a.user_name IS NOT NULL "
             "ORDER BY a.user_name",
             (selected_customer_id,),
         )

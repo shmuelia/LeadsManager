@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דוחות - לידים סגורים</title>
+    <title>דוחות - לידים שנדחו</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -97,7 +97,7 @@
 
     <div class="header">
         <div>
-            <h1>📊 דוח סגירות - סיבות סגירה של לידים</h1>
+            <h1>📊 דוח דחיות - מי דחה את הליד ולמה</h1>
             <div class="build">v{{ version }} · {{ build_time }}</div>
         </div>
         <a href="/admin" class="nav-back no-print">⬅ חזרה לדשבורד</a>
@@ -122,7 +122,7 @@
                 <select id="f_assigned"><option value="">כל המשתמשים</option></select>
             </div>
             <div>
-                <label>נסגר על ידי</label>
+                <label>דחה על ידי</label>
                 <select id="f_closer"><option value="">הכל</option></select>
             </div>
             <div>
@@ -142,9 +142,9 @@
             <div>
                 <label>סטטוס חדש</label>
                 <select id="f_status">
-                    <option value="closed" selected>closed</option>
-                    <option value="rejected">rejected</option>
-                    <option value="hired">hired</option>
+                    <option value="rejected" selected>rejected (נדחה)</option>
+                    <option value="closed">closed (נסגר)</option>
+                    <option value="hired">hired (התקבל)</option>
                     <option value="">הכל</option>
                 </select>
             </div>
@@ -166,7 +166,7 @@
     <div class="card">
         <h3 style="margin: 0 0 10px 0;">סיכום</h3>
         <div class="summary">
-            <div class="stat"><div class="num" id="stat_total">0</div><div class="lbl">סה"כ סגירות</div></div>
+            <div class="stat"><div class="num" id="stat_total">0</div><div class="lbl">סה"כ דחיות</div></div>
             <div class="stat"><div class="num" id="stat_unique_reasons">0</div><div class="lbl">סיבות שונות</div></div>
             <div class="stat"><div class="num" id="stat_top_reason_count">0</div><div class="lbl">סיבה נפוצה ביותר</div></div>
         </div>
@@ -185,8 +185,8 @@
                         <th data-sort="lead_email">אימייל <span class="arrow"></span></th>
                         <th data-sort="campaign_name">קמפיין <span class="arrow"></span></th>
                         <th data-sort="assigned_to_name">הוקצה ל <span class="arrow"></span></th>
-                        <th data-sort="closed_by">נסגר ע״י <span class="arrow"></span></th>
-                        <th data-sort="closed_at">תאריך סגירה <span class="arrow"></span></th>
+                        <th data-sort="closed_by">דחה/סגר ע״י <span class="arrow"></span></th>
+                        <th data-sort="closed_at">תאריך פעולה <span class="arrow"></span></th>
                         <th data-sort="previous_status">סטטוס קודם <span class="arrow"></span></th>
                         <th data-sort="reason">סיבה (הערה) <span class="arrow"></span></th>
                     </tr>
@@ -345,7 +345,7 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
 
 function resetFilters() {
     ['f_from','f_to','f_campaign','f_assigned','f_closer','f_prev','f_reason'].forEach(id => qs(id).value = '');
-    qs('f_status').value = 'closed';
+    qs('f_status').value = 'rejected';
     loadReport();
 }
 
@@ -353,7 +353,7 @@ function exportPdf() {
     if (!currentRows.length) { alert('אין נתונים לייצוא'); return; }
     const labels = {
         f_from: 'מתאריך', f_to: 'עד תאריך', f_campaign: 'קמפיין',
-        f_assigned: 'הוקצה ל', f_closer: 'נסגר ע״י', f_prev: 'סטטוס קודם',
+        f_assigned: 'הוקצה ל', f_closer: 'דחה/סגר ע״י', f_prev: 'סטטוס קודם',
         f_status: 'סטטוס חדש', f_reason: 'חיפוש בסיבה'
     };
     const active = Object.entries(labels)
@@ -367,8 +367,12 @@ function exportPdf() {
         .filter(Boolean)
         .join(' · ');
     const stamp = new Date().toLocaleString('he-IL');
+    const statusLabel = qs('f_status').options[qs('f_status').selectedIndex]?.text || '';
+    const reportTitle = statusLabel.includes('rejected') ? 'דוח דחיות לידים' :
+                        statusLabel.includes('closed')   ? 'דוח סגירות לידים' :
+                        statusLabel.includes('hired')    ? 'דוח גיוסים' : 'דוח שינויי סטטוס';
     qs('print_meta').innerHTML =
-        `<strong>דוח סגירות לידים</strong> · הופק: ${escapeHtml(stamp)}` +
+        `<strong>${escapeHtml(reportTitle)}</strong> · הופק: ${escapeHtml(stamp)}` +
         (active ? `<br>מסננים: ${escapeHtml(active)}` : '') +
         `<br>סה״כ רשומות: ${currentRows.length}`;
     window.print();
@@ -378,7 +382,7 @@ function exportCsv() {
     if (!currentRows.length) return;
     const cols = ['lead_id','lead_name','lead_phone','lead_email','campaign_name',
                   'assigned_to_name','closed_by','closed_at','previous_status','reason'];
-    const headers = ['מס\'','שם','טלפון','אימייל','קמפיין','הוקצה ל','נסגר ע"י','תאריך סגירה','סטטוס קודם','סיבה'];
+    const headers = ['מס\'','שם','טלפון','אימייל','קמפיין','הוקצה ל','דחה/סגר ע"י','תאריך פעולה','סטטוס קודם','סיבה'];
     const escape = v => {
         if (v === null || v === undefined) return '';
         const s = String(v).replace(/"/g, '""');
@@ -393,7 +397,8 @@ function exportCsv() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `closed_leads_${new Date().toISOString().slice(0,10)}.csv`;
+    const statusVal = qs('f_status').value || 'all';
+    a.download = `${statusVal}_leads_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
