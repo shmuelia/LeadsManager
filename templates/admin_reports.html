@@ -76,6 +76,20 @@
             th, td { padding: 6px 4px; font-size: 12px; }
             .reason-cell { max-width: 200px; }
         }
+        .print-meta { display: none; }
+        @media print {
+            body { background: white; padding: 0; color: #000; }
+            .wrap { max-width: none; }
+            .no-print { display: none !important; }
+            .header, .card { box-shadow: none; border: 1px solid #ddd; border-radius: 0; margin-bottom: 10px; padding: 10px; }
+            .table-wrap { max-height: none; overflow: visible; }
+            table { font-size: 11px; }
+            th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody tr:hover { background: white; }
+            .reason-cell { max-width: none; }
+            .print-meta { display: block; font-size: 12px; color: #444; margin-bottom: 8px; }
+            @page { size: A4 landscape; margin: 12mm; }
+        }
     </style>
 </head>
 <body>
@@ -86,10 +100,10 @@
             <h1>📊 דוח סגירות - סיבות סגירה של לידים</h1>
             <div class="build">v{{ version }} · {{ build_time }}</div>
         </div>
-        <a href="/admin" class="nav-back">⬅ חזרה לדשבורד</a>
+        <a href="/admin" class="nav-back no-print">⬅ חזרה לדשבורד</a>
     </div>
 
-    <div class="card">
+    <div class="card no-print">
         <div class="filters">
             <div>
                 <label>מתאריך</label>
@@ -143,8 +157,11 @@
             <button class="btn btn-primary" onclick="loadReport()">🔍 רענן דוח</button>
             <button class="btn btn-secondary" onclick="resetFilters()">איפוס מסננים</button>
             <button class="btn btn-success" onclick="exportCsv()">⬇ ייצוא ל-CSV</button>
+            <button class="btn btn-primary" onclick="exportPdf()">🖨 ייצוא ל-PDF</button>
         </div>
     </div>
+
+    <div class="print-meta" id="print_meta"></div>
 
     <div class="card">
         <h3 style="margin: 0 0 10px 0;">סיכום</h3>
@@ -330,6 +347,31 @@ function resetFilters() {
     ['f_from','f_to','f_campaign','f_assigned','f_closer','f_prev','f_reason'].forEach(id => qs(id).value = '');
     qs('f_status').value = 'closed';
     loadReport();
+}
+
+function exportPdf() {
+    if (!currentRows.length) { alert('אין נתונים לייצוא'); return; }
+    const labels = {
+        f_from: 'מתאריך', f_to: 'עד תאריך', f_campaign: 'קמפיין',
+        f_assigned: 'הוקצה ל', f_closer: 'נסגר ע״י', f_prev: 'סטטוס קודם',
+        f_status: 'סטטוס חדש', f_reason: 'חיפוש בסיבה'
+    };
+    const active = Object.entries(labels)
+        .map(([id, lbl]) => {
+            const el = qs(id);
+            const v = el.value;
+            if (!v) return null;
+            const txt = el.tagName === 'SELECT' ? (el.options[el.selectedIndex]?.text || v) : v;
+            return `${lbl}: ${txt}`;
+        })
+        .filter(Boolean)
+        .join(' · ');
+    const stamp = new Date().toLocaleString('he-IL');
+    qs('print_meta').innerHTML =
+        `<strong>דוח סגירות לידים</strong> · הופק: ${escapeHtml(stamp)}` +
+        (active ? `<br>מסננים: ${escapeHtml(active)}` : '') +
+        `<br>סה״כ רשומות: ${currentRows.length}`;
+    window.print();
 }
 
 function exportCsv() {
