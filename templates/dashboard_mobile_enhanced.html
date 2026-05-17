@@ -1354,6 +1354,9 @@
                                 </button>
                                 <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.whatsappLead(event, '${lead.phone}')">
                                     💬 WhatsApp
+                                </button>
+                                <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.openQuickWhatsappLog(${lead.id})" style="background:#16a34a; color:white;">
+                                    📋 תעד WA
                                 </button>` : ''}
                                 ${this.canAssign() ? `
                                 <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.assignLead(${lead.id})" title="הקצה למשתמש">
@@ -1456,6 +1459,101 @@
                     'whatsapp_message': '💬 WhatsApp'
                 };
                 return labels[activityType] || activityType;
+            }
+
+            openQuickWhatsappLog(leadId) {
+                const lead = this.leads.find(l => l.id === leadId);
+                if (!lead) return;
+                const phone = lead.phone || '';
+                const cleanPhone = phone.replace(/[^\d]/g, '');
+                let waPhone = cleanPhone;
+                if (cleanPhone.startsWith('9720')) waPhone = '972' + cleanPhone.substring(4);
+                else if (cleanPhone.startsWith('972')) waPhone = cleanPhone;
+                else if (cleanPhone.startsWith('0')) waPhone = '972' + cleanPhone.substring(1);
+                else if (cleanPhone) waPhone = '972' + cleanPhone;
+
+                const existing = document.getElementById('quickWhatsappOverlay');
+                if (existing) existing.remove();
+
+                const overlay = document.createElement('div');
+                overlay.id = 'quickWhatsappOverlay';
+                overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:flex-end; justify-content:center; padding:0;';
+                overlay.innerHTML = `
+                    <div style="background:white; border-radius:14px 14px 0 0; padding:18px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; direction:rtl;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                            <h3 style="margin:0; color:#14532d; font-size:16px;">💬 תיעוד התכתבות</h3>
+                            <button onclick="document.getElementById('quickWhatsappOverlay').remove()"
+                                    style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                        </div>
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 12px; border-radius:8px; margin-bottom:12px; font-size:13px;">
+                            <strong>${lead.name || 'ליד'}</strong>${phone ? ' · ' + phone : ''}
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                            ${phone ? `
+                                <a href="https://wa.me/${waPhone}" target="_blank" rel="noopener"
+                                   style="background:#25D366; color:white; padding:9px 12px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">
+                                    📱 פתח WhatsApp
+                                </a>
+                            ` : ''}
+                            <button onclick="leadManager.pasteClipboardIntoQuickWa()"
+                                    style="background:#2563eb; color:white; padding:9px 12px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">
+                                📋 הדבק מהלוח
+                            </button>
+                        </div>
+                        <textarea id="quickWaText" rows="8" placeholder="הדבק כאן את ההתכתבות..."
+                                  style="width:100%; padding:10px; border:1px solid #86efac; border-radius:8px; font-family:inherit; font-size:14px; resize:vertical;"></textarea>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center;">
+                            <select id="quickWaDirection" style="padding:8px; border-radius:6px; border:1px solid #86efac; font-size:13px;">
+                                <option value="log" selected>📝 תיעוד</option>
+                                <option value="sent">⬅ נשלח</option>
+                                <option value="received">➡ התקבל</option>
+                            </select>
+                            <button onclick="leadManager.submitQuickWhatsappLog(${leadId})"
+                                    style="background:#16a34a; color:white; padding:10px 18px; border:none; border-radius:8px; font-weight:600; margin-right:auto; font-size:14px;">💾 שמור</button>
+                        </div>
+                        <div id="quickWaStatus" style="margin-top:8px; font-size:12px; color:#6b7280;"></div>
+                    </div>
+                `;
+                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+                document.body.appendChild(overlay);
+                setTimeout(() => { const t = document.getElementById('quickWaText'); if (t) t.focus(); }, 50);
+            }
+
+            async pasteClipboardIntoQuickWa() {
+                const status = document.getElementById('quickWaStatus');
+                const textarea = document.getElementById('quickWaText');
+                if (!textarea) return;
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (!text) { if (status) status.textContent = '⚠ הלוח ריק'; return; }
+                    textarea.value = textarea.value ? (textarea.value + '\n' + text) : text;
+                    if (status) status.textContent = `✔ הודבק (${text.length} תווים)`;
+                } catch (e) {
+                    if (status) status.textContent = '⚠ אין גישה ללוח — הדבק ידנית';
+                }
+            }
+
+            async submitQuickWhatsappLog(leadId) {
+                const textarea = document.getElementById('quickWaText');
+                const dirSel = document.getElementById('quickWaDirection');
+                const status = document.getElementById('quickWaStatus');
+                if (!textarea) return;
+                const text = textarea.value.trim();
+                if (!text) { if (status) status.textContent = '⚠ אין טקסט'; return; }
+                try {
+                    const res = await fetch(`/leads/${leadId}/whatsapp`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, direction: dirSel ? dirSel.value : 'log' })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'שגיאה');
+                    const overlay = document.getElementById('quickWhatsappOverlay');
+                    if (overlay) overlay.remove();
+                    this.hapticFeedback && this.hapticFeedback('medium');
+                } catch (e) {
+                    if (status) status.textContent = '⚠ שגיאה: ' + e.message;
+                }
             }
 
             async saveWhatsappLog(leadId) {
