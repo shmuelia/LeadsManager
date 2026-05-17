@@ -2434,6 +2434,60 @@ def add_activity():
             'error': str(e)
         }), 500
 
+@app.route('/leads/<int:lead_id>/whatsapp', methods=['POST'])
+@login_required
+def log_whatsapp_message(lead_id):
+    """Log a WhatsApp correspondence (pasted/typed by user) as a lead activity."""
+    try:
+        data = request.get_json() or {}
+        text = (data.get('text') or '').strip()
+        direction = (data.get('direction') or 'log').strip()  # 'sent' / 'received' / 'log'
+
+        if not text:
+            return jsonify({'error': 'הטקסט לא יכול להיות ריק'}), 400
+        if len(text) > 20000:
+            return jsonify({'error': 'הטקסט ארוך מדי (מקסימום 20000 תווים)'}), 400
+
+        user_name = session.get('full_name', session.get('username', 'אנונימי'))
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+
+        # Verify the lead exists and belongs to a customer this user can access
+        cur.execute("SELECT customer_id FROM leads WHERE id = %s", (lead_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Lead not found'}), 404
+
+        lead_customer_id = row[0]
+        if session.get('role') == 'admin':
+            allowed_customer_id = session.get('selected_customer_id', lead_customer_id)
+        else:
+            allowed_customer_id = session.get('customer_id')
+        if lead_customer_id != allowed_customer_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized for this lead'}), 403
+
+        direction_prefix = {'sent': '⬅ נשלח', 'received': '➡ התקבל'}.get(direction, '💬 התכתבות')
+        description = f"{direction_prefix} (WhatsApp):\n{text}"
+
+        cur.execute("""
+            INSERT INTO lead_activities
+            (lead_id, user_name, activity_type, description)
+            VALUES (%s, %s, %s, %s)
+        """, (lead_id, user_name, 'whatsapp_message', description))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'success', 'message': 'ההתכתבות נשמרה'})
+    except Exception as e:
+        logger.error(f"Error logging WhatsApp message: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/leads/<int:lead_id>/status', methods=['PUT'])
 @login_required
 def update_lead_status(lead_id):

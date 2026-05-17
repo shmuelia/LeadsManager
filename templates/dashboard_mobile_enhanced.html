@@ -1452,9 +1452,33 @@
                     'call': 'שיחה',
                     'note_added': 'הערה נוספה',
                     'email_sent': 'אימייל נשלח',
-                    'whatsapp_sent': 'וואטסאפ נשלח'
+                    'whatsapp_sent': 'וואטסאפ נשלח',
+                    'whatsapp_message': '💬 WhatsApp'
                 };
                 return labels[activityType] || activityType;
+            }
+
+            async saveWhatsappLog(leadId) {
+                const textarea = document.getElementById(`waText_${leadId}`);
+                const directionSel = document.getElementById(`waDirection_${leadId}`);
+                if (!textarea) return;
+                const text = textarea.value.trim();
+                if (!text) { alert('הטקסט לא יכול להיות ריק'); return; }
+                try {
+                    const res = await fetch(`/leads/${leadId}/whatsapp`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, direction: directionSel ? directionSel.value : 'log' })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'שגיאה');
+                    textarea.value = '';
+                    this.hapticFeedback && this.hapticFeedback('medium');
+                    // Reopen the modal so the new activity appears
+                    this.viewDetails(new Event('click'), leadId);
+                } catch (e) {
+                    alert('שגיאה בשמירה: ' + e.message);
+                }
             }
 
             callLead(event, phone) {
@@ -1628,6 +1652,31 @@
                                 </div>
                             ` : ''}
                         ` : '<div style="background: #f9fafb; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; color: #6b7280; font-size: 12px;">אין נתונים מהטופס</div>'}
+
+                        <!-- WhatsApp Correspondence -->
+                        <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 15px; border-radius: 12px; margin-bottom: 15px;">
+                            <h3 style="color: #14532d; margin: 0 0 12px 0; font-size: 14px;">💬 WhatsApp</h3>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+                                ${lead.phone ? `
+                                    <button onclick="leadManager.whatsappLead(event, '${lead.phone}')" style="background: #25D366; color: white; padding: 10px 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 13px;">
+                                        📱 פתח WhatsApp
+                                    </button>
+                                ` : '<span style="color:#6b7280; font-size:12px;">אין מספר טלפון</span>'}
+                            </div>
+                            <textarea id="waText_${lead.id}" rows="3" placeholder="הדבק כאן התכתבות מ-WhatsApp..."
+                                      style="width: 100%; padding: 8px; border: 1px solid #86efac; border-radius: 8px; font-family: inherit; font-size: 13px; resize: vertical;"></textarea>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center;">
+                                <select id="waDirection_${lead.id}" style="padding: 6px; border-radius: 6px; border: 1px solid #86efac; font-size: 12px;">
+                                    <option value="log" selected>📝 תיעוד</option>
+                                    <option value="sent">⬅ נשלח</option>
+                                    <option value="received">➡ התקבל</option>
+                                </select>
+                                <button onclick="leadManager.saveWhatsappLog(${lead.id})"
+                                        style="background: #16a34a; color: white; padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; margin-right: auto;">
+                                    💾 שמור
+                                </button>
+                            </div>
+                        </div>
 
                         <!-- Activity History - All Notes from All Users -->
                         <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px;">

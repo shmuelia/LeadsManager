@@ -1635,6 +1635,38 @@ class UnifiedLeadManagerClass {
                 </div>
             ` : ''}
             
+            <!-- WhatsApp Correspondence -->
+            <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; color: #14532d;">💬 WhatsApp</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                    ${lead.phone ? `
+                        <a href="https://wa.me/${(lead.phone+'').replace(/[^0-9]/g,'')}" target="_blank" rel="noopener"
+                           style="background: #25D366; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                            📱 פתח WhatsApp
+                        </a>
+                        <a href="https://web.whatsapp.com/send?phone=${(lead.phone+'').replace(/[^0-9]/g,'')}" target="_blank" rel="noopener"
+                           style="background: #128C7E; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                            🖥 WhatsApp Web
+                        </a>
+                    ` : '<span style="color:#6b7280;">אין מספר טלפון לליד</span>'}
+                </div>
+                <label style="display: block; font-weight: 600; color: #14532d; margin-bottom: 6px;">הדבק / הקלד התכתבות</label>
+                <textarea id="waText_${lead.id}" rows="4" placeholder="הדבק כאן את ההודעות מ-WhatsApp..."
+                          style="width: 100%; padding: 10px; border: 1px solid #86efac; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center;">
+                    <label style="font-size: 13px; color: #14532d;">כיוון:</label>
+                    <select id="waDirection_${lead.id}" style="padding: 8px; border-radius: 6px; border: 1px solid #86efac;">
+                        <option value="log" selected>📝 תיעוד</option>
+                        <option value="sent">⬅ נשלח על ידי</option>
+                        <option value="received">➡ התקבל מהליד</option>
+                    </select>
+                    <button onclick="window.UnifiedLeadManager.saveWhatsappLog(${lead.id})"
+                            style="background: #16a34a; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: auto;">
+                        💾 שמור התכתבות
+                    </button>
+                </div>
+            </div>
+
             <!-- Activity History -->
             <div style="background: #f8fafc; padding: 20px; border-radius: 12px;">
                 <h3 style="margin-bottom: 15px; color: #1e293b;">📈 היסטוריית פעילות</h3>
@@ -1740,11 +1772,37 @@ class UnifiedLeadManagerClass {
             'status_change': 'שינוי סטטוס',
             'assignment': 'הקצאה',
             'call': 'שיחה',
-            'note_added': 'הערה'
+            'note_added': 'הערה',
+            'whatsapp_message': '💬 WhatsApp'
         };
         return labels[type] || type;
     }
-    
+
+    async saveWhatsappLog(leadId) {
+        const textarea = document.getElementById(`waText_${leadId}`);
+        const directionSel = document.getElementById(`waDirection_${leadId}`);
+        if (!textarea) return;
+        const text = textarea.value.trim();
+        if (!text) {
+            alert('הטקסט לא יכול להיות ריק');
+            return;
+        }
+        try {
+            const res = await fetch(`/leads/${leadId}/whatsapp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, direction: directionSel ? directionSel.value : 'log' })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'שגיאה');
+            textarea.value = '';
+            // Re-open the modal to show the new activity
+            this.viewLead(leadId);
+        } catch (e) {
+            alert('שגיאה בשמירה: ' + e.message);
+        }
+    }
+
     closeModal() {
         document.getElementById('leadModal').style.display = 'none';
     }
