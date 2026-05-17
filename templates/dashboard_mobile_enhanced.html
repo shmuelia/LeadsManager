@@ -1464,6 +1464,19 @@
                 return labels[activityType] || activityType;
             }
 
+            async deleteActivity(leadId, activityId) {
+                if (!confirm('למחוק פעילות זו לצמיתות?')) return;
+                try {
+                    const res = await fetch(`/leads/${leadId}/activities/${activityId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                    this.viewDetails(new Event('click'), leadId);
+                } catch (e) { alert('שגיאה: ' + e.message); }
+            }
+
             async maybePromptStatusFromNew(leadId) {
                 const lead = this.leads.find(l => l.id === leadId);
                 if (!lead || lead.status !== 'new') return;
@@ -1951,9 +1964,16 @@
                                             <span style="background: #059669; color: white; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: 600;">
                                                 ${this.getActivityLabel(activity.activity_type)}
                                             </span>
-                                            <span style="color: #6b7280; font-size: 11px;">${this.formatDate(activity.activity_date)}</span>
+                                            <div style="display:flex; align-items:center; gap:6px;">
+                                                <span style="color: #6b7280; font-size: 11px;">${this.formatDate(activity.activity_date)}</span>
+                                                ${(this.userRole === 'admin' || this.userRole === 'campaign_manager') && activity.id ? `
+                                                    <button onclick="leadManager.deleteActivity(${lead.id}, ${activity.id})"
+                                                            style="background:#fecaca; color:#991b1b; border:none; padding:3px 7px; border-radius:5px; font-size:11px;"
+                                                            title="מחק">🗑</button>
+                                                ` : ''}
+                                            </div>
                                         </div>
-                                        <div style="color: #374151; font-size: 13px; line-height: 1.4;">${activity.description || 'אין תיאור'}</div>
+                                        <div style="color: #374151; font-size: 13px; line-height: 1.4; white-space: pre-wrap;">${activity.description || 'אין תיאור'}</div>
                                         ${activity.user_name ? `<div style="color: #6b7280; font-size: 11px; margin-top: 4px;">👤 ${activity.user_name}</div>` : ''}
                                     </div>
                                 `).join('') : '<div style="text-align: center; color: #6b7280; font-style: italic; padding: 20px;">אין פעילויות רשומות עדיין</div>'}

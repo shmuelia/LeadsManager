@@ -1693,9 +1693,16 @@ class UnifiedLeadManagerClass {
                                 <span style="background: #059669; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600;">
                                     ${this.getActivityLabel(activity.activity_type)}
                                 </span>
-                                <span style="color: #6b7280; font-size: 0.9em;">${this.formatDate(activity.activity_date)}</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="color: #6b7280; font-size: 0.9em;">${this.formatDate(activity.activity_date)}</span>
+                                    ${(this.userRole === 'admin' || this.userRole === 'campaign_manager') && activity.id ? `
+                                        <button onclick="window.UnifiedLeadManager.deleteActivity(${lead.id}, ${activity.id})"
+                                                style="background:#fecaca; color:#991b1b; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px;"
+                                                title="מחק פעילות זו">🗑</button>
+                                    ` : ''}
+                                </div>
                             </div>
-                            <div style="color: #374151;">${activity.description || 'אין תיאור'}</div>
+                            <div style="color: #374151; white-space: pre-wrap;">${activity.description || 'אין תיאור'}</div>
                             ${activity.user_name ? `<div style="color: #6b7280; font-size: 0.85em; margin-top: 4px;">על ידי: ${activity.user_name}</div>` : ''}
                         </div>
                     `).join('') : '<div style="text-align: center; color: #6b7280; font-style: italic; padding: 40px;">אין פעילויות רשומות עדיין</div>'}
@@ -1792,6 +1799,22 @@ class UnifiedLeadManagerClass {
             'whatsapp_message': '💬 WhatsApp'
         };
         return labels[type] || type;
+    }
+
+    async deleteActivity(leadId, activityId) {
+        if (!confirm('למחוק פעילות זו לצמיתות? הפעולה לא ניתנת לביטול.')) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/activities/${activityId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            // Refresh the lead modal so the deleted item disappears
+            this.viewLead(leadId);
+        } catch (e) {
+            alert('שגיאה במחיקה: ' + e.message);
+        }
     }
 
     async maybePromptStatusFromNew(leadId) {

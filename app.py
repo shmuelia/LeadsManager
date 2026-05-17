@@ -1782,10 +1782,10 @@ def get_lead(lead_id):
         
         # Get activities for this lead
         cur.execute("""
-            SELECT user_name, activity_type, description, call_duration, call_outcome, 
+            SELECT id, user_name, activity_type, description, call_duration, call_outcome,
                    previous_status, new_status, activity_date, activity_metadata
-            FROM lead_activities 
-            WHERE lead_id = %s 
+            FROM lead_activities
+            WHERE lead_id = %s
             ORDER BY activity_date DESC
         """, (lead_id,))
         
@@ -2591,6 +2591,47 @@ def api_whatsapp_import():
         return jsonify({'imported': imported, 'skipped': skipped, 'lead_id': lead_id})
     except Exception as e:
         logger.error(f"api_whatsapp_import error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/leads/<int:lead_id>/activities/<int:activity_id>', methods=['DELETE'])
+@campaign_manager_required
+def delete_lead_activity(lead_id, activity_id):
+    """Delete a specific activity row. Admin + campaign_manager only, customer-scoped."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+
+        # Confirm the activity belongs to this lead and the lead is in the user's customer scope
+        cur.execute(
+            """
+            SELECT l.customer_id
+            FROM lead_activities a
+            JOIN leads l ON l.id = a.lead_id
+            WHERE a.id = %s AND a.lead_id = %s
+            """,
+            (activity_id, lead_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Activity not found'}), 404
+
+        lead_customer_id = row[0]
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and lead_customer_id != scope_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized for this lead'}), 403
+
+        cur.execute("DELETE FROM lead_activities WHERE id = %s", (activity_id,))
+        conn.commit()
+        deleted = cur.rowcount
+        cur.close(); conn.close()
+        return jsonify({'status': 'success', 'deleted': deleted})
+    except Exception as e:
+        logger.error(f"delete_lead_activity error: {e}")
         return jsonify({'error': str(e)}), 500
 
 

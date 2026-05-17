@@ -30,7 +30,8 @@
       "mcp__Claude_in_Chrome__browser_batch",
       "mcp__Claude_in_Chrome__read_page",
       "mcp__Claude_in_Chrome__computer",
-      "Bash(powershell.exe -File deploy.ps1 \"Add WhatsApp correspondence to lead detail \\(desktop+mobile\\): open chat link, paste/save log as lead activity\")"
+      "Bash(powershell.exe -File deploy.ps1 \"Add WhatsApp correspondence to lead detail \\(desktop+mobile\\): open chat link, paste/save log as lead activity\")",
+      "mcp__Claude_in_Chrome__javascript_tool"
     ],
     "deny": [],
     "ask": []
