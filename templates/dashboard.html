@@ -84,6 +84,11 @@
                     {{ session.get('full_name', session.get('username')) }}
                     ({{ session.get('role', 'user') }})
                 </div>
+                {% if session.get('role') == 'admin' %}
+                <button class="logout-btn" onclick="window.location.href='/admin'" style="background: #6366f1; margin-left: 10px;">
+                    🛠️ לוח בקרה מנהל
+                </button>
+                {% endif %}
                 <button class="logout-btn" onclick="window.location.href='/logout'">
                     🚪 יציאה
                 </button>
