@@ -1240,6 +1240,10 @@ class UnifiedLeadManagerClass {
                                     onclick="window.UnifiedLeadManager.openQuickWhatsappLog(${lead.id})"
                                     style="background:#16a34a;"
                                     title="תעד התכתבות WhatsApp עם ${lead.name || 'ליד'} (הדבק מהלוח)">📋</button>
+                            <button class="action-btn btn-whatsapp"
+                                    onclick="window.UnifiedLeadManager.openFirstMessage(${lead.id})"
+                                    style="background:#8b5cf6;"
+                                    title="צור הודעה ראשונה מותאמת ל-${lead.name || 'ליד'}">✨</button>
                         ` : ''}
                         ${lead.email ? `
                             <a href="mailto:${lead.email}" class="action-btn btn-email"
@@ -1320,6 +1324,10 @@ class UnifiedLeadManagerClass {
                                     onclick="event.stopPropagation(); window.UnifiedLeadManager.openQuickWhatsappLog(${lead.id})"
                                     style="background:#16a34a;"
                                     title="תעד התכתבות WhatsApp עם ${lead.name || 'הליד'}">📋</button>
+                            <button class="action-btn btn-whatsapp"
+                                    onclick="event.stopPropagation(); window.UnifiedLeadManager.openFirstMessage(${lead.id})"
+                                    style="background:#8b5cf6;"
+                                    title="צור הודעה ראשונה מותאמת ל-${lead.name || 'הליד'}">✨</button>
                         ` : ''}
                         ${lead.email ? `
                             <a href="mailto:${lead.email}" class="action-btn btn-email"
@@ -1784,6 +1792,151 @@ class UnifiedLeadManagerClass {
             'whatsapp_message': '💬 WhatsApp'
         };
         return labels[type] || type;
+    }
+
+    buildFirstMessage(lead, rawData) {
+        // Israel-time greeting
+        const israelHourStr = new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Jerusalem', hour: '2-digit', hour12: false
+        }).match(/\d+/);
+        const hour = israelHourStr ? parseInt(israelHourStr[0], 10) : 9;
+        const greeting = (hour >= 5 && hour < 14) ? 'בוקר טוב' : 'ערב טוב';
+
+        // Detect morning/evening preference inside the inquiry data
+        const blob = JSON.stringify(rawData || {}).toLowerCase();
+        let preference = null;
+        const morningRe = /(בוקר|בבוקר|morning)/;
+        const eveningRe = /(ערב|בערב|evening|night|לילה)/;
+        const hasMorning = morningRe.test(blob);
+        const hasEvening = eveningRe.test(blob);
+        if (hasMorning && !hasEvening) preference = 'morning';
+        else if (hasEvening && !hasMorning) preference = 'evening';
+
+        const firstName = (lead.name || '').trim().split(/\s+/)[0] || '';
+        const campaign = lead.campaign_name || '';
+
+        const lines = [];
+        lines.push(`${greeting} ${firstName}`.trim() + ',');
+        lines.push('');
+        let intro = 'זו פנייתי הראשונה אליך לאחר שהשארת פרטים';
+        if (campaign) intro += ` בנושא ${campaign}`;
+        intro += '.';
+        lines.push(intro);
+        lines.push('');
+        if (preference === 'morning') {
+            lines.push('ראיתי שציינת שמדובר באירוע בוקר — אשמח לעדכן ולתאם.');
+        } else if (preference === 'evening') {
+            lines.push('ראיתי שציינת שמדובר באירוע ערב — אשמח לעדכן ולתאם.');
+        } else {
+            lines.push('האם תוכל/י לעדכן אם מדובר באירוע בבוקר או בערב?');
+        }
+        lines.push('');
+        lines.push('תודה!');
+        return { text: lines.join('\n'), preference, greeting };
+    }
+
+    async openFirstMessage(leadId) {
+        try {
+            const res = await fetch(`/leads/${leadId}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'שגיאה בטעינת ליד');
+            const lead = data.lead || data;
+            const rawData = lead.raw_data || {};
+            const { text, preference, greeting } = this.buildFirstMessage(lead, rawData);
+            this.showFirstMessageDialog(lead, text, preference, greeting);
+        } catch (e) {
+            alert('שגיאה: ' + e.message);
+        }
+    }
+
+    showFirstMessageDialog(lead, text, preference, greeting) {
+        const phone = lead.phone || '';
+        const waPhone = this.formatPhoneForWhatsApp(phone);
+        const existing = document.getElementById('firstMessageOverlay');
+        if (existing) existing.remove();
+
+        const preferenceLabel = preference === 'morning'
+            ? '🌅 זוהה: אירוע בוקר'
+            : preference === 'evening'
+                ? '🌙 זוהה: אירוע ערב'
+                : '❓ לא זוהה - נשאל בהודעה';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'firstMessageOverlay';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;';
+        overlay.innerHTML = `
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:600px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                    <h3 style="margin:0; color:#5b21b6;">✨ הודעה ראשונה</h3>
+                    <button onclick="document.getElementById('firstMessageOverlay').remove()"
+                            style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                </div>
+                <div style="background:#faf5ff; border:1px solid #e9d5ff; padding:10px 14px; border-radius:10px; margin-bottom:12px;">
+                    <div style="font-weight:600; color:#5b21b6;">${lead.name || 'ליד'}${phone ? ' · ' + phone : ''}</div>
+                    <div style="font-size:12px; color:#7e22ce; margin-top:4px;">${preferenceLabel} · 🕐 פתיחה: ${greeting}</div>
+                </div>
+                <label style="display:block; font-weight:600; color:#5b21b6; margin-bottom:6px;">תוכן ההודעה (ניתן לערוך)</label>
+                <textarea id="firstMessageText" rows="10"
+                          style="width:100%; padding:10px; border:1px solid #c4b5fd; border-radius:8px; font-family:inherit; resize:vertical; line-height:1.6;">${text}</textarea>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+                    ${phone ? `
+                        <button onclick="window.UnifiedLeadManager.sendFirstMessageViaWhatsapp(${lead.id}, '${waPhone}')"
+                                style="background:#25D366; color:white; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px;">
+                            📱 פתח WhatsApp עם ההודעה
+                        </button>
+                    ` : '<span style="color:#6b7280;">אין מספר טלפון</span>'}
+                    <button onclick="window.UnifiedLeadManager.copyFirstMessage()"
+                            style="background:#2563eb; color:white; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px;">
+                        📋 העתק
+                    </button>
+                    <button onclick="window.UnifiedLeadManager.logFirstMessageAsSent(${lead.id})"
+                            style="background:#16a34a; color:white; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; margin-right:auto;">
+                        💾 שמור כנשלח
+                    </button>
+                </div>
+                <div id="firstMessageStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+    }
+
+    sendFirstMessageViaWhatsapp(leadId, waPhone) {
+        const text = document.getElementById('firstMessageText').value;
+        const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+        const status = document.getElementById('firstMessageStatus');
+        if (status) status.innerHTML = '✔ WhatsApp נפתח. לאחר השליחה, לחץ "💾 שמור כנשלח" לתיעוד.';
+    }
+
+    async copyFirstMessage() {
+        const text = document.getElementById('firstMessageText').value;
+        const status = document.getElementById('firstMessageStatus');
+        try {
+            await navigator.clipboard.writeText(text);
+            if (status) status.textContent = '✔ הועתק ללוח';
+        } catch (e) {
+            if (status) status.textContent = '⚠ סימן את הטקסט והקש Ctrl+C';
+        }
+    }
+
+    async logFirstMessageAsSent(leadId) {
+        const text = document.getElementById('firstMessageText').value.trim();
+        const status = document.getElementById('firstMessageStatus');
+        if (!text) { if (status) status.textContent = '⚠ אין טקסט'; return; }
+        try {
+            const res = await fetch(`/leads/${leadId}/whatsapp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, direction: 'sent' })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'שגיאה');
+            const overlay = document.getElementById('firstMessageOverlay');
+            if (overlay) overlay.remove();
+        } catch (e) {
+            if (status) status.textContent = '⚠ ' + e.message;
+        }
     }
 
     openQuickWhatsappLog(leadId) {
