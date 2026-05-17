@@ -2434,6 +2434,166 @@ def add_activity():
             'error': str(e)
         }), 500
 
+def _scoped_customer_id():
+    """Return the customer_id the current session should see leads for."""
+    if session.get('role') == 'admin':
+        return session.get('selected_customer_id', 1)
+    return session.get('customer_id')
+
+
+def _normalize_il_phone(raw):
+    """Strip to digits and force +972 country prefix (last 9 digits = local part)."""
+    digits = re.sub(r'[^\d]', '', raw or '')
+    if not digits:
+        return ''
+    if digits.startswith('972'):
+        return digits
+    if digits.startswith('0'):
+        return '972' + digits[1:]
+    if len(digits) == 9:
+        return '972' + digits
+    return digits
+
+
+@app.route('/api/leads/by-phone')
+@login_required
+def api_lead_by_phone():
+    """Lookup a lead by phone number — used by the Chrome extension to match a WhatsApp chat."""
+    try:
+        phone = (request.args.get('phone') or '').strip()
+        if not phone:
+            return jsonify({'error': 'phone required'}), 400
+
+        normalized = _normalize_il_phone(phone)
+        if not normalized:
+            return jsonify({'found': False}), 200
+
+        last9 = normalized[-9:]
+        customer_id = _scoped_customer_id()
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """
+            SELECT id, name, phone, status
+            FROM leads
+            WHERE customer_id = %s
+              AND REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (customer_id, '%' + last9),
+        )
+        lead = cur.fetchone()
+        cur.close(); conn.close()
+
+        if not lead:
+            return jsonify({'found': False}), 200
+        return jsonify({'found': True, 'lead_id': lead['id'], 'name': lead['name'], 'status': lead['status']})
+    except Exception as e:
+        logger.error(f"api_lead_by_phone error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/whatsapp/import', methods=['POST'])
+@login_required
+def api_whatsapp_import():
+    """Bulk-import WhatsApp messages from the Chrome extension.
+
+    Payload: { "phone": "972…", "messages": [{ "text": "...", "direction": "sent|received", "timestamp": "ISO or string" }, ...] }
+    Server-side dedup via SHA256 hash stored in activity_metadata.msg_hash.
+    """
+    try:
+        data = request.get_json() or {}
+        phone = (data.get('phone') or '').strip()
+        messages = data.get('messages') or []
+
+        if not phone:
+            return jsonify({'error': 'phone required'}), 400
+        if not isinstance(messages, list) or not messages:
+            return jsonify({'error': 'messages array required'}), 400
+
+        normalized = _normalize_il_phone(phone)
+        last9 = normalized[-9:] if normalized else ''
+        if not last9:
+            return jsonify({'error': 'invalid phone'}), 400
+
+        customer_id = _scoped_customer_id()
+        user_name = session.get('full_name', session.get('username', 'אנונימי'))
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT id FROM leads
+            WHERE customer_id = %s
+              AND REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE %s
+            ORDER BY id DESC LIMIT 1
+            """,
+            (customer_id, '%' + last9),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'No matching lead for this phone', 'phone': normalized}), 404
+        lead_id = row[0]
+
+        # Pre-load existing hashes for dedup
+        cur.execute(
+            """
+            SELECT activity_metadata->>'msg_hash' AS h
+            FROM lead_activities
+            WHERE lead_id = %s AND activity_type = 'whatsapp_message'
+              AND activity_metadata ? 'msg_hash'
+            """,
+            (lead_id,),
+        )
+        existing_hashes = {r[0] for r in cur.fetchall() if r[0]}
+
+        imported = 0
+        skipped = 0
+        for msg in messages:
+            text = (msg.get('text') or '').strip()
+            if not text:
+                continue
+            direction = (msg.get('direction') or 'log').strip()
+            timestamp = (msg.get('timestamp') or '').strip()
+
+            hash_input = f"{normalized}|{direction}|{text}|{timestamp}"
+            msg_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
+            if msg_hash in existing_hashes:
+                skipped += 1
+                continue
+
+            direction_prefix = {'sent': '⬅ נשלח', 'received': '➡ התקבל'}.get(direction, '💬 התכתבות')
+            ts_suffix = f" [{timestamp}]" if timestamp else ''
+            description = f"{direction_prefix} (WhatsApp){ts_suffix}:\n{text}"
+
+            cur.execute(
+                """
+                INSERT INTO lead_activities
+                (lead_id, user_name, activity_type, description, activity_metadata)
+                VALUES (%s, %s, %s, %s, %s::jsonb)
+                """,
+                (lead_id, user_name, 'whatsapp_message', description,
+                 json.dumps({'msg_hash': msg_hash, 'source': 'chrome_extension', 'phone': normalized})),
+            )
+            existing_hashes.add(msg_hash)
+            imported += 1
+
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'imported': imported, 'skipped': skipped, 'lead_id': lead_id})
+    except Exception as e:
+        logger.error(f"api_whatsapp_import error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/leads/<int:lead_id>/whatsapp', methods=['POST'])
 @login_required
 def log_whatsapp_message(lead_id):

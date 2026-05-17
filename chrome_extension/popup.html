@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>LeadsManager WhatsApp Sync</title>
+  <style>
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; width: 340px; margin: 0; padding: 14px; background: #f8fafc; color: #1e293b; }
+    h2 { margin: 0 0 10px 0; font-size: 16px; color: #14532d; }
+    .row { margin-bottom: 8px; }
+    label { font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 4px; }
+    input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+    button { width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+    .primary { background: #16a34a; color: white; }
+    .primary:hover { background: #15803d; }
+    .secondary { background: #e2e8f0; color: #1e293b; margin-top: 6px; }
+    .status { margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 13px; background: #f1f5f9; min-height: 20px; }
+    .status.ok { background: #dcfce7; color: #14532d; }
+    .status.err { background: #fee2e2; color: #991b1b; }
+    .muted { color: #64748b; font-size: 11px; margin-top: 4px; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; font-size: 12px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <h2>💬 LeadsManager WhatsApp Sync</h2>
+
+  <div class="row">
+    <label>טלפון הליד (אם לא זוהה אוטומטית)</label>
+    <input id="phone" type="tel" placeholder="לדוגמה: 972501234567">
+    <div class="muted" id="autoPhoneNote"></div>
+  </div>
+
+  <button id="syncBtn" class="primary">🔄 סנכרן צ'אט נוכחי</button>
+  <button id="lookupBtn" class="secondary">🔍 בדוק האם הליד קיים</button>
+
+  <div class="status" id="status">פתח את WhatsApp Web → לחץ על שיחה → סנכרן.</div>
+
+  <details>
+    <summary>הגדרות מתקדמות</summary>
+    <div class="row" style="margin-top:8px;">
+      <label>כתובת השרת</label>
+      <input id="server" type="url" placeholder="https://...herokuapp.com">
+      <button id="saveServerBtn" class="secondary">💾 שמור שרת</button>
+    </div>
+  </details>
+
+  <script src="popup.js"></script>
+</body>
+</html>

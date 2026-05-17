@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "LeadsManager WhatsApp Sync",
+  "version": "1.0.0",
+  "description": "Sync WhatsApp Web chats with a customer to LeadsManager — one click, no copy-paste.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://eadmanager-fresh-2024-dev-f83e51d73e01.herokuapp.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LeadsManager WhatsApp Sync"
+  }
+}
