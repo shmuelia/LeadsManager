@@ -1794,6 +1794,33 @@ class UnifiedLeadManagerClass {
         return labels[type] || type;
     }
 
+    async maybePromptStatusFromNew(leadId) {
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead || lead.status !== 'new') return;
+        const ok = confirm(`לעדכן את סטטוס "${lead.name || 'הליד'}" מ-"חדש" ל-"נוצר קשר"?`);
+        if (!ok) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'contacted',
+                    note: 'עודכן אוטומטית לאחר תיעוד התכתבות WhatsApp',
+                    user_name: this.username || ''
+                })
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.error('Auto status change failed:', data);
+                return;
+            }
+            lead.status = 'contacted';
+            this.renderLeads();
+        } catch (e) {
+            console.error('Auto status change error:', e);
+        }
+    }
+
     buildFirstMessage(lead, rawData) {
         // Israel-time greeting
         const israelHourStr = new Date().toLocaleString('en-US', {
@@ -1938,6 +1965,7 @@ class UnifiedLeadManagerClass {
             if (!res.ok) throw new Error(data.error || 'שגיאה');
             const overlay = document.getElementById('firstMessageOverlay');
             if (overlay) overlay.remove();
+            await this.maybePromptStatusFromNew(leadId);
         } catch (e) {
             if (status) status.textContent = '⚠ ' + e.message;
         }
@@ -2040,6 +2068,7 @@ class UnifiedLeadManagerClass {
             if (!res.ok) throw new Error(data.error || 'שגיאה');
             const overlay = document.getElementById('quickWhatsappOverlay');
             if (overlay) overlay.remove();
+            await this.maybePromptStatusFromNew(leadId);
         } catch (e) {
             if (status) status.textContent = '⚠ שגיאה: ' + e.message;
         }
@@ -2063,6 +2092,7 @@ class UnifiedLeadManagerClass {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'שגיאה');
             textarea.value = '';
+            await this.maybePromptStatusFromNew(leadId);
             // Re-open the modal to show the new activity
             this.viewLead(leadId);
         } catch (e) {

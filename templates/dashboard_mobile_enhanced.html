@@ -1464,6 +1464,28 @@
                 return labels[activityType] || activityType;
             }
 
+            async maybePromptStatusFromNew(leadId) {
+                const lead = this.leads.find(l => l.id === leadId);
+                if (!lead || lead.status !== 'new') return;
+                const ok = confirm(`לעדכן את סטטוס "${lead.name || 'הליד'}" מ-"חדש" ל-"נוצר קשר"?`);
+                if (!ok) return;
+                try {
+                    const res = await fetch(`/leads/${leadId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            status: 'contacted',
+                            note: 'עודכן אוטומטית לאחר תיעוד התכתבות WhatsApp',
+                            user_name: this.username || ''
+                        })
+                    });
+                    if (!res.ok) return;
+                    lead.status = 'contacted';
+                    if (typeof this.renderLeads === 'function') this.renderLeads();
+                    else if (typeof this.loadLeads === 'function') this.loadLeads();
+                } catch (e) { console.error(e); }
+            }
+
             buildFirstMessage(lead, rawData) {
                 const israelHourStr = new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Jerusalem', hour: '2-digit', hour12: false
@@ -1596,6 +1618,7 @@
                     const overlay = document.getElementById('firstMessageOverlay');
                     if (overlay) overlay.remove();
                     this.hapticFeedback && this.hapticFeedback('medium');
+                    await this.maybePromptStatusFromNew(leadId);
                 } catch (e) {
                     if (status) status.textContent = '⚠ ' + e.message;
                 }
@@ -1691,6 +1714,7 @@
                     const overlay = document.getElementById('quickWhatsappOverlay');
                     if (overlay) overlay.remove();
                     this.hapticFeedback && this.hapticFeedback('medium');
+                    await this.maybePromptStatusFromNew(leadId);
                 } catch (e) {
                     if (status) status.textContent = '⚠ שגיאה: ' + e.message;
                 }
@@ -1712,6 +1736,7 @@
                     if (!res.ok) throw new Error(data.error || 'שגיאה');
                     textarea.value = '';
                     this.hapticFeedback && this.hapticFeedback('medium');
+                    await this.maybePromptStatusFromNew(leadId);
                     // Reopen the modal so the new activity appears
                     this.viewDetails(new Event('click'), leadId);
                 } catch (e) {
