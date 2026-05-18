@@ -36,7 +36,8 @@
       "Bash(node --check background.js)",
       "Bash(node --check popup.js)",
       "Bash(pandoc --track-changes=all \"G:/My Drive/Business/Nichsei/Bakery/Mishmarot/Operations/מכירות/מכירות ארועים/הצעת מחיר בסיסית חדשה.docx\" -o /tmp/offer.md)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(which wkhtmltopdf *)"
     ],
     "deny": [],
     "ask": []

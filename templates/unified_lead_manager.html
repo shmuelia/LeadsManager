@@ -448,6 +448,7 @@
     
     .status-new { background: #dbeafe; color: #1e40af; }
     .status-contacted { background: #fed7aa; color: #92400e; }
+    .status-offer_sent { background: #fef3c7; color: #b45309; border: 1px solid #fbbf24; }
     .status-qualified { background: #d1fae5; color: #065f46; }
     .status-interested { background: #e9d5ff; color: #6b21a8; }
     .status-to_schedule_interview { background: #ede9fe; color: #5b21b6; }
@@ -656,6 +657,7 @@
         /* Status-specific colors for mobile buttons */
         .mobile-status-btn.status-new { border-color: #059669; color: #059669; }
         .mobile-status-btn.status-contacted { border-color: #3b82f6; color: #3b82f6; }
+        .mobile-status-btn.status-offer_sent { border-color: #d97706; color: #d97706; }
         .mobile-status-btn.status-qualified { border-color: #f59e0b; color: #f59e0b; }
         .mobile-status-btn.status-interested { border-color: #22c55e; color: #22c55e; }
         .mobile-status-btn.status-to_schedule_interview { border-color: #8b5cf6; color: #8b5cf6; }
@@ -751,6 +753,7 @@
                 <option value="not_closed" selected data-i18n="ulm_not_closed">לא סגור</option>
                 <option value="new" data-i18n="ulm_new">חדש</option>
                 <option value="contacted" data-i18n="ulm_contacted">נוצר קשר</option>
+                <option value="offer_sent" data-i18n="ulm_offer_sent">נשלחה הצעה</option>
                 <option value="qualified" data-i18n="ulm_qualified">מוכשר</option>
                 <option value="interested" data-i18n="ulm_interested">מתעניין</option>
                 <option value="to_schedule_interview" data-i18n="ulm_to_schedule">לתאם ראיון</option>
@@ -1080,6 +1083,7 @@ class UnifiedLeadManagerClass {
             'all': 'כל הלידים',
             'new': 'חדשים',
             'contacted': 'נוצר קשר',
+            'offer_sent': 'נשלחו הצעות',
             'qualified': 'מוכשרים',
             'interested': 'מתעניינים',
             'hired': 'התקבלו',
@@ -1377,6 +1381,7 @@ class UnifiedLeadManagerClass {
         const labels = {
             'new': 'חדש',
             'contacted': 'נוצר קשר',
+            'offer_sent': 'נשלחה הצעה',
             'qualified': 'מוכשר',
             'interested': 'מתעניין',
             'not_interested': 'לא מתעניין',
@@ -1921,10 +1926,34 @@ class UnifiedLeadManagerClass {
             const overlay = document.getElementById('offerFormOverlay');
             if (overlay) overlay.remove();
             window.open(data.view_url, '_blank');
+            await this.maybePromptStatusToOfferSent(leadId);
             this.viewLead(leadId);
         } catch (e) {
             status.textContent = '⚠ ' + e.message;
         }
+    }
+
+    async maybePromptStatusToOfferSent(leadId) {
+        const lead = this.leads.find(l => l.id === leadId);
+        if (!lead || lead.status === 'offer_sent' || lead.status === 'hired' ||
+            lead.status === 'rejected' || lead.status === 'closed') return;
+        const ok = confirm(`לעדכן את סטטוס "${lead.name || 'הליד'}" ל-"נשלחה הצעה"?`);
+        if (!ok) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'offer_sent',
+                    note: 'עודכן אוטומטית לאחר יצירת הצעת מחיר',
+                    user_name: this.username || ''
+                })
+            });
+            if (res.ok) {
+                lead.status = 'offer_sent';
+                this.renderLeads();
+            }
+        } catch (e) { console.error('Auto status change error:', e); }
     }
 
     async deleteActivity(leadId, activityId) {
@@ -2408,6 +2437,7 @@ class UnifiedLeadManagerClass {
         const statusOptions = [
             { value: 'new', label: 'חדש' },
             { value: 'contacted', label: 'נוצר קשר' },
+            { value: 'offer_sent', label: 'נשלחה הצעה' },
             { value: 'qualified', label: 'מוכשר' },
             { value: 'interested', label: 'מתעניין' },
             { value: 'hired', label: 'התקבל' },
@@ -2503,6 +2533,10 @@ class UnifiedLeadManagerClass {
                         <button class="mobile-status-btn status-contacted" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'contacted', this.closest('.modal-overlay'))">
                             <div class="status-icon">📞</div>
                             <div>נוצר קשר</div>
+                        </button>
+                        <button class="mobile-status-btn status-offer_sent" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'offer_sent', this.closest('.modal-overlay'))">
+                            <div class="status-icon">📄</div>
+                            <div>נשלחה הצעה</div>
                         </button>
                         <button class="mobile-status-btn status-qualified" onclick="window.UnifiedLeadManager.showStatusNoteModal(${leadId}, 'qualified', this.closest('.modal-overlay'))">
                             <div class="status-icon">✅</div>
