@@ -1829,10 +1829,11 @@ class UnifiedLeadManagerClass {
         overlay.id = 'offerFormOverlay';
         overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;';
         overlay.innerHTML = `
-            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:560px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:90vh; overflow-y:auto;">
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:560px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:90vh; overflow-y:auto;"
+                 onkeydown="if(event.key==='Enter' && event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
                     <h3 style="margin:0; color:#92400e;">📄 הצעת מחיר חדשה</h3>
-                    <button onclick="document.getElementById('offerFormOverlay').remove()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                    <button type="button" onclick="document.getElementById('offerFormOverlay').remove()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     <div style="grid-column:1 / -1;">
@@ -1886,8 +1887,8 @@ class UnifiedLeadManagerClass {
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; margin-top:16px; justify-content:flex-end;">
-                    <button onclick="document.getElementById('offerFormOverlay').remove()" style="background:#e5e7eb; color:#1f2937; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">ביטול</button>
-                    <button onclick="window.UnifiedLeadManager.submitOffer(${leadId})" style="background:#d97706; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:600;">📄 צור הצעה</button>
+                    <button type="button" onclick="document.getElementById('offerFormOverlay').remove()" style="background:#e5e7eb; color:#1f2937; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">ביטול</button>
+                    <button type="button" onclick="window.UnifiedLeadManager.submitOffer(${leadId})" style="background:#d97706; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:600;">📄 צור הצעה</button>
                 </div>
                 <div id="offerStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
             </div>
