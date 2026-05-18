@@ -2718,7 +2718,7 @@ def view_offer(lead_id, activity_id):
         subtotal, vat_pct, vat_amount, total_with_vat = _offer_compute_totals(data)
         return render_template(
             'offer.html',
-            data=data,
+            data=data,  # data.edited_html (if set) is consumed by the template
             subtotal=f'{subtotal:,}',
             vat_pct=vat_pct,
             vat_amount=f'{vat_amount:,}',
@@ -2727,6 +2727,58 @@ def view_offer(lead_id, activity_id):
     except Exception as e:
         logger.error(f"view_offer error: {e}")
         return (f'Error: {e}', 500)
+
+
+@app.route('/leads/<int:lead_id>/offer/<int:activity_id>/save-edit', methods=['POST'])
+@login_required
+def save_offer_edit(lead_id, activity_id):
+    """Persist inline edits to an existing offer. The edited HTML replaces the
+    rendered body next time the offer is viewed."""
+    try:
+        body = request.get_json() or {}
+        html = (body.get('html') or '').strip()
+        if not html:
+            return jsonify({'error': 'html required'}), 400
+        if len(html) > 200000:
+            return jsonify({'error': 'edited html too large'}), 400
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """
+            SELECT a.activity_metadata, l.customer_id
+            FROM lead_activities a JOIN leads l ON l.id = a.lead_id
+            WHERE a.id = %s AND a.lead_id = %s AND a.activity_type = 'offer_sent'
+            """,
+            (activity_id, lead_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Offer not found'}), 404
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and row['customer_id'] != scope_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        meta = dict(row['activity_metadata'] or {})
+        meta['edited_html'] = html
+        meta['edited_at'] = datetime.now(pytz.timezone('Asia/Jerusalem')).isoformat()
+        meta['edited_by'] = session.get('full_name', session.get('username', ''))
+
+        cur2 = conn.cursor()
+        cur2.execute(
+            'UPDATE lead_activities SET activity_metadata = %s::jsonb WHERE id = %s',
+            (json.dumps(meta), activity_id),
+        )
+        conn.commit()
+        cur2.close(); cur.close(); conn.close()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f"save_offer_edit error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/leads/<int:lead_id>/activities/<int:activity_id>', methods=['DELETE'])

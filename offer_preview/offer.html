@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>הצעת מחיר - מיטל (בדיקה)</title>
+<style>
+    @page { size: A4; margin: 14mm; }
+    body { font-family: -apple-system, "Segoe UI", "Arial Hebrew", Arial, sans-serif; color: #1a1a1a; line-height: 1.55; max-width: 900px; margin: 0 auto; padding: 18px; }
+    h1 { font-size: 22px; color: #4a2c0a; margin: 0 0 4px; }
+    h2 { font-size: 17px; color: #6b4226; margin-top: 22px; margin-bottom: 8px; border-bottom: 2px solid #d4a574; padding-bottom: 4px; }
+    h3 { font-size: 14px; color: #6b4226; margin-top: 14px; margin-bottom: 6px; }
+    .brand { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid #d4a574; padding-bottom: 8px; margin-bottom: 14px; }
+    .brand-name { font-size: 24px; font-weight: 700; color: #4a2c0a; }
+    .date { font-size: 13px; color: #666; }
+    .for-line { font-size: 18px; font-weight: 600; margin-top: 8px; color: #4a2c0a; }
+    ul { margin: 4px 0 8px; padding-right: 22px; }
+    li { margin: 3px 0; }
+    .event-grid { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; background: #fdf6ec; padding: 10px 14px; border-radius: 6px; margin: 8px 0; }
+    .event-grid .k { font-weight: 600; color: #6b4226; }
+    .pricing { background: #fdf6ec; padding: 12px 16px; border-radius: 6px; margin-top: 10px; border-right: 4px solid #d4a574; }
+    .pricing table { width: 100%; border-collapse: collapse; }
+    .pricing th, .pricing td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #e8d5b9; }
+    .pricing th { background: transparent; font-weight: 600; color: #4a2c0a; }
+    .pricing .total { font-weight: 700; font-size: 16px; color: #4a2c0a; }
+    .notes { background: #fff7e0; padding: 10px 14px; border-radius: 6px; margin-top: 10px; white-space: pre-wrap; }
+    .signature { margin-top: 28px; font-size: 14px; }
+    .print-btn { background: #d4a574; color: white; padding: 10px 22px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin: 6px; }
+    .actions { text-align: center; margin: 14px 0; }
+    @media print {
+        .no-print { display: none !important; }
+        body { padding: 0; }
+    }
+</style>
+</head>
+<body>
+
+<div class="actions no-print">
+    <button class="print-btn" onclick="window.print()">🖨 הדפס / שמור כ-PDF</button>
+</div>
+
+<div class="brand">
+    <div>
+        <div class="brand-name">אלחנן תרבות לחם במשמרות</div>
+        <h1>הצעת מחיר לאירוע</h1>
+    </div>
+    <div class="date">תאריך ההצעה: 18/05/2026</div>
+</div>
+
+<div class="for-line">עבור מיטל (בדיקה)</div>
+
+<h2>כללי - דברים שחשוב לדעת</h2>
+<ul>
+    <li>האירוע יערך באזור הישיבה של אלחנן תרבות לחם במשמרות. במקום יש שטח מקורה מחומם או מאוורר המכיל עד 40 אנשים ואזור מוצל נוסף המכיל יותר ממאה מקומות ישיבה.</li>
+    <li>המקום כשר בהשגחת הרבנות מועצה אזורית מנשה.</li>
+    <li>כל המוצרים שלנו מיוצרים במאפייה או במטבח שלנו והלחם הוא לחם מחמצת.</li>
+    <li>ההגשה תהיה במזנון.</li>
+</ul>
+
+<h2>פרטי האירוע</h2>
+<div class="event-grid">
+    <div class="k">תאריך ושעה:</div><div>8/8 יום שישי בשעה 14:00</div>
+    <div class="k">מיקום:</div><div>אלחנן משמרות, דרך משמרות, פרדס חנה כרכור</div>
+    <div class="k">משתתפים:</div><div>60 מבוגרים, 4 ילדים (6-11), 2 ילדים עד גיל 6</div>
+</div>
+
+<h2>מה אוכלים? - מנות פתיחה, עיקריות ותוספות</h2>
+<ul>
+    <li>מרקים (לבחירה: גספצ'ו קר, תום עם ג'ינג'ר, עדשים ועגבניות עם מדרס קארי, כוסברה ולימון)</li>
+    <li>מבחר לחמי אלחנן עם בלסמי ושמן זית</li>
+    <li>מקלות גאודה</li>
+    <li>חומוס נמס שלנו</li>
+    <li>סלט לחם אבוד, ירקות צלויים, טחינה וזעתר טרי</li>
+    <li>סלט קיסר עם קרוטוני מחמצת</li>
+    <li>סלט ירוקים ווינגרט חציל קלוי, שעועית ירוקה, נבטי חמנייה, בייבי בזיל ומיקס אגוזים</li>
+    <li>קרפצ'יו סלק עם גבינות צאן, זיגוג בלסמי, פיסטוק קלוי ובייבי בזיל</li>
+    <li>קישים מלוחים (בצל מקורמל, בטטה או פטריות)</li>
+    <li>מגוון פוקאצ'ות: עגבניות וגבינת צאן, חצילים, פלפל קלוי</li>
+    <li>גבינת לבנה עם פלפלים קלויים, זעתר ושמן זית</li>
+    <li>תפוחי אדמה ו/או בטטות צלויים בתנור</li>
+    
+    <li>סביצ'ה דג ים עם מלפפונים, בצל סגול, צנוניות, פלפל וורוד פסיפלורה ושקדים</li>
+    <li>נתחי פילה לברק צלויים בתנור על בטטות צלויות עם צ'ימיצ'ורי, בצל ירוק ולימון</li>
+    <li>נתחי סלמון נורווגי טרי צלוי בתנור עם סויה, בזיליקום, דבש ושום קונפי</li>
+    
+    
+    <li>לילדים: פיצות ופסטה פנה עם רוטב רוזה</li>
+    
+</ul>
+
+<h2>קינוחים</h2>
+<ul>
+    <li>מוס שוקולד קלאסי</li>
+    <li>מבחר מאפים, עוגיות ועוגות של אלחנן (זוכרים שאנחנו מאפייה, כן?)</li>
+    <li>אצבעות פרנץ' טוסט</li>
+</ul>
+
+<h2>שתייה</h2>
+<ul>
+    <li>קפה מעולה</li>
+    <li>מיץ תפוזים סחוט במקום</li>
+    <li>בירה</li>
+    <li>מים מינרליים</li>
+</ul>
+
+<h2>לא כלול</h2>
+<ul>
+    <li>יין ואלכוהול חוץ מבירה</li>
+    
+    <li>שירות - מלצר לפי מפתח של 13 אורחים לאיש שירות (₪350 למלצר)</li>
+    
+</ul>
+
+<h2>מחיר</h2>
+<div class="pricing">
+    <table>
+        <tr>
+            <th>פריט</th>
+            <th>כמות</th>
+            <th>מחיר ליחידה (לפני מע"מ)</th>
+            <th>סה"כ (לפני מע"מ)</th>
+        </tr>
+        
+        <tr>
+            <td>מנת מבוגר</td>
+            <td>60</td>
+            <td>₪330</td>
+            <td>₪19800</td>
+        </tr>
+        
+        
+        <tr>
+            <td>ילדים 6-11</td>
+            <td>4</td>
+            <td>₪130</td>
+            <td>₪520</td>
+        </tr>
+        
+        
+        <tr>
+            <td>ילדים עד גיל 6</td>
+            <td>2</td>
+            <td>חינם</td>
+            <td>₪0</td>
+        </tr>
+        
+        <tr>
+            <td colspan="3" class="total">סה"כ לפני מע"מ</td>
+            <td class="total">₪20,320</td>
+        </tr>
+        <tr>
+            <td colspan="3">מע"מ (18%)</td>
+            <td>₪3,658</td>
+        </tr>
+        <tr>
+            <td colspan="3" class="total">סה"כ כולל מע"מ</td>
+            <td class="total">₪23,978</td>
+        </tr>
+    </table>
+    <p style="margin-top:10px;">בעת ההזמנה תשולם מקדמה על סך <strong>₪1000</strong>.</p>
+</div>
+
+
+<h2>הערות</h2>
+<div class="notes">הצעה לבדיקה - אפשר למחוק.</div>
+
+
+<div class="signature">
+    תודה ובהצלחה,<br>
+    <strong>System Administrator</strong><br>
+    אלחנן תרבות לחם, קיבוץ משמרות
+</div>
+
+</body>
+</html>

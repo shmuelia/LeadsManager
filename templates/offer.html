@@ -24,19 +24,33 @@
     .pricing .total { font-weight: 700; font-size: 16px; color: #4a2c0a; }
     .notes { background: #fff7e0; padding: 10px 14px; border-radius: 6px; margin-top: 10px; white-space: pre-wrap; }
     .signature { margin-top: 28px; font-size: 14px; }
-    .print-btn { background: #d4a574; color: white; padding: 10px 22px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin: 6px; }
-    .actions { text-align: center; margin: 14px 0; }
+    .toolbar { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 14px; text-align: center; margin: 6px 0 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; align-items: center; }
+    .btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-print { background: #d4a574; color: white; }
+    .btn-edit { background: #6366f1; color: white; }
+    .btn-save { background: #16a34a; color: white; }
+    .btn-cancel { background: #e5e7eb; color: #1f2937; }
+    .editing #offerContent { outline: 3px dashed #fbbf24; outline-offset: 6px; background: #fffbeb; }
+    .editing #offerContent [contenteditable=true]:hover { background: #fef3c7; }
+    .edit-hint { font-size: 12px; color: #78350f; }
     @media print {
         .no-print { display: none !important; }
         body { padding: 0; }
+        #offerContent { outline: none !important; background: white !important; }
     }
 </style>
 </head>
 <body>
 
-<div class="actions no-print">
-    <button class="print-btn" onclick="window.print()">🖨 הדפס / שמור כ-PDF</button>
+<div class="toolbar no-print">
+    <button class="btn btn-print" onclick="window.print()">🖨 הדפס / שמור כ-PDF</button>
+    <button class="btn btn-edit" id="editBtn" onclick="toggleEdit()">✏️ ערוך טקסט</button>
+    <button class="btn btn-save" id="saveBtn" onclick="saveEdit()" style="display:none;">💾 שמור שינויים</button>
+    <button class="btn btn-cancel" id="cancelBtn" onclick="cancelEdit()" style="display:none;">ביטול</button>
+    <span class="edit-hint" id="editHint" style="display:none;">לחץ על כל טקסט כדי לערוך · Enter ליצירת שורה חדשה · לחץ "שמור" כשסיימת</span>
 </div>
+
+<div id="offerContent">{% if data.edited_html %}{{ data.edited_html|safe }}{% else %}
 
 <div class="brand">
     <div>
@@ -169,6 +183,66 @@
     <strong>{{ data.sender_name }}</strong><br>
     אלחנן תרבות לחם, קיבוץ משמרות
 </div>
+{% endif %}</div>
+
+<script>
+let originalHtml = null;
+
+function toggleEdit() {
+    document.body.classList.add('editing');
+    const content = document.getElementById('offerContent');
+    originalHtml = content.innerHTML;
+    content.setAttribute('contenteditable', 'true');
+    content.focus();
+    document.getElementById('editBtn').style.display = 'none';
+    document.getElementById('saveBtn').style.display = '';
+    document.getElementById('cancelBtn').style.display = '';
+    document.getElementById('editHint').style.display = '';
+}
+
+function cancelEdit() {
+    const content = document.getElementById('offerContent');
+    content.innerHTML = originalHtml;
+    content.removeAttribute('contenteditable');
+    document.body.classList.remove('editing');
+    document.getElementById('editBtn').style.display = '';
+    document.getElementById('saveBtn').style.display = 'none';
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('editHint').style.display = 'none';
+}
+
+async function saveEdit() {
+    const html = document.getElementById('offerContent').innerHTML;
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '⏳ שומר...';
+    try {
+        const url = window.location.pathname + '/save-edit';
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ html })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'שגיאה');
+        const content = document.getElementById('offerContent');
+        content.removeAttribute('contenteditable');
+        document.body.classList.remove('editing');
+        document.getElementById('editBtn').style.display = '';
+        saveBtn.style.display = 'none';
+        document.getElementById('cancelBtn').style.display = 'none';
+        document.getElementById('editHint').style.display = 'none';
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 שמור שינויים';
+        alert('✔ השינויים נשמרו');
+    } catch (e) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 שמור שינויים';
+        alert('שגיאה בשמירה: ' + e.message);
+    }
+}
+</script>
 
 </body>
 </html>
