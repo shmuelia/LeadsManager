@@ -1651,6 +1651,16 @@ class UnifiedLeadManagerClass {
                 </div>
             ` : ''}
             
+            <!-- Price Offer -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 12px; color: #92400e;">📄 הצעת מחיר</h3>
+                <p style="margin: 0 0 12px 0; color: #78350f; font-size: 13px;">צור הצעת מחיר עבור הליד. ההצעה נשמרת בהיסטוריית הפעילות וניתן להפיק ממנה PDF.</p>
+                <button onclick="window.UnifiedLeadManager.openOfferForm(${lead.id}, ${JSON.stringify(lead.name || '').replace(/"/g, '&quot;')})"
+                        style="background: #d97706; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    ➕ הצעה חדשה
+                </button>
+            </div>
+
             <!-- WhatsApp Correspondence -->
             <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                 <h3 style="margin-bottom: 15px; color: #14532d;">💬 WhatsApp</h3>
@@ -1695,6 +1705,11 @@ class UnifiedLeadManagerClass {
                                 </span>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span style="color: #6b7280; font-size: 0.9em;">${this.formatDate(activity.activity_date)}</span>
+                                    ${activity.activity_type === 'offer_sent' && activity.id ? `
+                                        <a href="/leads/${lead.id}/offer/${activity.id}" target="_blank" rel="noopener"
+                                           style="background:#fef3c7; color:#92400e; padding:4px 10px; border-radius:6px; font-size:12px; text-decoration:none; font-weight:600;"
+                                           title="פתח את ההצעה ל-PDF / הדפסה">📄 פתח</a>
+                                    ` : ''}
                                     ${(this.userRole === 'admin' || this.userRole === 'campaign_manager') && activity.id ? `
                                         <button onclick="window.UnifiedLeadManager.deleteActivity(${lead.id}, ${activity.id})"
                                                 style="background:#fecaca; color:#991b1b; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px;"
@@ -1796,9 +1811,120 @@ class UnifiedLeadManagerClass {
             'assignment': 'הקצאה',
             'call': 'שיחה',
             'note_added': 'הערה',
-            'whatsapp_message': '💬 WhatsApp'
+            'whatsapp_message': '💬 WhatsApp',
+            'offer_sent': '📄 הצעת מחיר'
         };
         return labels[type] || type;
+    }
+
+    openOfferForm(leadId, defaultName) {
+        const existing = document.getElementById('offerFormOverlay');
+        if (existing) existing.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'offerFormOverlay';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;';
+        overlay.innerHTML = `
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:560px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:90vh; overflow-y:auto;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                    <h3 style="margin:0; color:#92400e;">📄 הצעת מחיר חדשה</h3>
+                    <button onclick="document.getElementById('offerFormOverlay').remove()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div style="grid-column:1 / -1;">
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">שם הלקוח</label>
+                        <input id="of_name" type="text" value="${defaultName}" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">תאריך האירוע</label>
+                        <input id="of_date" type="text" placeholder="לדוגמה: 8/8 יום שישי" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">שעה</label>
+                        <input id="of_time" type="text" placeholder="14:00" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div style="grid-column:1 / -1;">
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מיקום</label>
+                        <input id="of_location" type="text" value="אלחנן משמרות, דרך משמרות, פרדס חנה כרכור" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מבוגרים</label>
+                        <input id="of_adults" type="number" value="60" min="0" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">ילדים 6-11</label>
+                        <input id="of_kids_6_11" type="number" value="0" min="0" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">ילדים עד גיל 6</label>
+                        <input id="of_kids_under_6" type="number" value="0" min="0" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:#78350f; padding-top:24px;">
+                            <input id="of_with_fish" type="checkbox" checked> כולל מנות דגים (330 במקום 260)
+                        </label>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מחיר מבוגר (לפני מע"מ)</label>
+                        <input id="of_adult_price" type="number" placeholder="330" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מחיר ילד 6-11</label>
+                        <input id="of_kid_price" type="number" value="130" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מקדמה</label>
+                        <input id="of_deposit" type="number" value="1000" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div style="grid-column:1 / -1;">
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">הערות (אופציונלי)</label>
+                        <textarea id="of_notes" rows="3" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;"></textarea>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:16px; justify-content:flex-end;">
+                    <button onclick="document.getElementById('offerFormOverlay').remove()" style="background:#e5e7eb; color:#1f2937; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">ביטול</button>
+                    <button onclick="window.UnifiedLeadManager.submitOffer(${leadId})" style="background:#d97706; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:600;">📄 צור הצעה</button>
+                </div>
+                <div id="offerStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+    }
+
+    async submitOffer(leadId) {
+        const $ = id => document.getElementById(id);
+        const status = $('offerStatus');
+        const body = {
+            customer_name: $('of_name').value.trim(),
+            event_date: $('of_date').value.trim(),
+            event_time: $('of_time').value.trim(),
+            event_location: $('of_location').value.trim(),
+            adult_count: parseInt($('of_adults').value || 0, 10),
+            kid_count_6_11: parseInt($('of_kids_6_11').value || 0, 10),
+            kid_count_under_6: parseInt($('of_kids_under_6').value || 0, 10),
+            with_fish: $('of_with_fish').checked,
+            adult_price: parseInt($('of_adult_price').value || 0, 10) || undefined,
+            kid_price: parseInt($('of_kid_price').value || 130, 10),
+            deposit: parseInt($('of_deposit').value || 1000, 10),
+            notes: $('of_notes').value.trim()
+        };
+        if (!body.customer_name) { status.textContent = '⚠ שם לקוח חובה'; return; }
+        if (!body.event_date) { status.textContent = '⚠ תאריך אירוע חובה'; return; }
+        try {
+            const res = await fetch(`/leads/${leadId}/offer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'שגיאה');
+            const overlay = document.getElementById('offerFormOverlay');
+            if (overlay) overlay.remove();
+            window.open(data.view_url, '_blank');
+            this.viewLead(leadId);
+        } catch (e) {
+            status.textContent = '⚠ ' + e.message;
+        }
     }
 
     async deleteActivity(leadId, activityId) {

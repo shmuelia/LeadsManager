@@ -2594,6 +2594,141 @@ def api_whatsapp_import():
         return jsonify({'error': str(e)}), 500
 
 
+DEFAULT_OFFER_VENUE = 'אלחנן משמרות, דרך משמרות, פרדס חנה כרכור'
+DEFAULT_VAT_PCT = 18
+
+
+def _offer_compute_totals(data):
+    """Compute pricing totals from the saved metadata."""
+    adult = int(data.get('adult_count') or 0)
+    k611 = int(data.get('kid_count_6_11') or 0)
+    ap = int(data.get('adult_price') or (260 if not data.get('with_fish') else 330))
+    kp = int(data.get('kid_price') or 130)
+    subtotal = adult * ap + k611 * kp
+    vat_pct = int(data.get('vat_pct') or DEFAULT_VAT_PCT)
+    vat_amount = round(subtotal * vat_pct / 100)
+    total_with_vat = subtotal + vat_amount
+    return subtotal, vat_pct, vat_amount, total_with_vat
+
+
+@app.route('/leads/<int:lead_id>/offer', methods=['POST'])
+@login_required
+def create_offer(lead_id):
+    """Create a price-offer activity for a lead. The form data is stored in activity_metadata,
+    so the HTML offer can be re-rendered at any time."""
+    try:
+        body = request.get_json() or {}
+
+        # Pull lead context for defaults / customer scope check
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT customer_id, name FROM leads WHERE id = %s', (lead_id,))
+        lead = cur.fetchone()
+        if not lead:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Lead not found'}), 404
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and lead['customer_id'] != scope_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized for this lead'}), 403
+
+        israel_now = datetime.now(pytz.timezone('Asia/Jerusalem'))
+        data = {
+            'customer_name': (body.get('customer_name') or lead['name'] or '').strip(),
+            'event_date': (body.get('event_date') or '').strip(),
+            'event_time': (body.get('event_time') or '').strip(),
+            'event_location': (body.get('event_location') or DEFAULT_OFFER_VENUE).strip(),
+            'adult_count': int(body.get('adult_count') or 0),
+            'kid_count_6_11': int(body.get('kid_count_6_11') or 0),
+            'kid_count_under_6': int(body.get('kid_count_under_6') or 0),
+            'with_fish': bool(body.get('with_fish', True)),
+            'adult_price': int(body.get('adult_price') or (330 if body.get('with_fish', True) else 260)),
+            'kid_price': int(body.get('kid_price') or 130),
+            'deposit': int(body.get('deposit') or 1000),
+            'include_service': bool(body.get('include_service', True)),
+            'waiter_price': int(body.get('waiter_price') or 350),
+            'vat_pct': int(body.get('vat_pct') or DEFAULT_VAT_PCT),
+            'notes': (body.get('notes') or '').strip(),
+            'proposal_date': israel_now.strftime('%d/%m/%Y'),
+            'sender_name': session.get('full_name', session.get('username', '')),
+        }
+
+        if not data['customer_name']:
+            cur.close(); conn.close()
+            return jsonify({'error': 'customer_name required'}), 400
+        if not data['event_date']:
+            cur.close(); conn.close()
+            return jsonify({'error': 'event_date required'}), 400
+
+        subtotal, _, _, total_with_vat = _offer_compute_totals(data)
+        user_name = session.get('full_name', session.get('username', 'אנונימי'))
+        desc = (f"📄 הצעת מחיר עבור {data['customer_name']} · "
+                f"{data['event_date']}{(' ' + data['event_time']) if data['event_time'] else ''} · "
+                f"{data['adult_count']} מבוגרים · סה\"כ ₪{total_with_vat:,} כולל מע\"מ")
+
+        cur2 = conn.cursor()
+        cur2.execute(
+            """
+            INSERT INTO lead_activities (lead_id, user_name, activity_type, description, activity_metadata)
+            VALUES (%s, %s, %s, %s, %s::jsonb)
+            RETURNING id
+            """,
+            (lead_id, user_name, 'offer_sent', desc, json.dumps(data)),
+        )
+        activity_id = cur2.fetchone()[0]
+        conn.commit()
+        cur2.close(); cur.close(); conn.close()
+        return jsonify({'status': 'success', 'activity_id': activity_id,
+                        'view_url': f'/leads/{lead_id}/offer/{activity_id}'})
+    except Exception as e:
+        logger.error(f"create_offer error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/leads/<int:lead_id>/offer/<int:activity_id>')
+@login_required
+def view_offer(lead_id, activity_id):
+    """Render the saved offer as an HTML page (print-to-PDF friendly)."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return ('Database not available', 500)
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """
+            SELECT a.activity_metadata, l.customer_id
+            FROM lead_activities a
+            JOIN leads l ON l.id = a.lead_id
+            WHERE a.id = %s AND a.lead_id = %s AND a.activity_type = 'offer_sent'
+            """,
+            (activity_id, lead_id),
+        )
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return ('Offer not found', 404)
+
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and row['customer_id'] != scope_id:
+            return ('Unauthorized', 403)
+
+        data = row['activity_metadata'] or {}
+        subtotal, vat_pct, vat_amount, total_with_vat = _offer_compute_totals(data)
+        return render_template(
+            'offer.html',
+            data=data,
+            subtotal=f'{subtotal:,}',
+            vat_pct=vat_pct,
+            vat_amount=f'{vat_amount:,}',
+            total_with_vat=f'{total_with_vat:,}',
+        )
+    except Exception as e:
+        logger.error(f"view_offer error: {e}")
+        return (f'Error: {e}', 500)
+
+
 @app.route('/leads/<int:lead_id>/activities/<int:activity_id>', methods=['DELETE'])
 @campaign_manager_required
 def delete_lead_activity(lead_id, activity_id):

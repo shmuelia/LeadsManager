@@ -31,7 +31,12 @@
       "mcp__Claude_in_Chrome__read_page",
       "mcp__Claude_in_Chrome__computer",
       "Bash(powershell.exe -File deploy.ps1 \"Add WhatsApp correspondence to lead detail \\(desktop+mobile\\): open chat link, paste/save log as lead activity\")",
-      "mcp__Claude_in_Chrome__javascript_tool"
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "Bash(node --check content.js)",
+      "Bash(node --check background.js)",
+      "Bash(node --check popup.js)",
+      "Bash(pandoc --track-changes=all \"G:/My Drive/Business/Nichsei/Bakery/Mishmarot/Operations/מכירות/מכירות ארועים/הצעת מחיר בסיסית חדשה.docx\" -o /tmp/offer.md)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []
