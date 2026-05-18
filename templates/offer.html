@@ -129,48 +129,23 @@
     <table>
         <tr>
             <th>פריט</th>
-            <th>כמות</th>
-            <th>מחיר ליחידה (לפני מע"מ)</th>
-            <th>סה"כ (לפני מע"מ)</th>
+            <th>מחיר למנה (לפני מע"מ)</th>
         </tr>
-        {% if data.adult_count %}
         <tr>
             <td>מנת מבוגר{% if not data.with_fish %} (ללא מנות דגים){% endif %}</td>
-            <td>{{ data.adult_count }}</td>
-            <td>₪{{ data.adult_price }}</td>
-            <td>₪{{ data.adult_count * data.adult_price }}</td>
+            <td><strong>₪{{ data.adult_price }}</strong></td>
         </tr>
-        {% endif %}
-        {% if data.kid_count_6_11 %}
         <tr>
             <td>ילדים 6-11</td>
-            <td>{{ data.kid_count_6_11 }}</td>
-            <td>₪{{ data.kid_price }}</td>
-            <td>₪{{ data.kid_count_6_11 * data.kid_price }}</td>
+            <td><strong>₪{{ data.kid_price }}</strong></td>
         </tr>
-        {% endif %}
-        {% if data.kid_count_under_6 %}
         <tr>
             <td>ילדים עד גיל 6</td>
-            <td>{{ data.kid_count_under_6 }}</td>
-            <td>חינם</td>
-            <td>₪0</td>
-        </tr>
-        {% endif %}
-        <tr>
-            <td colspan="3" class="total">סה"כ לפני מע"מ</td>
-            <td class="total">₪{{ subtotal }}</td>
-        </tr>
-        <tr>
-            <td colspan="3">מע"מ ({{ vat_pct }}%)</td>
-            <td>₪{{ vat_amount }}</td>
-        </tr>
-        <tr>
-            <td colspan="3" class="total">סה"כ כולל מע"מ</td>
-            <td class="total">₪{{ total_with_vat }}</td>
+            <td><strong>חינם</strong></td>
         </tr>
     </table>
-    <p style="margin-top:10px;">בעת ההזמנה תשולם מקדמה על סך <strong>₪{{ data.deposit }}</strong>.</p>
+    <p style="margin-top:12px;">למחיר יתווסף מע"מ כחוק ({{ vat_pct }}%).</p>
+    <p>בעת ההזמנה תשולם מקדמה על סך <strong>₪{{ data.deposit }}</strong>.</p>
 </div>
 
 {% if data.notes %}

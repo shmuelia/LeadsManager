@@ -2662,11 +2662,11 @@ def create_offer(lead_id):
             cur.close(); conn.close()
             return jsonify({'error': 'event_date required'}), 400
 
-        subtotal, _, _, total_with_vat = _offer_compute_totals(data)
         user_name = session.get('full_name', session.get('username', 'אנונימי'))
+        fish_tag = '' if data['with_fish'] else ' (ללא דגים)'
         desc = (f"📄 הצעת מחיר עבור {data['customer_name']} · "
                 f"{data['event_date']}{(' ' + data['event_time']) if data['event_time'] else ''} · "
-                f"{data['adult_count']} מבוגרים · סה\"כ ₪{total_with_vat:,} כולל מע\"מ")
+                f"מנת מבוגר ₪{data['adult_price']}{fish_tag}, ילדים ₪{data['kid_price']}")
 
         cur2 = conn.cursor()
         cur2.execute(
