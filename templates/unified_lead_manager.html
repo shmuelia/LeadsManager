@@ -1444,101 +1444,76 @@ class UnifiedLeadManagerClass {
         const facebookPageId = rawData.page_id || rawData.facebook_page_id;
         const leadId = lead.external_lead_id;
         
+        const isFB = (lead.platform === 'fb' || lead.platform === 'ig');
+        const hasExtraInfo = !!(lead.phone || lead.email || lead.external_lead_id || leadFormId || (facebookPageId && leadId) || isFB);
+
         modalBody.innerHTML = `
-            <!-- Basic Lead Information -->
-            <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <h3 style="margin-bottom: 15px; color: #1e293b;">👤 פרטי הליד #${lead.id}</h3>
-                        <div style="display: grid; gap: 12px;">
-                            <div><strong>מספר ליד:</strong> #${lead.id}</div>
-                            <div><strong>שם מלא:</strong> ${lead.name || 'לא צוין'}</div>
-                            <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
-                            <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
-
-                            <!-- Facebook Lead Management Links -->
-                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1);">
-                                <div style="margin-bottom: 8px;"><strong>ניהול הליד בפייסבוק:</strong></div>
-
-                                ${leadFormId ? `
-                                    <div style="margin-bottom: 8px;">
-                                        <a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" target="_blank" style="color: #1877f2;">
-                                            📋 טופס לידים: ${leadFormId}
-                                        </a>
-                                    </div>
-                                ` : ''}
-
-                                ${facebookPageId && leadId ? `
-                                    <div style="margin-bottom: 8px;">
-                                        <a href="https://business.facebook.com/latest/lead_access/leads?page_id=${facebookPageId}&lead_id=${leadId}" target="_blank" style="color: #1877f2;">
-                                            🎯 הליד הספציפי בפייסבוק
-                                        </a>
-                                    </div>
-                                ` : ''}
-
-                                ${lead.platform === 'fb' || lead.platform === 'ig' ? `
-                                    <div style="margin-bottom: 8px;">
-                                        <a href="https://business.facebook.com/latest/lead_access/leads" target="_blank" style="color: #4267B2;">
-                                            📊 כל הלידים ב-Meta Business
-                                        </a>
-                                    </div>
-                                    <div style="margin-bottom: 8px;">
-                                        <a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2;">
-                                            💬 הודעות Meta Business Suite
-                                        </a>
-                                    </div>
-                                ` : ''}
-
-                                ${lead.external_lead_id ? `
-                                    <div style="margin-bottom: 8px;">
-                                        <strong>מזהה ליד:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${lead.external_lead_id}</code>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 15px; color: #1e293b;">📊 מצב הליד</h3>
-                        <div style="display: grid; gap: 12px;">
-                            <div><strong>סטטוס נוכחי:</strong> <span class="status-badge status-${lead.status}" style="margin-right: 8px;">${this.getStatusLabel(lead.status)}</span></div>
-                            <div>
-                                <strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}
-                                ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
-                                    <div style="margin-top: 10px;">
-                                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                                            <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
-                                                <option value="">בחר משתמש...</option>
-                                            </select>
-                                            <button onclick="window.UnifiedLeadManager.assignLeadFromModal(${lead.id})"
-                                                    style="padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;">
-                                                שיוך
-                                            </button>
-                                        </div>
-                                        <textarea id="assignNote_${lead.id}"
-                                                  placeholder="הערה למשתמש (תישלח במייל)..."
-                                                  style="width: 100%; padding: 8px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; min-height: 60px; resize: vertical;"></textarea>
-                                    </div>
-                                ` : ''}
-                            </div>
-                            <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.lead_date || lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
-                        </div>
-                    </div>
+            <!-- Compact main info: name + status + assign -->
+            <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 18px 20px; border-radius: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                    <h2 style="margin: 0; color: #1e293b; font-size: 1.5em;">👤 ${lead.name || 'לא צוין'}</h2>
+                    <span class="status-badge status-${lead.status}" style="font-size: 1em; padding: 6px 14px;">${this.getStatusLabel(lead.status)}</span>
                 </div>
+                <div style="font-size: 13px; color: #475569; margin-bottom: 12px;">
+                    <strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}
+                </div>
+                ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <select id="assignUserSelect_${lead.id}" style="flex: 1; padding: 8px; border: 2px solid #10b981; border-radius: 8px; font-size: 14px;">
+                            <option value="">בחר משתמש...</option>
+                        </select>
+                        <button onclick="window.UnifiedLeadManager.assignLeadFromModal(${lead.id})"
+                                style="padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;">
+                            שיוך
+                        </button>
+                    </div>
+                    <textarea id="assignNote_${lead.id}"
+                              placeholder="הערה למשתמש (תישלח במייל)..."
+                              style="width: 100%; padding: 8px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; min-height: 50px; resize: vertical;"></textarea>
+                ` : ''}
             </div>
 
-            <!-- Custom Fields Section -->
+            ${hasExtraInfo ? `
+            <!-- Collapsible: extra contact info / FB links / external id / date received -->
+            <details style="background: #f8fafc; padding: 8px 14px; border-radius: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1;">
+                <summary style="cursor: pointer; color: #475569; font-weight: 600; font-size: 13px; padding: 4px 0;">
+                    📋 פרטים נוספים (טלפון, אימייל, פייסבוק, תאריך קבלה)
+                </summary>
+                <div style="display: grid; gap: 8px; margin-top: 10px; font-size: 13px;">
+                    ${lead.phone ? `<div><strong>טלפון:</strong> <a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a></div>` : ''}
+                    ${lead.email ? `<div><strong>אימייל:</strong> <a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a></div>` : ''}
+                    <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.lead_date || lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
+                    ${lead.external_lead_id ? `<div><strong>מזהה חיצוני:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${lead.external_lead_id}</code></div>` : ''}
+                    ${leadFormId || (facebookPageId && leadId) || isFB ? `
+                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0;">
+                            <strong>ניהול הליד בפייסבוק:</strong>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                                ${leadFormId ? `<a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" target="_blank" style="color: #1877f2; text-decoration: none;">📋 טופס</a>` : ''}
+                                ${facebookPageId && leadId ? `<a href="https://business.facebook.com/latest/lead_access/leads?page_id=${facebookPageId}&lead_id=${leadId}" target="_blank" style="color: #1877f2; text-decoration: none;">🎯 ליד זה</a>` : ''}
+                                ${isFB ? `<a href="https://business.facebook.com/latest/lead_access/leads" target="_blank" style="color: #4267B2; text-decoration: none;">📊 כל הלידים</a>` : ''}
+                                ${isFB ? `<a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2; text-decoration: none;">💬 הודעות</a>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </details>
+            ` : ''}
+
+            <!-- Custom Fields Section (collapsed by default to match raw form responses style) -->
             ${Object.keys(customData).length > 0 ? `
-                <div style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #ec4899; box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);">
-                    <h3 style="color: #831843; margin: 0 0 20px 0; font-size: 1.4em;">✨ שדות נוספים</h3>
-                    <div style="display: grid; gap: 16px;">
+                <details style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; border: 1px solid #ec4899;">
+                    <summary style="cursor: pointer; color: #831843; font-weight: 600; font-size: 14px; padding: 4px 0;">
+                        ✨ שדות נוספים (קמפיין)
+                    </summary>
+                    <div style="display: grid; gap: 6px; margin-top: 10px;">
                         ${Object.entries(customData).map(([key, value]) => `
-                            <div style="background: white; padding: 15px; border-radius: 8px; border-right: 4px solid #ec4899;">
-                                <div style="font-weight: bold; color: #831843; margin-bottom: 8px;">${key}</div>
-                                <div style="color: #374151; word-break: break-word;">${value || 'לא צוין'}</div>
+                            <div style="padding: 6px 10px; background: rgba(255,255,255,0.8); border-radius: 6px; border: 1px solid #fbcfe8; font-size: 12px;">
+                                <span style="font-weight: 600; color: #831843;">${key}:</span>
+                                <span style="color: #374151; word-break: break-word;"> ${value || 'לא צוין'}</span>
                             </div>
                         `).join('')}
                     </div>
-                </div>
+                </details>
             ` : ''}
 
 
