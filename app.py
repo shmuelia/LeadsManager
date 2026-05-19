@@ -349,8 +349,9 @@ def login():
                 return redirect(next_page)
             
             # Default redirect based on role
-            # Admins land on the user dashboard (they can navigate to /admin from there)
-            if user['role'] == 'campaign_manager':
+            if user['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user['role'] == 'campaign_manager':
                 return redirect(url_for('campaign_manager_dashboard'))
             else:
                 return redirect(url_for('dashboard'))
@@ -371,9 +372,11 @@ def logout():
 
 @app.route('/')
 def home():
-    """Home page - redirect to login if not authenticated"""
+    """Home page - redirect to login if not authenticated. Role-based routing:
+    admin → /admin (rich management page), campaign_manager → /campaign-manager, user → /dashboard."""
     if 'user_id' in session:
-        # Admins go to the user dashboard (not /admin); CMs to their dashboard; users to /dashboard
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
         if session.get('role') == 'campaign_manager':
             return redirect(url_for('campaign_manager_dashboard'))
         return redirect(url_for('dashboard'))
