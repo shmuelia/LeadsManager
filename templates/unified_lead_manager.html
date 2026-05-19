@@ -2142,15 +2142,6 @@ class UnifiedLeadManagerClass {
                         <input id="of_kids_under_6" type="number" value="0" min="0" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
                     <div>
-                        <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:#78350f; padding-top:24px;">
-                            <input id="of_with_fish" type="checkbox" checked> כולל מנות דגים (330 במקום 260)
-                        </label>
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מחיר מבוגר (לפני מע"מ)</label>
-                        <input id="of_adult_price" type="number" placeholder="330" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
-                    </div>
-                    <div>
                         <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מחיר ילד 6-11</label>
                         <input id="of_kid_price" type="number" value="130" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
@@ -2191,8 +2182,6 @@ class UnifiedLeadManagerClass {
             adult_count: $('of_adults').value.trim(),
             kid_count_6_11: parseInt($('of_kids_6_11').value || 0, 10),
             kid_count_under_6: parseInt($('of_kids_under_6').value || 0, 10),
-            with_fish: $('of_with_fish').checked,
-            adult_price: parseInt($('of_adult_price').value || 0, 10) || undefined,
             kid_price: parseInt($('of_kid_price').value || 130, 10),
             deposit: parseInt($('of_deposit').value || 1000, 10),
             sender_name: $('of_sender_name').value.trim(),

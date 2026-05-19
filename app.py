@@ -2977,18 +2977,11 @@ def _safe_int(v, default=0):
 
 
 def _offer_compute_totals(data):
-    """Compute pricing totals from the saved metadata. adult_count may be free-form text
-    (e.g. '60' or '50-70') — non-numeric values are treated as 0 for the math (totals are
-    no longer shown to the customer anyway)."""
-    adult = _safe_int(data.get('adult_count'))
-    k611 = _safe_int(data.get('kid_count_6_11'))
-    ap = _safe_int(data.get('adult_price'), (260 if not data.get('with_fish') else 330))
-    kp = _safe_int(data.get('kid_price'), 130)
-    subtotal = adult * ap + k611 * kp
+    """Totals are no longer displayed to the customer (we show per-dish prices instead),
+    but we keep this helper for the template's vat_pct expectation. Returns dummy zeros
+    for the legacy subtotal/vat_amount/total fields."""
     vat_pct = _safe_int(data.get('vat_pct'), DEFAULT_VAT_PCT)
-    vat_amount = round(subtotal * vat_pct / 100)
-    total_with_vat = subtotal + vat_amount
-    return subtotal, vat_pct, vat_amount, total_with_vat
+    return 0, vat_pct, 0, 0
 
 
 @app.route('/leads/<int:lead_id>/offer', methods=['POST'])
@@ -3026,8 +3019,9 @@ def create_offer(lead_id):
             'adult_count': adult_count_str,
             'kid_count_6_11': int(body.get('kid_count_6_11') or 0),
             'kid_count_under_6': int(body.get('kid_count_under_6') or 0),
-            'with_fish': bool(body.get('with_fish', True)),
-            'adult_price': int(body.get('adult_price') or (330 if body.get('with_fish', True) else 260)),
+            # Both price tiers always shown in the PDF; customer picks.
+            'adult_price_with_fish': int(body.get('adult_price_with_fish') or 330),
+            'adult_price_no_fish': int(body.get('adult_price_no_fish') or 260),
             'kid_price': int(body.get('kid_price') or 130),
             'deposit': int(body.get('deposit') or 1000),
             'include_service': bool(body.get('include_service', True)),
@@ -3047,10 +3041,9 @@ def create_offer(lead_id):
             return jsonify({'error': 'event_date required'}), 400
 
         user_name = session.get('full_name', session.get('username', 'אנונימי'))
-        fish_tag = '' if data['with_fish'] else ' (ללא דגים)'
         desc = (f"📄 הצעה נוצרה עבור {data['customer_name']} · "
                 f"{data['event_date']}{(' ' + data['event_time']) if data['event_time'] else ''} · "
-                f"מנת מבוגר ₪{data['adult_price']}{fish_tag}, ילדים ₪{data['kid_price']}")
+                f"מבוגר ₪{data['adult_price_with_fish']}/₪{data['adult_price_no_fish']}, ילדים ₪{data['kid_price']}")
 
         cur2 = conn.cursor()
         cur2.execute(
