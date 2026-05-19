@@ -1587,7 +1587,9 @@
                         <div id="firstMessageStatus" style="margin-top:8px; font-size:12px; color:#6b7280;"></div>
                     </div>
                 `;
-                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+                let _downOnOverlay = false;
+                overlay.addEventListener('mousedown', e => { _downOnOverlay = (e.target === overlay); });
+                overlay.addEventListener('click', e => { if (_downOnOverlay && e.target === overlay) overlay.remove(); });
                 document.body.appendChild(overlay);
             }
 
@@ -1683,7 +1685,9 @@
                         <div id="quickWaStatus" style="margin-top:8px; font-size:12px; color:#6b7280;"></div>
                     </div>
                 `;
-                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+                let _downOnOverlay = false;
+                overlay.addEventListener('mousedown', e => { _downOnOverlay = (e.target === overlay); });
+                overlay.addEventListener('click', e => { if (_downOnOverlay && e.target === overlay) overlay.remove(); });
                 document.body.appendChild(overlay);
                 setTimeout(() => { const t = document.getElementById('quickWaText'); if (t) t.focus(); }, 50);
             }
