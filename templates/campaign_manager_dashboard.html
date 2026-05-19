@@ -252,6 +252,11 @@
                 <button class="logout-btn" onclick="window.location.href='/admin/reports'" style="background: #f59e0b; margin-left: 10px;">
                     📊 <span data-i18n="rejection_report">דוח דחיות</span>
                 </button>
+                {% if session.get('role') == 'admin' %}
+                <button class="logout-btn" onclick="window.location.href='/admin'" style="background: #6366f1; margin-left: 10px;">
+                    🛠️ <span data-i18n="admin_panel">לוח בקרה מנהל</span>
+                </button>
+                {% endif %}
                 <button class="logout-btn" onclick="window.location.href='/logout'">
                     🚪 <span data-i18n="logout">יציאה</span>
                 </button>

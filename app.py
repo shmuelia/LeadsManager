@@ -349,12 +349,12 @@ def login():
                 return redirect(next_page)
             
             # Default redirect based on role
-            if user['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user['role'] == 'campaign_manager':
+            # Admins + campaign_managers both land on /campaign-manager
+            # (it shows campaigns grid + leads table + all the action).
+            # Admins can still reach /admin via the orange "🛠️ לוח בקרה מנהל" button when needed.
+            if user['role'] in ('admin', 'campaign_manager'):
                 return redirect(url_for('campaign_manager_dashboard'))
-            else:
-                return redirect(url_for('dashboard'))
+            return redirect(url_for('dashboard'))
         else:
             flash('שם משתמש או סיסמה שגויים')
             return render_template('login.html')
@@ -372,12 +372,10 @@ def logout():
 
 @app.route('/')
 def home():
-    """Home page - redirect to login if not authenticated. Role-based routing:
-    admin → /admin (rich management page), campaign_manager → /campaign-manager, user → /dashboard."""
+    """Home page. admin + campaign_manager → /campaign-manager (rich page with campaigns + leads).
+    Regular users → /dashboard. Unauthenticated → /login."""
     if 'user_id' in session:
-        if session.get('role') == 'admin':
-            return redirect(url_for('admin_dashboard'))
-        if session.get('role') == 'campaign_manager':
+        if session.get('role') in ('admin', 'campaign_manager'):
             return redirect(url_for('campaign_manager_dashboard'))
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
