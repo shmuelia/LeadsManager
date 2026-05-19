@@ -2599,14 +2599,23 @@ DEFAULT_OFFER_VENUE = 'אלחנן משמרות, דרך משמרות, פרדס ח
 DEFAULT_VAT_PCT = 18
 
 
+def _safe_int(v, default=0):
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        return default
+
+
 def _offer_compute_totals(data):
-    """Compute pricing totals from the saved metadata."""
-    adult = int(data.get('adult_count') or 0)
-    k611 = int(data.get('kid_count_6_11') or 0)
-    ap = int(data.get('adult_price') or (260 if not data.get('with_fish') else 330))
-    kp = int(data.get('kid_price') or 130)
+    """Compute pricing totals from the saved metadata. adult_count may be free-form text
+    (e.g. '60' or '50-70') — non-numeric values are treated as 0 for the math (totals are
+    no longer shown to the customer anyway)."""
+    adult = _safe_int(data.get('adult_count'))
+    k611 = _safe_int(data.get('kid_count_6_11'))
+    ap = _safe_int(data.get('adult_price'), (260 if not data.get('with_fish') else 330))
+    kp = _safe_int(data.get('kid_price'), 130)
     subtotal = adult * ap + k611 * kp
-    vat_pct = int(data.get('vat_pct') or DEFAULT_VAT_PCT)
+    vat_pct = _safe_int(data.get('vat_pct'), DEFAULT_VAT_PCT)
     vat_amount = round(subtotal * vat_pct / 100)
     total_with_vat = subtotal + vat_amount
     return subtotal, vat_pct, vat_amount, total_with_vat
