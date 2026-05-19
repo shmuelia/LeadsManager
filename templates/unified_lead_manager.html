@@ -1302,8 +1302,8 @@ class UnifiedLeadManagerClass {
                         <button class="action-btn btn-primary" onclick="event.stopPropagation(); window.UnifiedLeadManager.viewLead(${lead.id})"
                                 title="פרטים, אימייל, שיוך, מחיקה, הצעת מחיר, WhatsApp ועוד">👁️</button>
                         ${lead.phone ? `
-                            <a href="tel:${lead.phone}" class="action-btn btn-call"
-                               title="התקשר ל-${lead.name || 'ליד'}: ${lead.phone}">📞</a>
+                            <a href="tel:${this.formatPhoneForDisplay(lead.phone)}" class="action-btn btn-call"
+                               title="התקשר ל-${lead.name || 'ליד'}: ${this.formatPhoneForDisplay(lead.phone)}">📞</a>
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}"
                                target="_blank" class="action-btn btn-whatsapp"
                                title="פתח WhatsApp עם ${lead.name || 'ליד'}: ${lead.phone}">💬</a>
@@ -1368,6 +1368,19 @@ class UnifiedLeadManagerClass {
         return date.toLocaleDateString('he-IL');
     }
     
+    formatPhoneForDisplay(phone) {
+        // Returns the Israeli phone normalized to a leading-0 local format (e.g., 0526062754).
+        // This is what humans dial and what tel: links should use locally.
+        if (!phone) return '';
+        const digits = (phone + '').replace(/[^0-9]/g, '');
+        if (!digits) return '';
+        if (digits.startsWith('9720')) return '0' + digits.substring(4);   // 9720501234567 -> 0501234567
+        if (digits.startsWith('972'))  return '0' + digits.substring(3);   // 972501234567  -> 0501234567
+        if (digits.startsWith('0'))    return digits;                       // already 0501234567
+        if (digits.length === 9)       return '0' + digits;                 // 501234567 -> 0501234567
+        return digits;
+    }
+
     formatPhoneForWhatsApp(phone) {
         if (!phone) return '';
 
@@ -1480,7 +1493,7 @@ class UnifiedLeadManagerClass {
                     📋 פרטים נוספים (טלפון, אימייל, פייסבוק, תאריך קבלה)
                 </summary>
                 <div style="display: grid; gap: 8px; margin-top: 10px; font-size: 13px;">
-                    ${lead.phone ? `<div><strong>טלפון:</strong> <a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a></div>` : ''}
+                    ${lead.phone ? (() => { const p = this.formatPhoneForDisplay(lead.phone); return `<div><strong>טלפון:</strong> <a href="tel:${p}" style="color: #059669;">${p}</a></div>`; })() : ''}
                     ${lead.email ? `<div><strong>אימייל:</strong> <a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a></div>` : ''}
                     <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.lead_date || lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
                     ${lead.external_lead_id ? `<div><strong>מזהה חיצוני:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${lead.external_lead_id}</code></div>` : ''}

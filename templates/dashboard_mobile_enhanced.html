@@ -1338,7 +1338,7 @@
                                     <div class="info-label">טלפון</div>
                                     <div class="info-value ${!lead.phone ? 'empty' : ''}" style="direction: ltr; text-align: right;">
                                         ${lead.phone || 'לא צוין'}
-                                        ${lead.phone ? `<a href="tel:${lead.phone}" style="float: left; color: var(--primary-color);">📞</a>` : ''}
+                                        ${lead.phone ? `<a href="tel:${this.formatPhoneForDisplay(lead.phone)}" style="float: left; color: var(--primary-color);">📞</a>` : ''}
                                     </div>
                                 </div>
                                 <div class="info-item">
@@ -1754,11 +1754,22 @@
                 }
             }
 
+            formatPhoneForDisplay(phone) {
+                if (!phone) return '';
+                const d = (phone + '').replace(/[^0-9]/g, '');
+                if (!d) return '';
+                if (d.startsWith('9720')) return '0' + d.substring(4);
+                if (d.startsWith('972'))  return '0' + d.substring(3);
+                if (d.startsWith('0'))    return d;
+                if (d.length === 9)       return '0' + d;
+                return d;
+            }
+
             callLead(event, phone) {
                 event.stopPropagation();
                 this.hapticFeedback('medium');
                 if (phone && phone !== 'ללא טלפון') {
-                    window.location.href = `tel:${phone}`;
+                    window.location.href = `tel:${this.formatPhoneForDisplay(phone)}`;
                 }
             }
 
@@ -1857,7 +1868,7 @@
                             <div style="display: grid; gap: 12px;">
                                 <h3 style="margin-bottom: 10px; color: #1e293b; font-size: 16px;">👤 פרטי הליד #${lead.id}</h3>
                                 <div><strong>שם מלא:</strong> ${lead.name || 'לא צוין'}</div>
-                                <div><strong>טלפון:</strong> ${lead.phone ? `<a href="tel:${lead.phone}" style="color: #059669;">${lead.phone}</a>` : 'לא צוין'}</div>
+                                <div><strong>טלפון:</strong> ${lead.phone ? (() => { const p = this.formatPhoneForDisplay(lead.phone); return `<a href="tel:${p}" style="color: #059669;">${p}</a>`; })() : 'לא צוין'}</div>
                                 <div><strong>אימייל:</strong> ${lead.email ? `<a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a>` : 'לא צוין'}</div>
                                 <div><strong>סטטוס:</strong> <span class="status-badge status-${lead.status || 'new'}">${this.getStatusLabel(lead.status)}</span></div>
                                 <div><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
