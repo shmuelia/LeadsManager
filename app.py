@@ -2654,14 +2654,20 @@ def admin_galleries_list():
 @app.route('/admin/galleries/api', methods=['POST'])
 @admin_required
 def admin_galleries_create():
-    """Create a new (empty) gallery."""
+    """Create a new (empty) gallery. Slug auto-generated (admin only types the Hebrew label)."""
     try:
+        import secrets
         body = request.get_json() or {}
+        label = (body.get('label') or '').strip()
+        if not label:
+            return jsonify({'error': 'label required'}), 400
+
+        # Allow caller to supply slug, otherwise auto-generate something short & URL-safe.
         slug = re.sub(r'[^a-zA-Z0-9-]', '-', (body.get('slug') or '').strip().lower())
         slug = re.sub(r'-+', '-', slug).strip('-')
-        label = (body.get('label') or '').strip()
-        if not slug or not label:
-            return jsonify({'error': 'slug and label required'}), 400
+        if not slug:
+            slug = 'gal-' + secrets.token_urlsafe(6).lower().replace('_', '').replace('-', '')[:8]
+
         if slug in EVENT_GALLERIES:
             return jsonify({'error': 'slug conflicts with built-in gallery'}), 409
 
@@ -2675,7 +2681,13 @@ def admin_galleries_create():
             conn.commit()
         except psycopg2.IntegrityError:
             conn.rollback()
-            return jsonify({'error': 'gallery already exists'}), 409
+            # rare race: regenerate
+            slug = 'gal-' + secrets.token_urlsafe(6).lower().replace('_', '').replace('-', '')[:8]
+            cur.execute(
+                'INSERT INTO galleries (slug, label, created_by) VALUES (%s, %s, %s)',
+                (slug, label, session.get('full_name', session.get('username', ''))),
+            )
+            conn.commit()
         finally:
             cur.close(); conn.close()
         return jsonify({'status': 'success', 'slug': slug, 'label': label})

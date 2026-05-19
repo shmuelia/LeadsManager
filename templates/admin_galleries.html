@@ -46,11 +46,10 @@
     </div>
 
     <div class="card">
-        <h3 style="margin-top:0;">➕ יצירת גלריה חדשה</h3>
-        <p style="font-size:13px; color:#64748b;">הגדר slug (מזהה קצר באנגלית, ללא רווחים) ושם תצוגה בעברית.</p>
-        <div class="create-form">
-            <input type="text" id="newSlug" placeholder="לדוגמה: brit-mila-jun-2025" oninput="autoslug(this)">
-            <input type="text" id="newLabel" placeholder="לדוגמה: ברית מילה - יוני 2025">
+        <h3 style="margin-top:0;">➕ יצירת אלבום חדש</h3>
+        <p style="font-size:13px; color:#64748b;">תן שם בעברית לאלבום (לדוגמה: בר מצווה, ברית מילה, ימי הולדת).</p>
+        <div class="create-form" style="grid-template-columns: 1fr auto;">
+            <input type="text" id="newLabel" placeholder="לדוגמה: בר מצווה" onkeydown="if(event.key==='Enter')createGallery()">
             <button class="btn btn-success" onclick="createGallery()">צור</button>
         </div>
         <div class="status" id="createStatus"></div>
@@ -87,7 +86,7 @@ async function loadGalleries() {
                 <div class="gallery-card-head">
                     <div>
                         <div class="gallery-title">${g.label}</div>
-                        <div class="gallery-meta">slug: <code>${g.slug}</code> · ${g.photo_count} תמונות${g.created_by ? ' · נוצר ע״י ' + g.created_by : ''}</div>
+                        <div class="gallery-meta">${g.photo_count} תמונות${g.created_by ? ' · נוצר ע״י ' + g.created_by : ''}</div>
                     </div>
                     <div style="display:flex; gap:6px;">
                         <a class="btn btn-secondary" target="_blank" href="/gallery/${g.slug}">👁 צפה כלקוח</a>
@@ -143,19 +142,18 @@ async function loadPhotos(slug) {
 }
 
 async function createGallery() {
-    const slug = $('newSlug').value.trim();
     const label = $('newLabel').value.trim();
     const status = $('createStatus');
-    if (!slug || !label) { status.textContent = '⚠ slug ושם חובה'; return; }
+    if (!label) { status.textContent = '⚠ נא לתת שם'; return; }
     try {
         await api('/admin/galleries/api', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug, label }),
+            body: JSON.stringify({ label }),
         });
         status.style.color = '#16a34a';
-        status.textContent = '✔ נוצרה';
-        $('newSlug').value = ''; $('newLabel').value = '';
+        status.textContent = '✔ נוצר';
+        $('newLabel').value = '';
         loadGalleries();
     } catch (e) {
         status.style.color = '#dc2626';
