@@ -72,9 +72,10 @@
 
 <h2>פרטי האירוע</h2>
 <div class="event-grid">
-    <div class="k">תאריך ושעה:</div><div>{{ data.event_date }}{% if data.event_time %} בשעה {{ data.event_time }}{% endif %}</div>
+    {# Use 'בשעה' only when the time looks numeric (e.g. 14:00); free-text like 'שעות הערב' is appended without prefix. #}
+    <div class="k">תאריך ושעה:</div><div>{{ data.event_date }}{% if data.event_time %}{% if data.event_time[0] in '0123456789' %} בשעה {{ data.event_time }}{% else %}, {{ data.event_time }}{% endif %}{% endif %}</div>
     <div class="k">מיקום:</div><div>{{ data.event_location }}</div>
-    <div class="k">משתתפים:</div><div>{{ data.adult_count }} מבוגרים{% if data.kid_count_6_11 %}, {{ data.kid_count_6_11 }} ילדים (6-11){% endif %}{% if data.kid_count_under_6 %}, {{ data.kid_count_under_6 }} ילדים עד גיל 6{% endif %}</div>
+    <div class="k">משתתפים:</div><div>כ-{{ data.adult_count }} איש{% if data.kid_count_6_11 %} + {{ data.kid_count_6_11 }} ילדים (גילאי 6-11){% endif %}{% if data.kid_count_under_6 %} + {{ data.kid_count_under_6 }} ילדים עד גיל 6{% endif %}</div>
 </div>
 
 <h2>מה אוכלים? - מנות פתיחה, עיקריות ותוספות</h2>

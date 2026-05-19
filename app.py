@@ -2653,7 +2653,8 @@ def create_offer(lead_id):
             'vat_pct': int(body.get('vat_pct') or DEFAULT_VAT_PCT),
             'notes': (body.get('notes') or '').strip(),
             'proposal_date': israel_now.strftime('%d/%m/%Y'),
-            'sender_name': session.get('full_name', session.get('username', '')),
+            'sender_name': (body.get('sender_name') or '').strip()
+                or session.get('full_name', session.get('username', '')),
         }
 
         if not data['customer_name']:

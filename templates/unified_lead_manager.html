@@ -889,6 +889,7 @@ class UnifiedLeadManagerClass {
         this.currentCustomer = null;
         this.userRole = '{{ session.get("role") }}';
         this.username = '{{ session.get("username") }}';
+        this.fullName = '{{ session.get("full_name", "") }}';
         this.users = [];
         this.customers = [];
         this.campaigns = new Set();
@@ -1859,6 +1860,10 @@ class UnifiedLeadManagerClass {
                         <input id="of_deposit" type="number" value="1000" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
                     <div style="grid-column:1 / -1;">
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">חתימה (שם השולח)</label>
+                        <input id="of_sender_name" type="text" value="${(this.fullName || this.username || '').replace(/"/g, '&quot;')}" placeholder="שם שיופיע בחתימה" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                    </div>
+                    <div style="grid-column:1 / -1;">
                         <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">הערות (אופציונלי)</label>
                         <textarea id="of_notes" rows="3" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;"></textarea>
                     </div>
@@ -1891,6 +1896,7 @@ class UnifiedLeadManagerClass {
             adult_price: parseInt($('of_adult_price').value || 0, 10) || undefined,
             kid_price: parseInt($('of_kid_price').value || 130, 10),
             deposit: parseInt($('of_deposit').value || 1000, 10),
+            sender_name: $('of_sender_name').value.trim(),
             notes: $('of_notes').value.trim()
         };
         if (!body.customer_name) { status.textContent = '⚠ שם לקוח חובה'; return; }
