@@ -1800,67 +1800,74 @@ class UnifiedLeadManagerClass {
         const existing = document.getElementById('galleryShareOverlay');
         if (existing) existing.remove();
 
-        // Available galleries — keep in sync with EVENT_GALLERIES on the backend
+        // Galleries known to the backend (EVENT_GALLERIES) + their photo count.
         const galleries = [
-            { slug: 'bar-mitzvah-nov-2024', label: 'בר מצווה - נובמבר 2024' },
+            { slug: 'bar-mitzvah-nov-2024', label: 'בר מצווה - נובמבר 2024', photoCount: 26 },
         ];
-        const origin = window.location.origin;
-        const cleanPhone = (phone + '').replace(/[^0-9]/g, '');
-        let waPhone = cleanPhone;
-        if (cleanPhone.startsWith('9720')) waPhone = '972' + cleanPhone.substring(4);
-        else if (cleanPhone.startsWith('972')) waPhone = cleanPhone;
-        else if (cleanPhone.startsWith('0')) waPhone = '972' + cleanPhone.substring(1);
-        else if (cleanPhone) waPhone = '972' + cleanPhone;
+        const defaultGallery = galleries[0];
 
-        const defaultMsg =
-`מצורפות תמונות מאירוע שאירחנו לאחרונה ב"אלחנן תרבות לחם" - חשבנו שיתאים גם לך.
+        // Detect Web-Share-with-files support (Android Chrome, Edge, modern Safari, Chrome desktop).
+        let canShareFiles = false;
+        try {
+            const probe = new File(['x'], 'x.jpg', { type: 'image/jpeg' });
+            canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+        } catch (e) { canShareFiles = false; }
 
-המקום הקסום שלנו, האוכל המוקפד וההגשה המקצועית - כל זה יחד יוצר חוויה בלתי נשכחת.
-
-מיד אחרי שתעיף/י מבט, אשלח גם הצעת מחיר מותאמת לפי הפרטים שמסרת.`;
+        const renderThumbs = (g) => Array.from({ length: g.photoCount }, (_, i) => {
+            const name = `photo-${String(i + 1).padStart(2, '0')}.jpg`;
+            return `<div class="gth" data-photo="${name}" onclick="window.UnifiedLeadManager._togglePhoto(this)"
+                         style="position:relative; cursor:pointer; border:3px solid transparent; border-radius:8px; overflow:hidden; aspect-ratio:1/1;">
+                <img src="/static/event_photos/${g.slug}/thumb/${name}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                <div class="check" style="display:none; position:absolute; top:6px; left:6px; background:#16a34a; color:white; width:24px; height:24px; border-radius:50%; align-items:center; justify-content:center; font-weight:700; font-size:14px;">✓</div>
+            </div>`;
+        }).join('');
 
         const overlay = document.createElement('div');
         overlay.id = 'galleryShareOverlay';
-        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:14px;';
         overlay.innerHTML = `
-            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:560px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:90vh; overflow-y:auto;"
-                 onkeydown="if(event.key==='Enter' && event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-                    <h3 style="margin:0; color:#831843;">📸 שליחת גלריית תמונות</h3>
+            <div style="background:white; border-radius:14px; padding:18px 20px; width:100%; max-width:640px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                    <h3 style="margin:0; color:#831843;">📸 בחר ושתף תמונות</h3>
                     <button type="button" onclick="document.getElementById('galleryShareOverlay').remove()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
                 </div>
 
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:13px; font-weight:600; color:#6b21a8; margin-bottom:4px;">סוג אירוע</label>
+                ${galleries.length > 1 ? `
+                <div style="margin-bottom:8px;">
                     <select id="gal_slug" style="width:100%; padding:8px; border:1px solid #fbcfe8; border-radius:6px;">
-                        ${galleries.map(g => `<option value="${g.slug}">${g.label}</option>`).join('')}
+                        ${galleries.map(g => `<option value="${g.slug}" data-count="${g.photoCount}">${g.label}</option>`).join('')}
                     </select>
+                </div>` : `<input type="hidden" id="gal_slug" value="${defaultGallery.slug}">`}
+
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; color:#6b21a8;">
+                    <div>נבחרו: <strong id="gal_selCount">0</strong> מתוך ${defaultGallery.photoCount}</div>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" onclick="window.UnifiedLeadManager._selectAllPhotos(true)" style="background:#e5e7eb; border:none; padding:6px 10px; border-radius:6px; font-size:12px;">בחר הכל</button>
+                        <button type="button" onclick="window.UnifiedLeadManager._selectAllPhotos(false)" style="background:#e5e7eb; border:none; padding:6px 10px; border-radius:6px; font-size:12px;">נקה</button>
+                    </div>
                 </div>
 
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:13px; font-weight:600; color:#6b21a8; margin-bottom:4px;">שם הלקוח (לפנייה)</label>
-                    <input id="gal_to" type="text" value="${(firstName || '').replace(/"/g, '&quot;')}" placeholder="לדוגמה: מיטל" style="width:100%; padding:8px; border:1px solid #fbcfe8; border-radius:6px;">
+                <div id="gal_thumbs" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:6px; margin-bottom:14px;">
+                    ${renderThumbs(defaultGallery)}
                 </div>
 
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:13px; font-weight:600; color:#6b21a8; margin-bottom:4px;">הודעת ליווי (אופציונלי)</label>
-                    <textarea id="gal_msg" rows="5" style="width:100%; padding:8px; border:1px solid #fbcfe8; border-radius:6px; font-family:inherit; line-height:1.5;">${defaultMsg.replace(/</g, '&lt;')}</textarea>
-                </div>
-
-                <div style="background:#fdf4ff; padding:10px 12px; border-radius:8px; margin-bottom:12px; font-size:12px; color:#6b21a8;">
-                    הלקוח יקבל קישור שיוביל לעמוד גלריה ציבורי עם התמונות וההודעה למעלה.
-                </div>
+                ${!canShareFiles ? `
+                    <div style="background:#fef3c7; border:1px solid #fbbf24; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#78350f;">
+                        ⚠ הדפדפן הזה לא תומך בשיתוף קבצים ישירות. ניתן להוריד את התמונות הנבחרות ולגרור ל-WhatsApp ידנית.
+                    </div>` : ''}
 
                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    <button type="button" onclick="window.UnifiedLeadManager.previewGallery()"
-                            style="background:#a855f7; color:white; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">👁 תצוגה מקדימה</button>
-                    ${waPhone ? `
-                        <button type="button" onclick="window.UnifiedLeadManager.sendGalleryViaWhatsapp('${waPhone}', ${leadId})"
-                                style="background:#25D366; color:white; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">📱 שלח דרך WhatsApp</button>
-                    ` : ''}
-                    <button type="button" onclick="window.UnifiedLeadManager.copyGalleryLink(${leadId})"
-                            style="background:#2563eb; color:white; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">📋 העתק קישור</button>
+                    ${canShareFiles ? `
+                        <button type="button" onclick="window.UnifiedLeadManager._shareSelected(${leadId})"
+                                style="background:#16a34a; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
+                            📲 שתף תמונות (WhatsApp / אחר)
+                        </button>` : ''}
+                    <button type="button" onclick="window.UnifiedLeadManager._downloadSelected(${leadId})"
+                            style="background:#2563eb; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:600; font-size:14px;">
+                        ⬇ הורד נבחרות
+                    </button>
                 </div>
+
                 <div id="galleryStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
             </div>
         `;
@@ -1870,56 +1877,101 @@ class UnifiedLeadManagerClass {
         document.body.appendChild(overlay);
     }
 
-    _buildGalleryUrl() {
-        // Clean URL only — no query params. The personal greeting goes in the WhatsApp body,
-        // so the link the customer sees stays short and readable.
-        const slug = document.getElementById('gal_slug').value;
-        return `${window.location.origin}/gallery/${slug}`;
+    _togglePhoto(cell) {
+        const selected = cell.getAttribute('data-selected') === 'true';
+        cell.setAttribute('data-selected', selected ? 'false' : 'true');
+        cell.style.borderColor = selected ? 'transparent' : '#16a34a';
+        const check = cell.querySelector('.check');
+        if (check) check.style.display = selected ? 'none' : 'flex';
+        this._updateSelCount();
     }
 
-    _buildWhatsappText() {
-        // The text that becomes the WhatsApp message body: greeting + custom message + clean URL.
-        const to = document.getElementById('gal_to').value.trim();
-        const msg = document.getElementById('gal_msg').value.trim();
-        const url = this._buildGalleryUrl();
-        const greeting = `שלום${to ? ' ' + to : ''},`;
-        return `${greeting}\n\n${msg}\n\n${url}`;
+    _selectAllPhotos(select) {
+        document.querySelectorAll('#gal_thumbs .gth').forEach(cell => {
+            cell.setAttribute('data-selected', select ? 'true' : 'false');
+            cell.style.borderColor = select ? '#16a34a' : 'transparent';
+            const check = cell.querySelector('.check');
+            if (check) check.style.display = select ? 'flex' : 'none';
+        });
+        this._updateSelCount();
     }
 
-    previewGallery() {
-        window.open(this._buildGalleryUrl(), '_blank');
+    _updateSelCount() {
+        const n = document.querySelectorAll('#gal_thumbs .gth[data-selected="true"]').length;
+        const el = document.getElementById('gal_selCount');
+        if (el) el.textContent = n;
     }
 
-    sendGalleryViaWhatsapp(waPhone, leadId) {
-        const text = this._buildWhatsappText();
-        const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`;
-        window.open(waUrl, '_blank');
-        this._logGallerySend(leadId, text);
+    _selectedPhotoFilenames() {
+        return Array.from(document.querySelectorAll('#gal_thumbs .gth[data-selected="true"]'))
+                    .map(c => c.getAttribute('data-photo'));
     }
 
-    async copyGalleryLink(leadId) {
-        const url = this._buildGalleryUrl();
+    async _fetchSelectedAsFiles(slug, filenames, setStatus) {
+        const files = [];
+        for (let i = 0; i < filenames.length; i++) {
+            const name = filenames[i];
+            if (setStatus) setStatus(`⏳ טוען תמונה ${i + 1}/${filenames.length}...`);
+            const res = await fetch(`/static/event_photos/${slug}/full/${name}`);
+            if (!res.ok) throw new Error('failed to load ' + name);
+            const blob = await res.blob();
+            files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
+        }
+        return files;
+    }
+
+    async _shareSelected(leadId) {
         const status = document.getElementById('galleryStatus');
+        const setStatus = (s) => { if (status) status.textContent = s; };
+        const slug = document.getElementById('gal_slug').value;
+        const filenames = this._selectedPhotoFilenames();
+        if (!filenames.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
         try {
-            await navigator.clipboard.writeText(url);
-            if (status) status.textContent = '✔ הקישור הועתק ללוח (' + url + ')';
-            this._logGallerySend(leadId, url);
+            const files = await this._fetchSelectedAsFiles(slug, filenames, setStatus);
+            setStatus('📲 פותח חלון שיתוף...');
+            await navigator.share({ files, title: 'אלחנן תרבות לחם' });
+            setStatus(`✔ ${files.length} תמונות שותפו`);
+            this._logGallerySend(leadId, `📸 שותפו ${files.length} תמונות (${slug})`);
+            // Close the modal after successful share
+            setTimeout(() => {
+                const o = document.getElementById('galleryShareOverlay');
+                if (o) o.remove();
+            }, 800);
         } catch (e) {
-            if (status) status.textContent = '⚠ הדפדפן חסם גישה ללוח. הקישור: ' + url;
+            if (e.name === 'AbortError') { setStatus('בוטל'); return; }
+            setStatus('⚠ שגיאה: ' + e.message);
         }
     }
 
+    async _downloadSelected(leadId) {
+        const status = document.getElementById('galleryStatus');
+        const setStatus = (s) => { if (status) status.textContent = s; };
+        const slug = document.getElementById('gal_slug').value;
+        const filenames = this._selectedPhotoFilenames();
+        if (!filenames.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+        // Trigger individual downloads — browsers will queue them. User then drags into WhatsApp Web.
+        for (let i = 0; i < filenames.length; i++) {
+            const name = filenames[i];
+            const url = `/static/event_photos/${slug}/full/${name}`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            // small delay so the browser doesn't choke
+            await new Promise(r => setTimeout(r, 150));
+        }
+        setStatus(`✔ הורדו ${filenames.length} תמונות. גרור/י אותן ל-WhatsApp.`);
+        this._logGallerySend(leadId, `📸 הורדו ${filenames.length} תמונות לשליחה ידנית (${slug})`);
+    }
+
     async _logGallerySend(leadId, payload) {
-        // Log the gallery share as a WhatsApp-style activity on the lead.
-        // payload is either the full WhatsApp text (when sending) or the URL (when copying).
         try {
             await fetch(`/leads/${leadId}/whatsapp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: '📸 נשלחה גלריית תמונות:\n' + payload,
-                    direction: 'sent'
-                })
+                body: JSON.stringify({ text: payload, direction: 'sent' })
             });
         } catch (e) { /* non-fatal */ }
     }
