@@ -2636,12 +2636,15 @@ def create_offer(lead_id):
             return jsonify({'error': 'Unauthorized for this lead'}), 403
 
         israel_now = datetime.now(pytz.timezone('Asia/Jerusalem'))
+        # adult_count is free-form text (e.g. "60" or "50-70") — pass through as a string.
+        adult_count_raw = body.get('adult_count')
+        adult_count_str = (str(adult_count_raw) if adult_count_raw is not None else '').strip() or '60'
         data = {
             'customer_name': (body.get('customer_name') or lead['name'] or '').strip(),
             'event_date': (body.get('event_date') or '').strip(),
             'event_time': (body.get('event_time') or '').strip(),
             'event_location': (body.get('event_location') or DEFAULT_OFFER_VENUE).strip(),
-            'adult_count': int(body.get('adult_count') or 0),
+            'adult_count': adult_count_str,
             'kid_count_6_11': int(body.get('kid_count_6_11') or 0),
             'kid_count_under_6': int(body.get('kid_count_under_6') or 0),
             'with_fish': bool(body.get('with_fish', True)),
@@ -2666,7 +2669,7 @@ def create_offer(lead_id):
 
         user_name = session.get('full_name', session.get('username', 'אנונימי'))
         fish_tag = '' if data['with_fish'] else ' (ללא דגים)'
-        desc = (f"📄 הצעת מחיר עבור {data['customer_name']} · "
+        desc = (f"📄 הצעה נוצרה עבור {data['customer_name']} · "
                 f"{data['event_date']}{(' ' + data['event_time']) if data['event_time'] else ''} · "
                 f"מנת מבוגר ₪{data['adult_price']}{fish_tag}, ילדים ₪{data['kid_price']}")
 
@@ -2729,6 +2732,71 @@ def view_offer(lead_id, activity_id):
     except Exception as e:
         logger.error(f"view_offer error: {e}")
         return (f'Error: {e}', 500)
+
+
+@app.route('/leads/<int:lead_id>/offer/<int:activity_id>/mark-sent', methods=['POST'])
+@login_required
+def mark_offer_sent(lead_id, activity_id):
+    """Mark an offer as actually sent to the customer: flips lead status to 'offer_sent',
+    logs an activity, and stamps sent_at on the offer metadata."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """
+            SELECT a.activity_metadata, l.customer_id, l.status
+            FROM lead_activities a JOIN leads l ON l.id = a.lead_id
+            WHERE a.id = %s AND a.lead_id = %s AND a.activity_type = 'offer_sent'
+            """,
+            (activity_id, lead_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Offer not found'}), 404
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and row['customer_id'] != scope_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        meta = dict(row['activity_metadata'] or {})
+        israel_now = datetime.now(pytz.timezone('Asia/Jerusalem'))
+        meta['sent_at'] = israel_now.isoformat()
+        meta['sent_by'] = session.get('full_name', session.get('username', ''))
+
+        user_name = session.get('full_name', session.get('username', 'אנונימי'))
+
+        cur2 = conn.cursor()
+        # 1) stamp the offer activity
+        cur2.execute(
+            'UPDATE lead_activities SET activity_metadata = %s::jsonb WHERE id = %s',
+            (json.dumps(meta), activity_id),
+        )
+        # 2) log a separate "sent" activity
+        cur2.execute(
+            """
+            INSERT INTO lead_activities (lead_id, user_name, activity_type, description, activity_metadata)
+            VALUES (%s, %s, %s, %s, %s::jsonb)
+            """,
+            (lead_id, user_name, 'status_change',
+             f'📤 הצעה נשלחה ללקוח (הצעה #{activity_id})',
+             json.dumps({'related_offer_id': activity_id})),
+        )
+        # 3) flip lead status to offer_sent if it isn't already past it
+        terminal = {'offer_sent', 'hired', 'rejected', 'closed'}
+        if row['status'] not in terminal:
+            cur2.execute(
+                "UPDATE leads SET status = 'offer_sent', updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                (lead_id,),
+            )
+        conn.commit()
+        cur2.close(); cur.close(); conn.close()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f"mark_offer_sent error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/leads/<int:lead_id>/offer/<int:activity_id>/save-edit', methods=['POST'])

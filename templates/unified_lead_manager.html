@@ -1238,7 +1238,7 @@ class UnifiedLeadManagerClass {
                         ${lead.phone ? `
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}"
                                target="_blank" class="action-btn btn-whatsapp"
-                               title="פתח WhatsApp עם ${lead.name || 'ליד'} (${lead.phone})">💬</a>
+                               title="פתח WhatsApp עם ${lead.name || 'ליד'} (${this.formatPhoneForDisplay(lead.phone)})">💬</a>
                             <button class="action-btn btn-whatsapp"
                                     onclick="window.UnifiedLeadManager.openFirstMessage(${lead.id})"
                                     style="background:#8b5cf6;"
@@ -1306,7 +1306,7 @@ class UnifiedLeadManagerClass {
                                title="התקשר ל-${lead.name || 'ליד'}: ${this.formatPhoneForDisplay(lead.phone)}">📞</a>
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}"
                                target="_blank" class="action-btn btn-whatsapp"
-                               title="פתח WhatsApp עם ${lead.name || 'ליד'}: ${lead.phone}">💬</a>
+                               title="פתח WhatsApp עם ${lead.name || 'ליד'}: ${this.formatPhoneForDisplay(lead.phone)}">💬</a>
                             <button class="action-btn btn-whatsapp"
                                     onclick="event.stopPropagation(); window.UnifiedLeadManager.openFirstMessage(${lead.id})"
                                     style="background:#8b5cf6;"
@@ -1786,7 +1786,21 @@ class UnifiedLeadManagerClass {
         return labels[type] || type;
     }
 
-    openOfferForm(leadId, defaultName) {
+    async openOfferForm(leadId, defaultName) {
+        // Pull lead's raw_data so we can pre-fill the form from the customer's form answers
+        let rawData = {};
+        try {
+            const res = await fetch(`/leads/${leadId}`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                const lead = data.lead || data;
+                rawData = (typeof lead.raw_data === 'string' ? JSON.parse(lead.raw_data) : (lead.raw_data || {}));
+            }
+        } catch (e) { /* fall back to blank defaults */ }
+        // Try a few common Hebrew/English keys the customer might have answered
+        const eventDateDefault = rawData['תאריך אירוע'] || rawData['תאריך'] || rawData['date'] || rawData['event_date'] || '';
+        const headcountDefault = rawData['כמות אנשים'] || rawData['מספר משתתפים'] || rawData['headcount'] || '60';
+
         const existing = document.getElementById('offerFormOverlay');
         if (existing) existing.remove();
         const overlay = document.createElement('div');
@@ -1806,19 +1820,19 @@ class UnifiedLeadManagerClass {
                     </div>
                     <div>
                         <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">תאריך האירוע</label>
-                        <input id="of_date" type="text" placeholder="לדוגמה: 8/8 יום שישי" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                        <input id="of_date" type="text" value="${(eventDateDefault + '').replace(/"/g, '&quot;')}" placeholder="לדוגמה: 8/8 יום שישי / אוקטובר / 12/10 או 21/10" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
                     <div>
-                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">שעה</label>
-                        <input id="of_time" type="text" placeholder="14:00" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">שעה (אופציונלי)</label>
+                        <input id="of_time" type="text" placeholder="14:00 / שעות הערב" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
                     <div style="grid-column:1 / -1;">
                         <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מיקום</label>
                         <input id="of_location" type="text" value="אלחנן משמרות, דרך משמרות, פרדס חנה כרכור" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
                     <div>
-                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">מבוגרים</label>
-                        <input id="of_adults" type="number" value="60" min="0" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
+                        <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">כמות אנשים</label>
+                        <input id="of_adults" type="text" value="${(headcountDefault + '').replace(/"/g, '&quot;')}" placeholder="לדוגמה: 60 / 50-70" style="width:100%; padding:8px; border:1px solid #fde68a; border-radius:6px;">
                     </div>
                     <div>
                         <label style="display:block; font-size:13px; font-weight:600; color:#78350f; margin-bottom:3px;">ילדים 6-11</label>
@@ -1875,7 +1889,7 @@ class UnifiedLeadManagerClass {
             event_date: $('of_date').value.trim(),
             event_time: $('of_time').value.trim(),
             event_location: $('of_location').value.trim(),
-            adult_count: parseInt($('of_adults').value || 0, 10),
+            adult_count: $('of_adults').value.trim(),
             kid_count_6_11: parseInt($('of_kids_6_11').value || 0, 10),
             kid_count_under_6: parseInt($('of_kids_under_6').value || 0, 10),
             with_fish: $('of_with_fish').checked,
@@ -1898,7 +1912,8 @@ class UnifiedLeadManagerClass {
             const overlay = document.getElementById('offerFormOverlay');
             if (overlay) overlay.remove();
             window.open(data.view_url, '_blank');
-            await this.maybePromptStatusToOfferSent(leadId);
+            // Status is NOT auto-flipped here — the offer was just created, not yet sent.
+            // Sales rep will click "📤 סמן כנשלחה" on the offer page after actually sending it.
             this.viewLead(leadId);
         } catch (e) {
             status.textContent = '⚠ ' + e.message;

@@ -47,6 +47,13 @@
     <button class="btn btn-edit" id="editBtn" onclick="toggleEdit()">✏️ ערוך טקסט</button>
     <button class="btn btn-save" id="saveBtn" onclick="saveEdit()" style="display:none;">💾 שמור שינויים</button>
     <button class="btn btn-cancel" id="cancelBtn" onclick="cancelEdit()" style="display:none;">ביטול</button>
+    {% if data.sent_at %}
+        <span style="background:#dcfce7; color:#14532d; padding:9px 14px; border-radius:6px; font-weight:600; font-size:13px;">
+            ✔ נשלחה ב-{{ data.sent_at[:16].replace('T', ' ') }}{% if data.sent_by %} ע״י {{ data.sent_by }}{% endif %}
+        </span>
+    {% else %}
+        <button class="btn" id="markSentBtn" onclick="markSent()" style="background:#16a34a; color:white;">📤 סמן כנשלחה ללקוח</button>
+    {% endif %}
     <span class="edit-hint" id="editHint" style="display:none;">לחץ על כל טקסט כדי לערוך · Enter ליצירת שורה חדשה · לחץ "שמור" כשסיימת</span>
 </div>
 
@@ -185,6 +192,22 @@ function cancelEdit() {
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('cancelBtn').style.display = 'none';
     document.getElementById('editHint').style.display = 'none';
+}
+
+async function markSent() {
+    if (!confirm('לסמן את ההצעה כנשלחה ללקוח?\nהפעולה תעדכן את סטטוס הליד ל-"נשלחה הצעה".')) return;
+    const btn = document.getElementById('markSentBtn');
+    btn.disabled = true; btn.textContent = '⏳ מסמן...';
+    try {
+        const url = window.location.pathname + '/mark-sent';
+        const res = await fetch(url, { method: 'POST', credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'שגיאה');
+        location.reload();
+    } catch (e) {
+        btn.disabled = false; btn.textContent = '📤 סמן כנשלחה ללקוח';
+        alert('שגיאה: ' + e.message);
+    }
 }
 
 async function saveEdit() {
