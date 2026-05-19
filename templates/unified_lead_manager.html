@@ -1871,13 +1871,19 @@ class UnifiedLeadManagerClass {
     }
 
     _buildGalleryUrl() {
+        // Clean URL only — no query params. The personal greeting goes in the WhatsApp body,
+        // so the link the customer sees stays short and readable.
         const slug = document.getElementById('gal_slug').value;
+        return `${window.location.origin}/gallery/${slug}`;
+    }
+
+    _buildWhatsappText() {
+        // The text that becomes the WhatsApp message body: greeting + custom message + clean URL.
         const to = document.getElementById('gal_to').value.trim();
         const msg = document.getElementById('gal_msg').value.trim();
-        const params = new URLSearchParams();
-        if (to) params.set('to', to);
-        if (msg) params.set('msg', msg);
-        return `${window.location.origin}/gallery/${slug}${params.toString() ? '?' + params.toString() : ''}`;
+        const url = this._buildGalleryUrl();
+        const greeting = `שלום${to ? ' ' + to : ''},`;
+        return `${greeting}\n\n${msg}\n\n${url}`;
     }
 
     previewGallery() {
@@ -1885,12 +1891,10 @@ class UnifiedLeadManagerClass {
     }
 
     sendGalleryViaWhatsapp(waPhone, leadId) {
-        const url = this._buildGalleryUrl();
-        const to = document.getElementById('gal_to').value.trim();
-        const intro = `שלום${to ? ' ' + to : ''},\nמצרף גלריית תמונות מאירוע אצלנו:\n`;
-        const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(intro + url)}`;
+        const text = this._buildWhatsappText();
+        const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`;
         window.open(waUrl, '_blank');
-        this._logGallerySend(leadId, url);
+        this._logGallerySend(leadId, text);
     }
 
     async copyGalleryLink(leadId) {
@@ -1898,21 +1902,22 @@ class UnifiedLeadManagerClass {
         const status = document.getElementById('galleryStatus');
         try {
             await navigator.clipboard.writeText(url);
-            if (status) status.textContent = '✔ הקישור הועתק ללוח';
+            if (status) status.textContent = '✔ הקישור הועתק ללוח (' + url + ')';
             this._logGallerySend(leadId, url);
         } catch (e) {
             if (status) status.textContent = '⚠ הדפדפן חסם גישה ללוח. הקישור: ' + url;
         }
     }
 
-    async _logGallerySend(leadId, url) {
-        // Log the gallery share as a WhatsApp-style activity on the lead
+    async _logGallerySend(leadId, payload) {
+        // Log the gallery share as a WhatsApp-style activity on the lead.
+        // payload is either the full WhatsApp text (when sending) or the URL (when copying).
         try {
             await fetch(`/leads/${leadId}/whatsapp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    text: '📸 נשלחה גלריית תמונות: ' + url,
+                    text: '📸 נשלחה גלריית תמונות:\n' + payload,
                     direction: 'sent'
                 })
             });
