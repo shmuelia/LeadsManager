@@ -1355,17 +1355,9 @@
                                 <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.whatsappLead(event, '${lead.phone}')">
                                     💬 WhatsApp
                                 </button>
-                                <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.openQuickWhatsappLog(${lead.id})" style="background:#16a34a; color:white;">
-                                    📋 תעד WA
-                                </button>
                                 <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.openFirstMessage(${lead.id})" style="background:#8b5cf6; color:white;">
                                     ✨ הודעה ראשונה
                                 </button>` : ''}
-                                ${this.canAssign() ? `
-                                <button class="action-btn-enhanced haptic-light" onclick="event.stopPropagation(); leadManager.assignLead(${lead.id})" title="הקצה למשתמש">
-                                    👤 הקצה
-                                </button>
-                                ` : ''}
                                 <button class="action-btn-enhanced action-btn-primary haptic-light" onclick="event.stopPropagation(); leadManager.viewDetails(event, ${lead.id})">
                                     👁️ פרטים
                                 </button>

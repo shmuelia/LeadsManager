@@ -1232,34 +1232,16 @@ class UnifiedLeadManagerClass {
                                title="בחר את הליד ${lead.name || 'זה'} לביצוע פעולות קבוצתיות">
                     </td>
                     <td>
-                        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.viewLead(${lead.id})" 
-                                title="הצג פרטים מלאים ופעילויות של ${lead.name || 'הליד'}">👁️</button>
+                        <button class="action-btn btn-primary" onclick="window.UnifiedLeadManager.viewLead(${lead.id})"
+                                title="פרטים, אימייל, שיוך, מחיקה, הצעת מחיר, WhatsApp ועוד">👁️</button>
                         ${lead.phone ? `
-                            <a href="tel:${lead.phone}" class="action-btn btn-call" 
-                               title="התקשר ל-${lead.name || 'ליד'} בטלפון ${lead.phone}">📞</a>
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}"
                                target="_blank" class="action-btn btn-whatsapp"
-                               title="שלח הודעת WhatsApp ל-${lead.name || 'ליד'} (${lead.phone})">💬</a>
-                            <button class="action-btn btn-whatsapp"
-                                    onclick="window.UnifiedLeadManager.openQuickWhatsappLog(${lead.id})"
-                                    style="background:#16a34a;"
-                                    title="תעד התכתבות WhatsApp עם ${lead.name || 'ליד'} (הדבק מהלוח)">📋</button>
+                               title="פתח WhatsApp עם ${lead.name || 'ליד'} (${lead.phone})">💬</a>
                             <button class="action-btn btn-whatsapp"
                                     onclick="window.UnifiedLeadManager.openFirstMessage(${lead.id})"
                                     style="background:#8b5cf6;"
-                                    title="צור הודעה ראשונה מותאמת ל-${lead.name || 'ליד'}">✨</button>
-                        ` : ''}
-                        ${lead.email ? `
-                            <a href="mailto:${lead.email}" class="action-btn btn-email"
-                               title="שלח אימייל ל-${lead.name || 'ליד'} בכתובת ${lead.email}">✉️</a>
-                        ` : ''}
-                        ${this.canAssign() ? `
-                            <button class="action-btn btn-assign" onclick="window.UnifiedLeadManager.quickAssign(${lead.id})"
-                                    title="הקצה את הליד ${lead.name || 'זה'} למשתמש אחר">👤</button>
-                        ` : ''}
-                        ${this.userRole === 'admin' ? `
-                            <button class="action-btn btn-delete" onclick="window.UnifiedLeadManager.deleteLead(${lead.id})"
-                                    title="מחק את הליד ${lead.name || 'זה'} לצמיתות (מנהל בלבד)">🗑️</button>
+                                    title="הודעה ראשונה מותאמת ל-${lead.name || 'ליד'}">✨</button>
                         ` : ''}
                     </td>
                     <td>
@@ -1316,34 +1298,18 @@ class UnifiedLeadManagerClass {
                     </div>
                     
                     <div class="lead-card-actions">
-                        <button class="action-btn btn-primary" onclick="event.stopPropagation(); window.UnifiedLeadManager.viewLead(${lead.id})" 
-                                title="צפה בפרטים המלאים של ${lead.name || 'הליד'}">👁️</button>
+                        <button class="action-btn btn-primary" onclick="event.stopPropagation(); window.UnifiedLeadManager.viewLead(${lead.id})"
+                                title="פרטים, אימייל, שיוך, מחיקה, הצעת מחיר, WhatsApp ועוד">👁️</button>
                         ${lead.phone ? `
-                            <a href="tel:${lead.phone}" class="action-btn btn-call" 
+                            <a href="tel:${lead.phone}" class="action-btn btn-call"
                                title="התקשר ל-${lead.name || 'ליד'}: ${lead.phone}">📞</a>
                             <a href="https://wa.me/${this.formatPhoneForWhatsApp(lead.phone)}"
                                target="_blank" class="action-btn btn-whatsapp"
                                title="פתח WhatsApp עם ${lead.name || 'ליד'}: ${lead.phone}">💬</a>
                             <button class="action-btn btn-whatsapp"
-                                    onclick="event.stopPropagation(); window.UnifiedLeadManager.openQuickWhatsappLog(${lead.id})"
-                                    style="background:#16a34a;"
-                                    title="תעד התכתבות WhatsApp עם ${lead.name || 'הליד'}">📋</button>
-                            <button class="action-btn btn-whatsapp"
                                     onclick="event.stopPropagation(); window.UnifiedLeadManager.openFirstMessage(${lead.id})"
                                     style="background:#8b5cf6;"
-                                    title="צור הודעה ראשונה מותאמת ל-${lead.name || 'הליד'}">✨</button>
-                        ` : ''}
-                        ${lead.email ? `
-                            <a href="mailto:${lead.email}" class="action-btn btn-email"
-                               title="שלח אימייל ל-${lead.name || 'ליד'}: ${lead.email}">✉️</a>
-                        ` : ''}
-                        ${this.canAssign() ? `
-                            <button class="action-btn btn-assign" onclick="event.stopPropagation(); window.UnifiedLeadManager.quickAssign(${lead.id})"
-                                    title="הקצה את ${lead.name || 'הליד'} למשתמש אחר">👤</button>
-                        ` : ''}
-                        ${this.userRole === 'admin' ? `
-                            <button class="action-btn btn-delete" onclick="event.stopPropagation(); window.UnifiedLeadManager.deleteLead(${lead.id})"
-                                    title="מחק את ${lead.name || 'הליד'} לצמיתות (מנהל בלבד)">🗑️</button>
+                                    title="הודעה ראשונה מותאמת ל-${lead.name || 'הליד'}">✨</button>
                         ` : ''}
                     </div>
                 </div>
@@ -1728,6 +1694,17 @@ class UnifiedLeadManagerClass {
                     `).join('') : '<div style="text-align: center; color: #6b7280; font-style: italic; padding: 40px;">אין פעילויות רשומות עדיין</div>'}
                 </div>
             </div>
+
+            ${this.userRole === 'admin' ? `
+            <div style="margin-top: 18px; padding: 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;">
+                <div style="font-weight: 600; color: #991b1b; margin-bottom: 6px;">⚠ אזור מסוכן</div>
+                <button onclick="window.UnifiedLeadManager.deleteLead(${lead.id})"
+                        style="background: #dc2626; color: white; padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    🗑️ מחק ליד לצמיתות
+                </button>
+                <span style="margin-right: 10px; font-size: 12px; color: #7f1d1d;">המחיקה לא ניתנת לביטול. כל הפעילות תימחק.</span>
+            </div>
+            ` : ''}
         `;
 
         modal.style.display = 'block';
