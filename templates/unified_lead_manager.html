@@ -1859,9 +1859,10 @@ class UnifiedLeadManagerClass {
 
                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
                     ${canShareFiles ? `
-                        <button type="button" onclick="window.UnifiedLeadManager._shareSelected(${leadId})"
+                        <button type="button" id="gal_shareBtn" data-stage="prepare"
+                                onclick="window.UnifiedLeadManager._shareButtonClicked(${leadId})"
                                 style="background:#16a34a; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
-                            📲 שתף תמונות (WhatsApp / אחר)
+                            📲 הכן תמונות לשיתוף
                         </button>` : ''}
                     <button type="button" onclick="window.UnifiedLeadManager._downloadSelected(${leadId})"
                             style="background:#2563eb; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:600; font-size:14px;">
@@ -1952,26 +1953,52 @@ class UnifiedLeadManagerClass {
         return files;
     }
 
-    async _shareSelected(leadId) {
+    // Two-step: first click pre-fetches files (browsers consume the user gesture during the
+    // async fetch), second click calls navigator.share synchronously with a FRESH gesture.
+    async _shareButtonClicked(leadId) {
+        const btn = document.getElementById('gal_shareBtn');
         const status = document.getElementById('galleryStatus');
         const setStatus = (s) => { if (status) status.textContent = s; };
         const slug = document.getElementById('gal_slug').value;
-        const cells = this._selectedPhotoCells();
-        if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
-        try {
-            const files = await this._fetchSelectedAsFiles(cells, setStatus);
-            setStatus('📲 פותח חלון שיתוף...');
-            await navigator.share({ files, title: 'אלחנן תרבות לחם' });
-            setStatus(`✔ ${files.length} תמונות שותפו`);
-            this._logGallerySend(leadId, `📸 שותפו ${files.length} תמונות (${slug})`);
-            setTimeout(() => {
-                const o = document.getElementById('galleryShareOverlay');
-                if (o) o.remove();
-            }, 800);
-        } catch (e) {
-            if (e.name === 'AbortError') { setStatus('בוטל'); return; }
-            setStatus('⚠ שגיאה: ' + e.message);
+
+        if (btn.dataset.stage === 'prepare') {
+            // Step 1: pre-fetch selected files into memory
+            const cells = this._selectedPhotoCells();
+            if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+            btn.disabled = true;
+            btn.style.background = '#94a3b8';
+            try {
+                this._cachedShareFiles = await this._fetchSelectedAsFiles(cells, setStatus);
+                this._cachedShareSlug = slug;
+                btn.disabled = false;
+                btn.style.background = '#dc2626';
+                btn.textContent = `📲 לחץ עכשיו לשיתוף (${this._cachedShareFiles.length} תמונות מוכנות)`;
+                btn.dataset.stage = 'share';
+                setStatus('✔ מוכן - לחץ שוב כדי לפתוח את חלון השיתוף');
+            } catch (e) {
+                btn.disabled = false;
+                btn.style.background = '#16a34a';
+                setStatus('⚠ ' + e.message);
+            }
+            return;
         }
+
+        // Step 2: share immediately (synchronous-from-click) — keeps the user-activation gesture
+        const files = this._cachedShareFiles || [];
+        if (!files.length) { setStatus('⚠ אין תמונות מוכנות - לחץ שוב'); btn.dataset.stage = 'prepare'; return; }
+        navigator.share({ files, title: 'אלחנן תרבות לחם' })
+            .then(() => {
+                setStatus(`✔ ${files.length} תמונות שותפו`);
+                this._logGallerySend(leadId, `📸 שותפו ${files.length} תמונות (${this._cachedShareSlug})`);
+                setTimeout(() => {
+                    const o = document.getElementById('galleryShareOverlay');
+                    if (o) o.remove();
+                }, 800);
+            })
+            .catch((e) => {
+                if (e.name === 'AbortError') { setStatus('בוטל'); }
+                else { setStatus('⚠ שגיאה: ' + (e.message || e)); }
+            });
     }
 
     async _downloadSelected(leadId) {
