@@ -1543,17 +1543,19 @@ class UnifiedLeadManagerClass {
 
 
             ${Object.keys(rawData).length > 0 ? `
-                <!-- Form Responses -->
-                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);">
-                    <h3 style="color: #92400e; margin: 0 0 20px 0; font-size: 1.4em;">✍️ תשובות הטופס</h3>
-                    <div style="display: grid; gap: 16px;">
+                <!-- Form Responses (collapsed by default to keep the popup compact) -->
+                <details style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; border: 1px solid #f59e0b;">
+                    <summary style="cursor: pointer; color: #92400e; font-weight: 600; font-size: 14px; padding: 4px 0;">
+                        ✍️ תשובות הטופס (גולמי)
+                    </summary>
+                    <div style="display: grid; gap: 8px; margin-top: 10px;">
                         ${(() => {
                             // Filter out system fields and show form responses
-                            const systemFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name', 
-                                                'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name', 
+                            const systemFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name',
+                                                'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name',
                                                 'Form Name', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
                                                 'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at', 'status', 'assigned_to', 'priority', 'notes', 'updated_at'];
-                            
+
                             return Object.entries(rawData)
                             .filter(([key, value]) => {
                                 return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
@@ -1563,21 +1565,17 @@ class UnifiedLeadManagerClass {
                                 if (typeof value === 'object') {
                                     displayValue = JSON.stringify(value, null, 2);
                                 }
-                                
+
                                 return `
-                                    <div style="padding: 15px; background: rgba(255,255,255,0.8); border-radius: 8px; border: 1px solid #fbbf24;">
-                                        <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px; font-size: 16px;">
-                                            ${key}
-                                        </div>
-                                        <div style="color: #4b5563; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
-                                            ${displayValue}
-                                        </div>
+                                    <div style="padding: 8px 10px; background: rgba(255,255,255,0.7); border-radius: 6px; border: 1px solid #fde68a; font-size: 12px;">
+                                        <span style="font-weight: 600; color: #78350f;">${key}:</span>
+                                        <span style="color: #4b5563; white-space: pre-wrap;"> ${displayValue}</span>
                                     </div>
                                 `;
                             }).join('');
                         })()}
                     </div>
-                </div>
+                </details>
 
                 <!-- Additional Fields -->
                 ${rawData['Partner Name'] || rawData['Retailer Item Id'] || rawData['Vehicle'] ? `
