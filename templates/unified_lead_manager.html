@@ -1813,12 +1813,25 @@ class UnifiedLeadManagerClass {
         }
         const defaultGallery = galleries[0];
 
-        // Detect Web-Share-with-files support (Android Chrome, Edge, modern Safari, Chrome desktop).
+        // Detect platform — navigator.share with files works reliably on mobile;
+        // on desktop browsers (Windows/macOS) it's hit-or-miss because WhatsApp may not
+        // be a registered system share target. We use download+open WhatsApp Web there.
+        const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         let canShareFiles = false;
-        try {
-            const probe = new File(['x'], 'x.jpg', { type: 'image/jpeg' });
-            canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
-        } catch (e) { canShareFiles = false; }
+        if (isMobile) {
+            try {
+                const probe = new File(['x'], 'x.jpg', { type: 'image/jpeg' });
+                canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+            } catch (e) { canShareFiles = false; }
+        }
+        // Compute WhatsApp phone (Israeli normalization) for opening web.whatsapp.com on desktop
+        const cleanPhone = (phone + '').replace(/[^0-9]/g, '');
+        let waPhone = cleanPhone;
+        if (cleanPhone.startsWith('9720')) waPhone = '972' + cleanPhone.substring(4);
+        else if (cleanPhone.startsWith('972')) waPhone = cleanPhone;
+        else if (cleanPhone.startsWith('0')) waPhone = '972' + cleanPhone.substring(1);
+        else if (cleanPhone) waPhone = '972' + cleanPhone;
+        this._galleryShareCtx = { leadId, waPhone, isMobile, canShareFiles };
 
         // Thumbnails will be populated AFTER fetching the photo list from /api/galleries/<slug>/photos
         const initialThumbsPlaceholder = '<div style="grid-column:1/-1; padding:20px; text-align:center; color:#94a3b8;">⏳ טוען תמונות...</div>';
@@ -1852,21 +1865,20 @@ class UnifiedLeadManagerClass {
                     ${initialThumbsPlaceholder}
                 </div>
 
-                ${!canShareFiles ? `
-                    <div style="background:#fef3c7; border:1px solid #fbbf24; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#78350f;">
-                        ⚠ הדפדפן הזה לא תומך בשיתוף קבצים ישירות. ניתן להוריד את התמונות הנבחרות ולגרור ל-WhatsApp ידנית.
+                ${!isMobile ? `
+                    <div style="background:#eff6ff; border:1px solid #93c5fd; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#1e3a8a;">
+                        💡 הזרימה במחשב: התמונות יורדות וחלון WhatsApp Web נפתח. גרור/י את התמונות מסרגל ההורדות (בתחתית הדפדפן) לתוך הצ׳אט.
                     </div>` : ''}
 
                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    ${canShareFiles ? `
-                        <button type="button" id="gal_shareBtn" data-stage="prepare"
-                                onclick="window.UnifiedLeadManager._shareButtonClicked(${leadId})"
-                                style="background:#16a34a; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
-                            📲 הכן תמונות לשיתוף
-                        </button>` : ''}
+                    <button type="button" id="gal_primaryBtn"
+                            onclick="window.UnifiedLeadManager._sendPhotos()"
+                            style="background:#16a34a; color:white; padding:11px 20px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
+                        ${isMobile && canShareFiles ? '📲 הכן תמונות לשיתוף' : '📤 הורד ופתח WhatsApp'}
+                    </button>
                     <button type="button" onclick="window.UnifiedLeadManager._downloadSelected(${leadId})"
-                            style="background:#2563eb; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:600; font-size:14px;">
-                        ⬇ הורד נבחרות
+                            style="background:#e5e7eb; color:#1f2937; padding:11px 16px; border:none; border-radius:8px; font-weight:600; font-size:13px;">
+                        ⬇ רק הורד
                     </button>
                 </div>
 
@@ -1953,51 +1965,92 @@ class UnifiedLeadManagerClass {
         return files;
     }
 
-    // Two-step: first click pre-fetches files (browsers consume the user gesture during the
-    // async fetch), second click calls navigator.share synchronously with a FRESH gesture.
-    async _shareButtonClicked(leadId) {
-        const btn = document.getElementById('gal_shareBtn');
+    // Smart "send" — picks the best UX per platform.
+    // - Desktop: downloads selected images + opens WhatsApp Web in a new tab. User drags from the
+    //   download tray into the chat. Most reliable cross-browser path.
+    // - Mobile (Android/iOS): uses the 2-step Web Share API pattern (pre-fetch, then share) so
+    //   the OS share sheet opens with WhatsApp as an option and images attach automatically.
+    _sendPhotos() {
+        const ctx = this._galleryShareCtx || {};
+        if (!ctx.isMobile) {
+            return this._desktopSendPhotos();
+        }
+        return this._mobileSharePhotos();
+    }
+
+    async _desktopSendPhotos() {
+        const status = document.getElementById('galleryStatus');
+        const setStatus = (s) => { if (status) status.textContent = s; };
+        const slug = document.getElementById('gal_slug').value;
+        const cells = this._selectedPhotoCells();
+        if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+        const ctx = this._galleryShareCtx || {};
+
+        // 1) Open WhatsApp Web FIRST (in a new tab) — must be triggered from the click
+        //    handler synchronously, otherwise the popup blocker kicks in.
+        let waOpened = false;
+        if (ctx.waPhone) {
+            const waUrl = `https://web.whatsapp.com/send?phone=${ctx.waPhone}`;
+            const win = window.open(waUrl, '_blank');
+            waOpened = !!win;
+        }
+
+        // 2) Download the selected images
+        setStatus(`⏳ מוריד ${cells.length} תמונות...`);
+        for (let i = 0; i < cells.length; i++) {
+            const url = cells[i].getAttribute('data-full');
+            const name = cells[i].getAttribute('data-name') || `photo-${i+1}.jpg`;
+            const a = document.createElement('a');
+            a.href = url; a.download = name;
+            document.body.appendChild(a); a.click(); a.remove();
+            await new Promise(r => setTimeout(r, 120));
+        }
+        setStatus(`✔ הורדו ${cells.length} תמונות${waOpened ? '. גרור/י אותן לחלון WhatsApp שנפתח.' : '. פתח/י WhatsApp Web וגרור/י אותן לצ׳אט.'}`);
+        this._logGallerySend(this._galleryShareCtx.leadId, `📸 הורדו ${cells.length} תמונות (${slug}) ונפתח WhatsApp Web`);
+    }
+
+    // Mobile two-step: first click pre-fetches files; second click calls navigator.share synchronously
+    async _mobileSharePhotos() {
+        const btn = document.getElementById('gal_primaryBtn');
         const status = document.getElementById('galleryStatus');
         const setStatus = (s) => { if (status) status.textContent = s; };
         const slug = document.getElementById('gal_slug').value;
 
+        if (!btn.dataset.stage) btn.dataset.stage = 'prepare';
+
         if (btn.dataset.stage === 'prepare') {
-            // Step 1: pre-fetch selected files into memory
             const cells = this._selectedPhotoCells();
             if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
-            btn.disabled = true;
-            btn.style.background = '#94a3b8';
+            btn.disabled = true; btn.style.background = '#94a3b8';
             try {
                 this._cachedShareFiles = await this._fetchSelectedAsFiles(cells, setStatus);
                 this._cachedShareSlug = slug;
-                btn.disabled = false;
-                btn.style.background = '#dc2626';
-                btn.textContent = `📲 לחץ עכשיו לשיתוף (${this._cachedShareFiles.length} תמונות מוכנות)`;
+                btn.disabled = false; btn.style.background = '#dc2626';
+                btn.textContent = `📲 לחץ עכשיו לשיתוף (${this._cachedShareFiles.length})`;
                 btn.dataset.stage = 'share';
-                setStatus('✔ מוכן - לחץ שוב כדי לפתוח את חלון השיתוף');
+                setStatus('✔ מוכן - לחץ שוב לפתיחת חלון שיתוף');
             } catch (e) {
-                btn.disabled = false;
-                btn.style.background = '#16a34a';
+                btn.disabled = false; btn.style.background = '#16a34a';
                 setStatus('⚠ ' + e.message);
             }
             return;
         }
 
-        // Step 2: share immediately (synchronous-from-click) — keeps the user-activation gesture
+        // stage === 'share': call synchronously (no awaits before share)
         const files = this._cachedShareFiles || [];
-        if (!files.length) { setStatus('⚠ אין תמונות מוכנות - לחץ שוב'); btn.dataset.stage = 'prepare'; return; }
+        if (!files.length) { setStatus('⚠ אין תמונות'); btn.dataset.stage = 'prepare'; return; }
         navigator.share({ files, title: 'אלחנן תרבות לחם' })
             .then(() => {
-                setStatus(`✔ ${files.length} תמונות שותפו`);
-                this._logGallerySend(leadId, `📸 שותפו ${files.length} תמונות (${this._cachedShareSlug})`);
+                setStatus(`✔ ${files.length} שותפו`);
+                this._logGallerySend(this._galleryShareCtx.leadId, `📸 שותפו ${files.length} תמונות (${this._cachedShareSlug})`);
                 setTimeout(() => {
                     const o = document.getElementById('galleryShareOverlay');
                     if (o) o.remove();
-                }, 800);
+                }, 600);
             })
             .catch((e) => {
-                if (e.name === 'AbortError') { setStatus('בוטל'); }
-                else { setStatus('⚠ שגיאה: ' + (e.message || e)); }
+                if (e.name === 'AbortError') setStatus('בוטל');
+                else setStatus('⚠ שגיאה: ' + (e.message || e) + ' - נסה/י "⬇ רק הורד"');
             });
     }
 
