@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ניהול גלריות תמונות - מנהל מערכת</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", "Arial Hebrew", Arial, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #1e293b; }
+    .wrap { max-width: 1200px; margin: 0 auto; }
+    .header { background: white; border-radius: 14px; padding: 18px 22px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .build { font-size: 11px; color: #64748b; }
+    .nav-back { background: #6366f1; color: white; padding: 9px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; }
+    .card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 18px; }
+    .btn { padding: 9px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-primary { background: #6366f1; color: white; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+    .gallery-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+    .gallery-card-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .gallery-title { font-size: 17px; font-weight: 700; color: #4f46e5; }
+    .gallery-meta { font-size: 12px; color: #64748b; }
+    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin-top: 10px; }
+    .thumb-cell { position: relative; aspect-ratio: 1/1; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .thumb-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb-del { position: absolute; top: 4px; left: 4px; background: rgba(220,38,38,0.85); color: white; border: none; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 1; }
+    .upload-zone { border: 2px dashed #cbd5e1; border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+    .upload-zone:hover { border-color: #6366f1; background: #f8fafc; }
+    .upload-zone.dragover { border-color: #16a34a; background: #f0fdf4; }
+    .status { margin-top: 8px; font-size: 13px; color: #64748b; min-height: 18px; }
+    .create-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
+    @media (max-width: 600px) { .create-form { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="header">
+        <div>
+            <h1>📸 ניהול גלריות תמונות</h1>
+            <div class="build">v{{ version }} · {{ build_time }}</div>
+        </div>
+        <a href="/admin" class="nav-back">⬅ חזרה לדשבורד</a>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">➕ יצירת גלריה חדשה</h3>
+        <p style="font-size:13px; color:#64748b;">הגדר slug (מזהה קצר באנגלית, ללא רווחים) ושם תצוגה בעברית.</p>
+        <div class="create-form">
+            <input type="text" id="newSlug" placeholder="לדוגמה: brit-mila-jun-2025" oninput="autoslug(this)">
+            <input type="text" id="newLabel" placeholder="לדוגמה: ברית מילה - יוני 2025">
+            <button class="btn btn-success" onclick="createGallery()">צור</button>
+        </div>
+        <div class="status" id="createStatus"></div>
+    </div>
+
+    <div id="galleryList"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function autoslug(input) {
+    // Auto-suggest a slug from English/digits as user types in the label
+    // (only fills the slug if it's empty)
+}
+
+async function api(url, opts={}) {
+    const r = await fetch(url, { credentials: 'include', ...opts });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    return data;
+}
+
+async function loadGalleries() {
+    try {
+        const data = await api('/admin/galleries/api');
+        const list = data.galleries || [];
+        if (!list.length) {
+            $('galleryList').innerHTML = `<div class="card" style="text-align:center; color:#64748b;">אין עדיין גלריות. צור אחת למעלה.</div>`;
+            return;
+        }
+        $('galleryList').innerHTML = list.map(g => `
+            <div class="card gallery-card" data-slug="${g.slug}">
+                <div class="gallery-card-head">
+                    <div>
+                        <div class="gallery-title">${g.label}</div>
+                        <div class="gallery-meta">slug: <code>${g.slug}</code> · ${g.photo_count} תמונות${g.created_by ? ' · נוצר ע״י ' + g.created_by : ''}</div>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <a class="btn btn-secondary" target="_blank" href="/gallery/${g.slug}">👁 צפה כלקוח</a>
+                        <button class="btn btn-danger" onclick="deleteGallery('${g.slug}', '${g.label.replace(/'/g, "\\'")}')">🗑 מחק גלריה</button>
+                    </div>
+                </div>
+
+                <label class="upload-zone" id="dz_${g.slug}">
+                    <div>📁 גרור/י תמונות לכאן או לחץ/י לבחירה</div>
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">JPG/PNG · יותאמו אוטומטית לגודל אינטרנט</div>
+                    <input type="file" multiple accept="image/*" style="display:none;" onchange="uploadPhotos('${g.slug}', this.files)">
+                </label>
+                <div class="status" id="upload_${g.slug}"></div>
+
+                <div class="thumbs" id="thumbs_${g.slug}"></div>
+            </div>
+        `).join('');
+        // Load photos for each gallery
+        list.forEach(g => loadPhotos(g.slug));
+        // Wire drag & drop
+        list.forEach(g => {
+            const dz = $(`dz_${g.slug}`);
+            dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+            dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+            dz.addEventListener('drop', e => {
+                e.preventDefault();
+                dz.classList.remove('dragover');
+                if (e.dataTransfer.files.length) uploadPhotos(g.slug, e.dataTransfer.files);
+            });
+        });
+    } catch (e) {
+        $('galleryList').innerHTML = `<div class="card" style="color:#dc2626;">שגיאה בטעינה: ${e.message}</div>`;
+    }
+}
+
+async function loadPhotos(slug) {
+    try {
+        const data = await api(`/admin/galleries/${slug}/photos`);
+        const c = $(`thumbs_${slug}`);
+        if (!c) return;
+        const photos = data.photos || [];
+        if (!photos.length) {
+            c.innerHTML = `<div style="grid-column:1/-1; padding:20px; color:#94a3b8; text-align:center;">אין תמונות עדיין</div>`;
+            return;
+        }
+        c.innerHTML = photos.map(p => `
+            <div class="thumb-cell">
+                <img src="/gallery-photo/${p.id}/thumb" alt="${p.filename}">
+                <button class="thumb-del" onclick="deletePhoto('${slug}', ${p.id})" title="מחק">✕</button>
+            </div>
+        `).join('');
+    } catch (e) { console.error(e); }
+}
+
+async function createGallery() {
+    const slug = $('newSlug').value.trim();
+    const label = $('newLabel').value.trim();
+    const status = $('createStatus');
+    if (!slug || !label) { status.textContent = '⚠ slug ושם חובה'; return; }
+    try {
+        await api('/admin/galleries/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, label }),
+        });
+        status.style.color = '#16a34a';
+        status.textContent = '✔ נוצרה';
+        $('newSlug').value = ''; $('newLabel').value = '';
+        loadGalleries();
+    } catch (e) {
+        status.style.color = '#dc2626';
+        status.textContent = '⚠ ' + e.message;
+    }
+}
+
+async function uploadPhotos(slug, fileList) {
+    const status = $(`upload_${slug}`);
+    const files = Array.from(fileList);
+    if (!files.length) return;
+    status.textContent = `⏳ מעלה ${files.length} תמונות...`;
+    const form = new FormData();
+    files.forEach(f => form.append('photos', f));
+    try {
+        const data = await api(`/admin/galleries/${slug}/upload`, { method: 'POST', body: form });
+        status.style.color = '#16a34a';
+        status.textContent = `✔ ${data.saved} עלו, ${data.skipped} נדלגו`;
+        loadPhotos(slug);
+        loadGalleries();
+    } catch (e) {
+        status.style.color = '#dc2626';
+        status.textContent = '⚠ ' + e.message;
+    }
+}
+
+async function deletePhoto(slug, id) {
+    if (!confirm('למחוק את התמונה?')) return;
+    try {
+        await api(`/admin/galleries/${slug}/photos/${id}`, { method: 'DELETE' });
+        loadPhotos(slug);
+        loadGalleries();
+    } catch (e) { alert('שגיאה: ' + e.message); }
+}
+
+async function deleteGallery(slug, label) {
+    if (!confirm(`למחוק את כל הגלריה "${label}"? כל התמונות יימחקו לצמיתות.`)) return;
+    try {
+        await api(`/admin/galleries/${slug}`, { method: 'DELETE' });
+        loadGalleries();
+    } catch (e) { alert('שגיאה: ' + e.message); }
+}
+
+loadGalleries();
+</script>
+</body>
+</html>

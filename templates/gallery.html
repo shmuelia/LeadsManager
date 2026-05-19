@@ -144,8 +144,8 @@
     <div class="gallery-title">📸 תמונות מהאירוע</div>
     <div class="grid">
         {% for p in photos %}
-            <img src="{{ url_for('static', filename='event_photos/' + slug + '/thumb/' + p) }}"
-                 data-full="{{ url_for('static', filename='event_photos/' + slug + '/full/' + p) }}"
+            <img src="{{ p.thumb }}"
+                 data-full="{{ p.full }}"
                  alt="תמונה מאירוע אלחנן {{ loop.index }}"
                  loading="lazy"
                  onclick="openLightbox({{ loop.index0 }})">
@@ -177,7 +177,7 @@
 </div>
 
 <script>
-const FULLS = [{% for p in photos %}"{{ url_for('static', filename='event_photos/' + slug + '/full/' + p) }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+const FULLS = [{% for p in photos %}"{{ p.full }}"{% if not loop.last %}, {% endif %}{% endfor %}];
 let lbIdx = 0;
 function openLightbox(i) { lbIdx = i; show(); document.getElementById('lightbox').classList.add('active'); document.body.style.overflow = 'hidden'; }
 function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); document.body.style.overflow = ''; }

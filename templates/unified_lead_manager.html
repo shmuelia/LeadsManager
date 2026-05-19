@@ -1796,14 +1796,21 @@ class UnifiedLeadManagerClass {
         return labels[type] || type;
     }
 
-    openGalleryShare(leadId, firstName, phone) {
+    async openGalleryShare(leadId, firstName, phone) {
         const existing = document.getElementById('galleryShareOverlay');
         if (existing) existing.remove();
 
-        // Galleries known to the backend (EVENT_GALLERIES) + their photo count.
-        const galleries = [
-            { slug: 'bar-mitzvah-nov-2024', label: 'בר מצווה - נובמבר 2024', photoCount: 26 },
-        ];
+        // Load galleries dynamically (DB + legacy) so new ones the admin creates show up immediately.
+        let galleries = [];
+        try {
+            const r = await fetch('/api/galleries', { credentials: 'include' });
+            const data = await r.json();
+            galleries = (data.galleries || []).map(g => ({ slug: g.slug, label: g.label, photoCount: g.photo_count, source: g.source || 'db' }));
+        } catch (e) { /* fallback below */ }
+        if (!galleries.length) {
+            alert('אין גלריות זמינות. הוסף גלריה בעמוד "📸 ניהול גלריות" באזור המנהל.');
+            return;
+        }
         const defaultGallery = galleries[0];
 
         // Detect Web-Share-with-files support (Android Chrome, Edge, modern Safari, Chrome desktop).
@@ -1813,14 +1820,8 @@ class UnifiedLeadManagerClass {
             canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
         } catch (e) { canShareFiles = false; }
 
-        const renderThumbs = (g) => Array.from({ length: g.photoCount }, (_, i) => {
-            const name = `photo-${String(i + 1).padStart(2, '0')}.jpg`;
-            return `<div class="gth" data-photo="${name}" onclick="window.UnifiedLeadManager._togglePhoto(this)"
-                         style="position:relative; cursor:pointer; border:3px solid transparent; border-radius:8px; overflow:hidden; aspect-ratio:1/1;">
-                <img src="/static/event_photos/${g.slug}/thumb/${name}" style="width:100%; height:100%; object-fit:cover; display:block;">
-                <div class="check" style="display:none; position:absolute; top:6px; left:6px; background:#16a34a; color:white; width:24px; height:24px; border-radius:50%; align-items:center; justify-content:center; font-weight:700; font-size:14px;">✓</div>
-            </div>`;
-        }).join('');
+        // Thumbnails will be populated AFTER fetching the photo list from /api/galleries/<slug>/photos
+        const initialThumbsPlaceholder = '<div style="grid-column:1/-1; padding:20px; text-align:center; color:#94a3b8;">⏳ טוען תמונות...</div>';
 
         const overlay = document.createElement('div');
         overlay.id = 'galleryShareOverlay';
@@ -1834,13 +1835,13 @@ class UnifiedLeadManagerClass {
 
                 ${galleries.length > 1 ? `
                 <div style="margin-bottom:8px;">
-                    <select id="gal_slug" style="width:100%; padding:8px; border:1px solid #fbcfe8; border-radius:6px;">
-                        ${galleries.map(g => `<option value="${g.slug}" data-count="${g.photoCount}">${g.label}</option>`).join('')}
+                    <select id="gal_slug" onchange="window.UnifiedLeadManager._loadGalleryThumbs(this.value)" style="width:100%; padding:8px; border:1px solid #fbcfe8; border-radius:6px;">
+                        ${galleries.map(g => `<option value="${g.slug}">${g.label} (${g.photoCount})</option>`).join('')}
                     </select>
                 </div>` : `<input type="hidden" id="gal_slug" value="${defaultGallery.slug}">`}
 
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; color:#6b21a8;">
-                    <div>נבחרו: <strong id="gal_selCount">0</strong> מתוך ${defaultGallery.photoCount}</div>
+                    <div>נבחרו: <strong id="gal_selCount">0</strong> מתוך <span id="gal_total">${defaultGallery.photoCount}</span></div>
                     <div style="display:flex; gap:6px;">
                         <button type="button" onclick="window.UnifiedLeadManager._selectAllPhotos(true)" style="background:#e5e7eb; border:none; padding:6px 10px; border-radius:6px; font-size:12px;">בחר הכל</button>
                         <button type="button" onclick="window.UnifiedLeadManager._selectAllPhotos(false)" style="background:#e5e7eb; border:none; padding:6px 10px; border-radius:6px; font-size:12px;">נקה</button>
@@ -1848,7 +1849,7 @@ class UnifiedLeadManagerClass {
                 </div>
 
                 <div id="gal_thumbs" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:6px; margin-bottom:14px;">
-                    ${renderThumbs(defaultGallery)}
+                    ${initialThumbsPlaceholder}
                 </div>
 
                 ${!canShareFiles ? `
@@ -1875,6 +1876,37 @@ class UnifiedLeadManagerClass {
         overlay.addEventListener('mousedown', e => { _downOnOverlay = (e.target === overlay); });
         overlay.addEventListener('click', e => { if (_downOnOverlay && e.target === overlay) overlay.remove(); });
         document.body.appendChild(overlay);
+        // Now load the actual thumbnails for the default gallery
+        this._loadGalleryThumbs(defaultGallery.slug);
+    }
+
+    async _loadGalleryThumbs(slug) {
+        const container = document.getElementById('gal_thumbs');
+        if (!container) return;
+        container.innerHTML = '<div style="grid-column:1/-1; padding:20px; text-align:center; color:#94a3b8;">⏳ טוען תמונות...</div>';
+        try {
+            const r = await fetch(`/api/galleries/${slug}/photos`, { credentials: 'include' });
+            const data = await r.json();
+            const photos = data.photos || [];
+            const total = document.getElementById('gal_total');
+            if (total) total.textContent = photos.length;
+            if (!photos.length) {
+                container.innerHTML = '<div style="grid-column:1/-1; padding:20px; text-align:center; color:#94a3b8;">אין תמונות בגלריה זו</div>';
+                this._updateSelCount();
+                return;
+            }
+            container.innerHTML = photos.map(p => `
+                <div class="gth" data-thumb="${p.thumb}" data-full="${p.full}" data-name="${p.name}"
+                     onclick="window.UnifiedLeadManager._togglePhoto(this)"
+                     style="position:relative; cursor:pointer; border:3px solid transparent; border-radius:8px; overflow:hidden; aspect-ratio:1/1;">
+                    <img src="${p.thumb}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                    <div class="check" style="display:none; position:absolute; top:6px; left:6px; background:#16a34a; color:white; width:24px; height:24px; border-radius:50%; align-items:center; justify-content:center; font-weight:700; font-size:14px;">✓</div>
+                </div>
+            `).join('');
+            this._updateSelCount();
+        } catch (e) {
+            container.innerHTML = '<div style="grid-column:1/-1; padding:20px; text-align:center; color:#dc2626;">שגיאה בטעינה</div>';
+        }
     }
 
     _togglePhoto(cell) {
@@ -1902,17 +1934,17 @@ class UnifiedLeadManagerClass {
         if (el) el.textContent = n;
     }
 
-    _selectedPhotoFilenames() {
-        return Array.from(document.querySelectorAll('#gal_thumbs .gth[data-selected="true"]'))
-                    .map(c => c.getAttribute('data-photo'));
+    _selectedPhotoCells() {
+        return Array.from(document.querySelectorAll('#gal_thumbs .gth[data-selected="true"]'));
     }
 
-    async _fetchSelectedAsFiles(slug, filenames, setStatus) {
+    async _fetchSelectedAsFiles(cells, setStatus) {
         const files = [];
-        for (let i = 0; i < filenames.length; i++) {
-            const name = filenames[i];
-            if (setStatus) setStatus(`⏳ טוען תמונה ${i + 1}/${filenames.length}...`);
-            const res = await fetch(`/static/event_photos/${slug}/full/${name}`);
+        for (let i = 0; i < cells.length; i++) {
+            const fullUrl = cells[i].getAttribute('data-full');
+            const name = cells[i].getAttribute('data-name') || `photo-${i+1}.jpg`;
+            if (setStatus) setStatus(`⏳ טוען תמונה ${i + 1}/${cells.length}...`);
+            const res = await fetch(fullUrl);
             if (!res.ok) throw new Error('failed to load ' + name);
             const blob = await res.blob();
             files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
@@ -1924,15 +1956,14 @@ class UnifiedLeadManagerClass {
         const status = document.getElementById('galleryStatus');
         const setStatus = (s) => { if (status) status.textContent = s; };
         const slug = document.getElementById('gal_slug').value;
-        const filenames = this._selectedPhotoFilenames();
-        if (!filenames.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+        const cells = this._selectedPhotoCells();
+        if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
         try {
-            const files = await this._fetchSelectedAsFiles(slug, filenames, setStatus);
+            const files = await this._fetchSelectedAsFiles(cells, setStatus);
             setStatus('📲 פותח חלון שיתוף...');
             await navigator.share({ files, title: 'אלחנן תרבות לחם' });
             setStatus(`✔ ${files.length} תמונות שותפו`);
             this._logGallerySend(leadId, `📸 שותפו ${files.length} תמונות (${slug})`);
-            // Close the modal after successful share
             setTimeout(() => {
                 const o = document.getElementById('galleryShareOverlay');
                 if (o) o.remove();
@@ -1947,23 +1978,21 @@ class UnifiedLeadManagerClass {
         const status = document.getElementById('galleryStatus');
         const setStatus = (s) => { if (status) status.textContent = s; };
         const slug = document.getElementById('gal_slug').value;
-        const filenames = this._selectedPhotoFilenames();
-        if (!filenames.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
-        // Trigger individual downloads — browsers will queue them. User then drags into WhatsApp Web.
-        for (let i = 0; i < filenames.length; i++) {
-            const name = filenames[i];
-            const url = `/static/event_photos/${slug}/full/${name}`;
+        const cells = this._selectedPhotoCells();
+        if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+        for (let i = 0; i < cells.length; i++) {
+            const url = cells[i].getAttribute('data-full');
+            const name = cells[i].getAttribute('data-name') || `photo-${i+1}.jpg`;
             const a = document.createElement('a');
             a.href = url;
             a.download = name;
             document.body.appendChild(a);
             a.click();
             a.remove();
-            // small delay so the browser doesn't choke
             await new Promise(r => setTimeout(r, 150));
         }
-        setStatus(`✔ הורדו ${filenames.length} תמונות. גרור/י אותן ל-WhatsApp.`);
-        this._logGallerySend(leadId, `📸 הורדו ${filenames.length} תמונות לשליחה ידנית (${slug})`);
+        setStatus(`✔ הורדו ${cells.length} תמונות. גרור/י אותן ל-WhatsApp.`);
+        this._logGallerySend(leadId, `📸 הורדו ${cells.length} תמונות לשליחה ידנית (${slug})`);
     }
 
     async _logGallerySend(leadId, payload) {

@@ -236,7 +236,36 @@ def init_database():
         except Exception as e:
             logger.error(f"Error creating notifications table: {e}")
             # Continue anyway - don't fail the entire initialization
-        
+
+        # Galleries (event photo collections) — admin can create + upload from the UI.
+        # Photos are stored as bytea in Postgres (Heroku's filesystem is ephemeral).
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS galleries (
+                    slug VARCHAR(64) PRIMARY KEY,
+                    label VARCHAR(200) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_by VARCHAR(200)
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS gallery_photos (
+                    id SERIAL PRIMARY KEY,
+                    gallery_slug VARCHAR(64) REFERENCES galleries(slug) ON DELETE CASCADE,
+                    filename VARCHAR(255) NOT NULL,
+                    full_data BYTEA NOT NULL,
+                    thumb_data BYTEA NOT NULL,
+                    mime_type VARCHAR(50) DEFAULT 'image/jpeg',
+                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    uploaded_by VARCHAR(200)
+                );
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_gallery_photos_slug ON gallery_photos(gallery_slug);")
+            logger.info("Gallery tables created successfully")
+        except Exception as e:
+            logger.error(f"Error creating gallery tables: {e}")
+
+
         # Insert default admin user if not exists
         cur.execute("""
             INSERT INTO users (username, password_hash, full_name, email, role, department)
@@ -2435,8 +2464,7 @@ def add_activity():
             'error': str(e)
         }), 500
 
-# Public event galleries — slug → {title, subtitle, photos dir under static/}.
-# Add new entries here when more event folders are processed.
+# Legacy galleries served from static/ (pre-DB). New uploads go to the DB instead.
 EVENT_GALLERIES = {
     'bar-mitzvah-nov-2024': {
         'title': 'בר מצווה - נובמבר 2024',
@@ -2449,17 +2477,128 @@ GALLERY_CONTACT_WHATSAPP = '972545999666'  # ← replace with the real number
 GALLERY_CONTACT_TEL = '0545999666'
 
 
+def _list_db_galleries():
+    """Returns [{slug, label, photo_count}] for all DB-stored galleries."""
+    try:
+        conn = get_db_connection()
+        if not conn: return []
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT g.slug, g.label, g.created_at, g.created_by,
+                   COUNT(p.id) AS photo_count
+            FROM galleries g
+            LEFT JOIN gallery_photos p ON p.gallery_slug = g.slug
+            GROUP BY g.slug, g.label, g.created_at, g.created_by
+            ORDER BY g.created_at DESC
+        """)
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        logger.error(f"_list_db_galleries error: {e}")
+        return []
+
+
+def _list_all_galleries():
+    """All galleries the lead-detail picker can choose from (DB + static legacy)."""
+    out = []
+    for slug, g in EVENT_GALLERIES.items():
+        # Count files on disk for the legacy ones
+        d = os.path.join(app.root_path, 'static', g['static_dir'], 'thumb')
+        n = len([f for f in os.listdir(d) if f.lower().endswith(('.jpg','.jpeg','.png'))]) if os.path.isdir(d) else 0
+        out.append({'slug': slug, 'label': g['title'], 'photo_count': n, 'source': 'static'})
+    for g in _list_db_galleries():
+        out.append({'slug': g['slug'], 'label': g['label'], 'photo_count': g['photo_count'], 'source': 'db'})
+    return out
+
+
+@app.route('/api/galleries')
+@login_required
+def api_galleries():
+    """Lightweight listing the lead-detail picker calls to populate its dropdown + thumbs."""
+    return jsonify({'galleries': _list_all_galleries()})
+
+
+@app.route('/api/galleries/<slug>/photos')
+@login_required
+def api_gallery_photos_list(slug):
+    """Returns photo URLs for a gallery (works for both DB and legacy static)."""
+    photos = []
+    # Try DB
+    try:
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(
+                "SELECT id, filename FROM gallery_photos WHERE gallery_slug = %s ORDER BY filename, id",
+                (slug,),
+            )
+            photos = [
+                {'thumb': url_for('serve_gallery_photo', photo_id=r['id'], size='thumb'),
+                 'full': url_for('serve_gallery_photo', photo_id=r['id'], size='full'),
+                 'name': r['filename']}
+                for r in cur.fetchall()
+            ]
+            cur.close(); conn.close()
+    except Exception as e:
+        logger.error(f"api_gallery_photos_list DB error: {e}")
+
+    # Fallback to legacy static
+    if not photos and slug in EVENT_GALLERIES:
+        g = EVENT_GALLERIES[slug]
+        d = os.path.join(app.root_path, 'static', g['static_dir'], 'thumb')
+        if os.path.isdir(d):
+            names = sorted([f for f in os.listdir(d) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+            photos = [{
+                'thumb': url_for('static', filename=f"{g['static_dir']}/thumb/{n}"),
+                'full': url_for('static', filename=f"{g['static_dir']}/full/{n}"),
+                'name': n,
+            } for n in names]
+
+    return jsonify({'slug': slug, 'photos': photos})
+
+
 @app.route('/gallery/<slug>')
 def public_gallery(slug):
-    """Public gallery — no login. Used to share event photos with prospective customers."""
-    gallery = EVENT_GALLERIES.get(slug)
-    if not gallery:
+    """Public gallery — no login. Looks up DB first, then legacy static, then 404."""
+    photos = []  # list of {full, thumb}
+
+    # 1) Try DB
+    try:
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute("SELECT label FROM galleries WHERE slug = %s", (slug,))
+            g = cur.fetchone()
+            if g:
+                cur.execute(
+                    "SELECT id, filename FROM gallery_photos WHERE gallery_slug = %s ORDER BY filename, id",
+                    (slug,),
+                )
+                photos = [
+                    {'full': url_for('serve_gallery_photo', photo_id=r['id'], size='full'),
+                     'thumb': url_for('serve_gallery_photo', photo_id=r['id'], size='thumb')}
+                    for r in cur.fetchall()
+                ]
+            cur.close(); conn.close()
+    except Exception as e:
+        logger.error(f"public_gallery DB lookup error: {e}")
+
+    # 2) Fall back to legacy static gallery
+    if not photos and slug in EVENT_GALLERIES:
+        gallery = EVENT_GALLERIES[slug]
+        photo_dir = os.path.join(app.root_path, 'static', gallery['static_dir'], 'thumb')
+        if os.path.isdir(photo_dir):
+            names = sorted([f for f in os.listdir(photo_dir)
+                            if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+            photos = [{
+                'full': url_for('static', filename=f"{gallery['static_dir']}/full/{n}"),
+                'thumb': url_for('static', filename=f"{gallery['static_dir']}/thumb/{n}"),
+            } for n in names]
+
+    if not photos:
         return ('Gallery not found', 404)
-    photo_dir = os.path.join(app.root_path, 'static', gallery['static_dir'], 'thumb')
-    if not os.path.isdir(photo_dir):
-        return ('Gallery photos not found', 404)
-    photos = sorted([f for f in os.listdir(photo_dir)
-                     if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+
     return render_template(
         'gallery.html',
         slug=slug,
@@ -2469,6 +2608,201 @@ def public_gallery(slug):
         contact_whatsapp=GALLERY_CONTACT_WHATSAPP,
         contact_tel=GALLERY_CONTACT_TEL,
     )
+
+
+@app.route('/gallery-photo/<int:photo_id>/<size>')
+def serve_gallery_photo(photo_id, size):
+    """Serve a photo's bytes from the DB. size = 'full' or 'thumb'."""
+    if size not in ('full', 'thumb'):
+        return ('Bad size', 400)
+    col = 'full_data' if size == 'full' else 'thumb_data'
+    try:
+        conn = get_db_connection()
+        if not conn: return ('DB unavailable', 500)
+        cur = conn.cursor()
+        cur.execute(f"SELECT {col}, mime_type FROM gallery_photos WHERE id = %s", (photo_id,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return ('Not found', 404)
+        data = bytes(row[0])
+        mime = row[1] or 'image/jpeg'
+        resp = Response(data, mimetype=mime)
+        resp.headers['Cache-Control'] = 'public, max-age=86400'
+        return resp
+    except Exception as e:
+        logger.error(f"serve_gallery_photo error: {e}")
+        return ('Error', 500)
+
+
+# ============== ADMIN GALLERY MANAGEMENT ==============
+
+@app.route('/admin/galleries')
+@admin_required
+def admin_galleries_page():
+    """HTML admin page to manage galleries."""
+    return render_template('admin_galleries.html', version=APP_VERSION, build_time=BUILD_TIME)
+
+
+@app.route('/admin/galleries/api')
+@admin_required
+def admin_galleries_list():
+    """JSON listing for the admin UI — DB galleries only (admin can manage those)."""
+    return jsonify({'galleries': _list_db_galleries()})
+
+
+@app.route('/admin/galleries/api', methods=['POST'])
+@admin_required
+def admin_galleries_create():
+    """Create a new (empty) gallery."""
+    try:
+        body = request.get_json() or {}
+        slug = re.sub(r'[^a-zA-Z0-9-]', '-', (body.get('slug') or '').strip().lower())
+        slug = re.sub(r'-+', '-', slug).strip('-')
+        label = (body.get('label') or '').strip()
+        if not slug or not label:
+            return jsonify({'error': 'slug and label required'}), 400
+        if slug in EVENT_GALLERIES:
+            return jsonify({'error': 'slug conflicts with built-in gallery'}), 409
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                'INSERT INTO galleries (slug, label, created_by) VALUES (%s, %s, %s)',
+                (slug, label, session.get('full_name', session.get('username', ''))),
+            )
+            conn.commit()
+        except psycopg2.IntegrityError:
+            conn.rollback()
+            return jsonify({'error': 'gallery already exists'}), 409
+        finally:
+            cur.close(); conn.close()
+        return jsonify({'status': 'success', 'slug': slug, 'label': label})
+    except Exception as e:
+        logger.error(f"admin_galleries_create error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/galleries/<slug>/photos', methods=['GET'])
+@admin_required
+def admin_gallery_photos(slug):
+    """List photos in a gallery (with bytes lengths, not the data itself)."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT id, filename, uploaded_at, uploaded_by FROM gallery_photos "
+            "WHERE gallery_slug = %s ORDER BY filename, id",
+            (slug,),
+        )
+        photos = [dict(r) for r in cur.fetchall()]
+        for p in photos:
+            if p.get('uploaded_at'):
+                p['uploaded_at'] = p['uploaded_at'].isoformat()
+        cur.close(); conn.close()
+        return jsonify({'slug': slug, 'photos': photos})
+    except Exception as e:
+        logger.error(f"admin_gallery_photos error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/galleries/<slug>/upload', methods=['POST'])
+@admin_required
+def admin_gallery_upload(slug):
+    """Upload one or more photos to a gallery. Resizes to full (1600px) + thumb (500px)."""
+    from PIL import Image, ImageOps
+    import io as _io
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM galleries WHERE slug = %s", (slug,))
+        if not cur.fetchone():
+            cur.close(); conn.close()
+            return jsonify({'error': 'gallery not found'}), 404
+
+        files = request.files.getlist('photos')
+        if not files:
+            cur.close(); conn.close()
+            return jsonify({'error': 'no files'}), 400
+
+        uploaded_by = session.get('full_name', session.get('username', ''))
+        saved = 0
+        skipped = 0
+        errors = []
+
+        for f in files:
+            try:
+                name = f.filename or 'photo.jpg'
+                # Open
+                img = Image.open(f.stream)
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                # Full
+                full = img.copy(); full.thumbnail((1600, 1600), Image.LANCZOS)
+                full_buf = _io.BytesIO()
+                full.save(full_buf, 'JPEG', quality=82, optimize=True, progressive=True)
+                # Thumb
+                thumb = img.copy(); thumb.thumbnail((500, 500), Image.LANCZOS)
+                thumb_buf = _io.BytesIO()
+                thumb.save(thumb_buf, 'JPEG', quality=78, optimize=True)
+                # Save normalized name (sanitize)
+                safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.splitext(name)[0]) + '.jpg'
+                cur.execute(
+                    """INSERT INTO gallery_photos
+                       (gallery_slug, filename, full_data, thumb_data, mime_type, uploaded_by)
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (slug, safe_name,
+                     psycopg2.Binary(full_buf.getvalue()),
+                     psycopg2.Binary(thumb_buf.getvalue()),
+                     'image/jpeg', uploaded_by),
+                )
+                saved += 1
+            except Exception as e:
+                skipped += 1
+                errors.append(f"{f.filename}: {e}")
+                logger.warning(f"upload {f.filename} failed: {e}")
+
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'saved': saved, 'skipped': skipped, 'errors': errors})
+    except Exception as e:
+        logger.error(f"admin_gallery_upload error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/galleries/<slug>/photos/<int:photo_id>', methods=['DELETE'])
+@admin_required
+def admin_gallery_delete_photo(slug, photo_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM gallery_photos WHERE id = %s AND gallery_slug = %s", (photo_id, slug))
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'deleted': deleted})
+    except Exception as e:
+        logger.error(f"delete photo error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/galleries/<slug>', methods=['DELETE'])
+@admin_required
+def admin_gallery_delete(slug):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM galleries WHERE slug = %s", (slug,))
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'deleted': deleted})
+    except Exception as e:
+        logger.error(f"delete gallery error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 def _scoped_customer_id():
