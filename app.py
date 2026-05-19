@@ -2435,6 +2435,42 @@ def add_activity():
             'error': str(e)
         }), 500
 
+# Public event galleries — slug → {title, subtitle, photos dir under static/}.
+# Add new entries here when more event folders are processed.
+EVENT_GALLERIES = {
+    'bar-mitzvah-nov-2024': {
+        'title': 'בר מצווה - נובמבר 2024',
+        'static_dir': 'event_photos/bar-mitzvah-nov-2024',
+    },
+}
+
+# Default contact for the public gallery CTAs (leave empty to hide buttons).
+GALLERY_CONTACT_WHATSAPP = '972545999666'  # ← replace with the real number
+GALLERY_CONTACT_TEL = '0545999666'
+
+
+@app.route('/gallery/<slug>')
+def public_gallery(slug):
+    """Public gallery — no login. Used to share event photos with prospective customers."""
+    gallery = EVENT_GALLERIES.get(slug)
+    if not gallery:
+        return ('Gallery not found', 404)
+    photo_dir = os.path.join(app.root_path, 'static', gallery['static_dir'], 'thumb')
+    if not os.path.isdir(photo_dir):
+        return ('Gallery photos not found', 404)
+    photos = sorted([f for f in os.listdir(photo_dir)
+                     if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+    return render_template(
+        'gallery.html',
+        slug=slug,
+        photos=photos,
+        greeting_to=(request.args.get('to') or '').strip(),
+        msg=(request.args.get('msg') or '').strip(),
+        contact_whatsapp=GALLERY_CONTACT_WHATSAPP,
+        contact_tel=GALLERY_CONTACT_TEL,
+    )
+
+
 def _scoped_customer_id():
     """Return the customer_id the current session should see leads for."""
     if session.get('role') == 'admin':
