@@ -1636,11 +1636,7 @@ class UnifiedLeadManagerClass {
                     ${lead.phone ? `
                         <a href="whatsapp://send?phone=${this.formatPhoneForWhatsApp(lead.phone)}"
                            style="background: #25D366; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                            📱 פתח WhatsApp (אפליקציה)
-                        </a>
-                        <a href="https://web.whatsapp.com/send?phone=${this.formatPhoneForWhatsApp(lead.phone)}" target="_blank" rel="noopener"
-                           style="background: #128C7E; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                            🖥 WhatsApp Web
+                            📱 פתח WhatsApp
                         </a>
                     ` : '<span style="color:#6b7280;">אין מספר טלפון לליד</span>'}
                 </div>
@@ -2019,7 +2015,7 @@ class UnifiedLeadManagerClass {
                 canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
             } catch (e) { canShareFiles = false; }
         }
-        // Compute WhatsApp phone (Israeli normalization) for opening web.whatsapp.com on desktop
+        // Compute WhatsApp phone (Israeli normalization) for opening the local WhatsApp app via whatsapp:// protocol
         const cleanPhone = (phone + '').replace(/[^0-9]/g, '');
         let waPhone = cleanPhone;
         if (cleanPhone.startsWith('9720')) waPhone = '972' + cleanPhone.substring(4);
@@ -2181,16 +2177,13 @@ class UnifiedLeadManagerClass {
         if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
         const ctx = this._galleryShareCtx || {};
 
-        // 1) Open WhatsApp Web FIRST (in a new tab) — must be triggered from the click
-        //    handler synchronously, otherwise the popup blocker kicks in.
-        let waOpened = false;
+        // 1) Open local WhatsApp Desktop directly via the protocol (no browser tab needed).
+        //    Triggered synchronously from the click so the OS handler doesn't get blocked.
         if (ctx.waPhone) {
-            const waUrl = `https://web.whatsapp.com/send?phone=${ctx.waPhone}`;
-            const win = window.open(waUrl, '_blank');
-            waOpened = !!win;
+            window.location.href = `whatsapp://send?phone=${ctx.waPhone}`;
         }
 
-        // 2) Download the selected images
+        // 2) Download the selected images so user can drag them into the WhatsApp chat that just opened
         setStatus(`⏳ מוריד ${cells.length} תמונות...`);
         for (let i = 0; i < cells.length; i++) {
             const url = cells[i].getAttribute('data-full');
@@ -2200,7 +2193,7 @@ class UnifiedLeadManagerClass {
             document.body.appendChild(a); a.click(); a.remove();
             await new Promise(r => setTimeout(r, 120));
         }
-        setStatus(`✔ הורדו ${cells.length} תמונות${waOpened ? '. גרור/י אותן לחלון WhatsApp שנפתח.' : '. פתח/י WhatsApp Web וגרור/י אותן לצ׳אט.'}`);
+        setStatus(`✔ הורדו ${cells.length} תמונות. גרור/י אותן לחלון WhatsApp שנפתח.`);
         this._logGallerySend(this._galleryShareCtx.leadId, `📸 הורדו ${cells.length} תמונות (${slug}) ונפתח WhatsApp Web`);
     }
 
@@ -2645,13 +2638,9 @@ class UnifiedLeadManagerClass {
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
                     ${phone ? `
-                        <a href="https://web.whatsapp.com/send?phone=${waPhone}" target="_blank" rel="noopener"
-                           style="background:#128C7E; color:white; padding:9px 14px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">
-                            🖥 פתח WhatsApp Web
-                        </a>
-                        <a href="https://wa.me/${waPhone}" target="_blank" rel="noopener"
+                        <a href="whatsapp://send?phone=${waPhone}"
                            style="background:#25D366; color:white; padding:9px 14px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">
-                            📱 wa.me
+                            📱 פתח WhatsApp
                         </a>
                     ` : '<span style="color:#6b7280;">אין מספר טלפון</span>'}
                     <button onclick="window.UnifiedLeadManager.pasteClipboardIntoQuickWa()"

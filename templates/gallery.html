@@ -155,7 +155,7 @@
     <div class="cta">
         <div style="font-weight: 700; color: #4a2c0a; margin-bottom: 12px;">מוכנים לתאם?</div>
         {% if contact_whatsapp %}
-            <a href="https://wa.me/{{ contact_whatsapp }}" target="_blank">💬 שלח הודעה ב-WhatsApp</a>
+            <a href="whatsapp://send?phone={{ contact_whatsapp }}">💬 שלח הודעה ב-WhatsApp</a>
         {% endif %}
         {% if contact_tel %}
             <a class="tel" href="tel:{{ contact_tel }}">📞 התקשרו אלינו</a>
