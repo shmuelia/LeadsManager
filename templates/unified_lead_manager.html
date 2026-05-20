@@ -1099,6 +1099,16 @@ class UnifiedLeadManagerClass {
     applyFilters() {
         console.log('🔍 DEBUGGING: applyFilters called');
         console.log('🔍 DEBUGGING: Total leads before filtering:', this.leads.length);
+
+        // Drop any selections from a previous view — re-rendering the table
+        // clears checkbox state, and the stale Set previously caused unselected
+        // leads to be sent in bulk operations.
+        if (this.selectedLeads && this.selectedLeads.size > 0) {
+            this.selectedLeads.clear();
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            this.updateBulkActionsPanel();
+        }
         
         const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
@@ -1796,7 +1806,22 @@ class UnifiedLeadManagerClass {
         // This sends REMINDERS to the assigned users (sales reps), not to the leads themselves.
         // Selected leads are grouped by assignee; each rep gets ONE WhatsApp with a summary
         // of their leads in this batch.
-        const selectedIds = Array.from(this.selectedLeads || []);
+        //
+        // IMPORTANT: trust the visible checkboxes as the single source of truth.
+        // this.selectedLeads can hold stale IDs from before a filter/search change
+        // (applyFilters re-renders checkboxes as unchecked but doesn't clear the Set),
+        // which previously caused leads the user didn't select to slip into the batch.
+        const checkedBoxes = document.querySelectorAll('.lead-checkbox:checked');
+        const visibleCheckedIds = new Set();
+        checkedBoxes.forEach(cb => {
+            const id = parseInt(cb.value);
+            if (!Number.isNaN(id)) visibleCheckedIds.add(id);
+        });
+        // Re-sync the Set so UI counters reflect reality.
+        this.selectedLeads = visibleCheckedIds;
+        this.updateBulkActionsPanel();
+
+        const selectedIds = Array.from(visibleCheckedIds);
         const allSelected = selectedIds.map(id => this.leads.find(l => l.id === id)).filter(Boolean);
         const assignedLeads = allSelected.filter(l => l.assigned_to);
         const unassigned = allSelected.length - assignedLeads.length;
