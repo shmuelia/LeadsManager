@@ -1595,7 +1595,7 @@
 
             sendFirstMessageViaWhatsapp(leadId, waPhone) {
                 const text = document.getElementById('firstMessageText').value;
-                window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`, '_blank');
+                window.location.href = `whatsapp://send?phone=${waPhone}&text=${encodeURIComponent(text)}`;
                 const status = document.getElementById('firstMessageStatus');
                 if (status) status.innerHTML = '✔ WhatsApp נפתח. אחרי השליחה לחץ "💾 שמור כנשלח".';
             }
@@ -1661,7 +1661,7 @@
                         </div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
                             ${phone ? `
-                                <a href="https://wa.me/${waPhone}" target="_blank" rel="noopener"
+                                <a href="whatsapp://send?phone=${waPhone}"
                                    style="background:#25D366; color:white; padding:9px 12px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">
                                     📱 פתח WhatsApp
                                 </a>
@@ -1798,7 +1798,8 @@
                         whatsappNumber = '972' + cleanPhone;
                     }
 
-                    window.open(`https://wa.me/${whatsappNumber}`, '_blank');
+                    // whatsapp:// opens the WhatsApp app directly (mobile) instead of via browser
+                    window.location.href = `whatsapp://send?phone=${whatsappNumber}`;
                 }
             }
 
