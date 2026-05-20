@@ -707,7 +707,7 @@
     <div id="customerSelectorDiv" class="customer-selector" style="display: none; margin-bottom: 20px;"
          data-i18n-title="select_customer_view">
         <span>🏢 <span data-i18n="ulm_customer">לקוח</span>:</span>
-        <select id="customerSelector" onchange="UnifiedLeadManager.changeCustomer(this.value)"
+        <select id="customerSelector" onchange="window.UnifiedLeadManager.changeCustomer(this.value)"
                 data-i18n-title="switch_customers">
             <option value="" data-i18n="ulm_select_customer">בחר לקוח</option>
         </select>
@@ -815,6 +815,10 @@
                     data-i18n-title="ulm_send_reminder_tooltip">
                 ⏰ <span data-i18n="ulm_send_reminder">שלח תזכורת</span>
             </button>
+            <button class="action-btn btn-bulk-wa" onclick="window.UnifiedLeadManager.openBulkWhatsapp()"
+                    style="background: linear-gradient(135deg, #25D366 0%, #16a34a 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                📲 שלח WhatsApp לנבחרים
+            </button>
             <button class="action-btn btn-secondary" onclick="window.UnifiedLeadManager.clearSelection()"
                     style="background: #e2e8f0; color: #1e293b; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;"
                     data-i18n-title="ulm_clear_selection_tooltip">
@@ -841,7 +845,7 @@
                 <thead>
                     <tr>
                         <th style="width: 40px;">
-                            <input type="checkbox" id="selectAll" onchange="UnifiedLeadManager.toggleSelectAll(this.checked)"
+                            <input type="checkbox" id="selectAll" onchange="window.UnifiedLeadManager.toggleSelectAll(this.checked)"
                                    data-i18n-title="ulm_select_all_tooltip">
                         </th>
                         <th data-i18n="ulm_actions">פעולות</th>
@@ -1229,7 +1233,7 @@ class UnifiedLeadManagerClass {
                 <tr data-lead-id="${lead.id}">
                     <td>
                         <input type="checkbox" class="lead-checkbox" value="${lead.id}" 
-                               onchange="UnifiedLeadManager.toggleLead(${lead.id}, this.checked)"
+                               onchange="window.UnifiedLeadManager.toggleLead(${lead.id}, this.checked)"
                                title="בחר את הליד ${lead.name || 'זה'} לביצוע פעולות קבוצתיות">
                     </td>
                     <td>
@@ -1271,7 +1275,7 @@ class UnifiedLeadManagerClass {
                     <div class="lead-card-header">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" class="lead-checkbox" value="${lead.id}"
-                                   onchange="UnifiedLeadManager.toggleLead(${lead.id}, this.checked)"
+                                   onchange="window.UnifiedLeadManager.toggleLead(${lead.id}, this.checked)"
                                    onclick="event.stopPropagation()"
                                    style="width: 20px; height: 20px; cursor: pointer;"
                                    title="בחר את הליד ${lead.name || 'זה'} לביצוע פעולות קבוצתיות">
@@ -1794,6 +1798,108 @@ class UnifiedLeadManagerClass {
             'offer_sent': '📄 הצעת מחיר'
         };
         return labels[type] || type;
+    }
+
+    openBulkWhatsapp() {
+        // Pull currently-selected leads (only those with phones — others can't be messaged)
+        const selectedIds = Array.from(this.selectedLeads || []);
+        const allSelected = selectedIds.map(id => this.leads.find(l => l.id === id)).filter(Boolean);
+        const withPhone = allSelected.filter(l => l.phone);
+        const withoutPhone = allSelected.length - withPhone.length;
+        if (!allSelected.length) { alert('יש לבחור לפחות ליד אחד'); return; }
+        if (!withPhone.length) { alert('אף אחד מהנבחרים לא מכיל מספר טלפון'); return; }
+
+        const existing = document.getElementById('bulkWaOverlay');
+        if (existing) existing.remove();
+
+        const defaultMsg =
+`שלום {name},
+
+זו פנייה מ"אלחנן תרבות לחם".
+
+[כאן יש לכתוב את ההודעה]
+
+תודה,
+אלחנן תרבות לחם, קיבוץ משמרות`;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'bulkWaOverlay';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:14px;';
+        overlay.innerHTML = `
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:620px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;"
+                 onkeydown="if(event.key==='Enter' && event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                    <h3 style="margin:0; color:#14532d;">📲 שליחת WhatsApp לנבחרים</h3>
+                    <button type="button" onclick="document.getElementById('bulkWaOverlay').remove()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                </div>
+
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:13px; color:#14532d;">
+                    <strong>${withPhone.length}</strong> לידים ייפתחו בכרטיסיות חדשות של WhatsApp Web${withoutPhone ? ` · <span style="color:#b45309;">${withoutPhone} ללא טלפון (יידלגו)</span>` : ''}
+                </div>
+
+                <details style="margin-bottom:12px;">
+                    <summary style="cursor:pointer; font-size:13px; color:#475569;">📋 רשימת הנמענים</summary>
+                    <div style="margin-top:8px; max-height:120px; overflow-y:auto; font-size:12px; padding:6px 10px; background:#f8fafc; border-radius:6px;">
+                        ${withPhone.map(l => `• ${l.name || 'לא צוין'} (${this.formatPhoneForDisplay(l.phone)})`).join('<br>')}
+                    </div>
+                </details>
+
+                <label style="display:block; font-size:13px; font-weight:600; color:#14532d; margin-bottom:4px;">תוכן ההודעה</label>
+                <div style="font-size:11px; color:#64748b; margin-bottom:6px;">השתמש ב-<code>{name}</code> לשם הלקוח האוטומטי</div>
+                <textarea id="bulkWaMsg" rows="9" style="width:100%; padding:10px; border:1px solid #86efac; border-radius:8px; font-family:inherit; line-height:1.5;">${defaultMsg.replace(/</g, '&lt;')}</textarea>
+
+                <div style="background:#fef3c7; border:1px solid #fbbf24; padding:8px 12px; border-radius:8px; margin-top:10px; font-size:12px; color:#78350f;">
+                    ⚠ ייפתחו ${withPhone.length} כרטיסיות (אחת לכל ליד). אפשר/י popups בדפדפן אם הם חסומים. בכל כרטיסייה צריך ללחוץ "שלח" ב-WhatsApp Web ידנית.
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; justify-content:flex-end;">
+                    <button type="button" onclick="document.getElementById('bulkWaOverlay').remove()" style="background:#e5e7eb; color:#1f2937; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">ביטול</button>
+                    <button type="button" onclick="window.UnifiedLeadManager._doBulkWhatsappSend()" style="background:#16a34a; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:700;">📲 פתח את כל הצ'אטים</button>
+                </div>
+                <div id="bulkWaStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
+            </div>
+        `;
+        let _downOnOverlay = false;
+        overlay.addEventListener('mousedown', e => { _downOnOverlay = (e.target === overlay); });
+        overlay.addEventListener('click', e => { if (_downOnOverlay && e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+        this._bulkWaTargets = withPhone;
+    }
+
+    async _doBulkWhatsappSend() {
+        const status = document.getElementById('bulkWaStatus');
+        const setStatus = (s) => { if (status) status.innerHTML = s; };
+        const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
+        const targets = this._bulkWaTargets || [];
+        if (!tpl) { setStatus('⚠ הודעה ריקה'); return; }
+        if (!targets.length) { setStatus('⚠ אין נמענים'); return; }
+
+        // Open each chat with a small delay so the browser doesn't choke
+        let opened = 0, blocked = 0;
+        for (let i = 0; i < targets.length; i++) {
+            const l = targets[i];
+            const waPhone = this.formatPhoneForWhatsApp(l.phone);
+            const firstName = (l.name || '').trim().split(/\s+/)[0] || '';
+            const text = tpl.replace(/\{name\}/g, firstName);
+            const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`;
+            const win = window.open(url, '_blank');
+            if (win) opened++; else blocked++;
+            // Log as activity on the lead (non-blocking)
+            fetch(`/leads/${l.id}/whatsapp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: '📲 הודעה קבוצתית הוכנה לשליחה:\n' + text,
+                    direction: 'sent'
+                })
+            }).catch(() => {});
+            setStatus(`⏳ ${i + 1}/${targets.length}...`);
+            await new Promise(r => setTimeout(r, 250));
+        }
+        let msg = `✔ נפתחו ${opened} כרטיסיות`;
+        if (blocked) msg += `, <strong style="color:#dc2626;">${blocked} נחסמו ע״י הדפדפן</strong> — אפשר popups והפעל שוב`;
+        msg += '. בכל כרטיסייה לחץ "שלח" כדי לסיים.';
+        setStatus(msg);
     }
 
     async openGalleryShare(leadId, firstName, phone) {
