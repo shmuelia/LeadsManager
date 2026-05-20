@@ -1797,7 +1797,6 @@ class UnifiedLeadManagerClass {
     }
 
     openBulkWhatsapp() {
-        // Pull currently-selected leads (only those with phones — others can't be messaged)
         const selectedIds = Array.from(this.selectedLeads || []);
         const allSelected = selectedIds.map(id => this.leads.find(l => l.id === id)).filter(Boolean);
         const withPhone = allSelected.filter(l => l.phone);
@@ -1818,86 +1817,116 @@ class UnifiedLeadManagerClass {
 תודה,
 אלחנן תרבות לחם, קיבוץ משמרות`;
 
+        // Sequential state: index of current recipient, plus shared message
+        this._bulkWaTargets = withPhone;
+        this._bulkWaIndex = 0;
+        this._bulkWaSentCount = 0;
+        this._bulkWaSkippedCount = 0;
+
         const overlay = document.createElement('div');
         overlay.id = 'bulkWaOverlay';
         overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:14px;';
         overlay.innerHTML = `
-            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:620px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;"
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:580px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;"
                  onkeydown="if(event.key==='Enter' && event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                    <h3 style="margin:0; color:#14532d;">📲 שליחת WhatsApp לנבחרים</h3>
-                    <button type="button" onclick="document.getElementById('bulkWaOverlay').remove()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <h3 style="margin:0; color:#14532d;">📲 שליחת WhatsApp - אחד אחד</h3>
+                    <button type="button" onclick="window.UnifiedLeadManager._closeBulkWa()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
                 </div>
 
-                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:13px; color:#14532d;">
-                    <strong>${withPhone.length}</strong> לידים ייפתחו בכרטיסיות חדשות של WhatsApp Web${withoutPhone ? ` · <span style="color:#b45309;">${withoutPhone} ללא טלפון (יידלגו)</span>` : ''}
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#14532d;">
+                    ${withPhone.length} נמענים בתור${withoutPhone ? ` · <span style="color:#b45309;">${withoutPhone} ללא טלפון (ידולגו)</span>` : ''}
                 </div>
 
-                <details style="margin-bottom:12px;">
-                    <summary style="cursor:pointer; font-size:13px; color:#475569;">📋 רשימת הנמענים</summary>
-                    <div style="margin-top:8px; max-height:120px; overflow-y:auto; font-size:12px; padding:6px 10px; background:#f8fafc; border-radius:6px;">
-                        ${withPhone.map(l => `• ${l.name || 'לא צוין'} (${this.formatPhoneForDisplay(l.phone)})`).join('<br>')}
-                    </div>
-                </details>
-
-                <label style="display:block; font-size:13px; font-weight:600; color:#14532d; margin-bottom:4px;">תוכן ההודעה</label>
+                <label style="display:block; font-size:13px; font-weight:600; color:#14532d; margin-bottom:4px;">תבנית הודעה (משותפת לכולם)</label>
                 <div style="font-size:11px; color:#64748b; margin-bottom:6px;">השתמש ב-<code>{name}</code> לשם הלקוח האוטומטי</div>
-                <textarea id="bulkWaMsg" rows="9" style="width:100%; padding:10px; border:1px solid #86efac; border-radius:8px; font-family:inherit; line-height:1.5;">${defaultMsg.replace(/</g, '&lt;')}</textarea>
+                <textarea id="bulkWaMsg" rows="6" style="width:100%; padding:10px; border:1px solid #86efac; border-radius:8px; font-family:inherit; line-height:1.5;">${defaultMsg.replace(/</g, '&lt;')}</textarea>
 
-                <div style="background:#fef3c7; border:1px solid #fbbf24; padding:8px 12px; border-radius:8px; margin-top:10px; font-size:12px; color:#78350f;">
-                    ⚠ ייפתחו ${withPhone.length} כרטיסיות (אחת לכל ליד). אפשר/י popups בדפדפן אם הם חסומים. בכל כרטיסייה צריך ללחוץ "שלח" ב-WhatsApp Web ידנית.
-                </div>
+                <div id="bulkWaCurrent" style="margin-top:14px; background:#fffbeb; border:2px solid #fbbf24; border-radius:10px; padding:14px;"></div>
 
-                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; justify-content:flex-end;">
-                    <button type="button" onclick="document.getElementById('bulkWaOverlay').remove()" style="background:#e5e7eb; color:#1f2937; padding:10px 16px; border:none; border-radius:8px; font-weight:600;">ביטול</button>
-                    <button type="button" onclick="window.UnifiedLeadManager._doBulkWhatsappSend()" style="background:#16a34a; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:700;">📲 פתח את כל הצ'אטים</button>
-                </div>
-                <div id="bulkWaStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
+                <div id="bulkWaSummary" style="margin-top:10px; font-size:12px; color:#64748b;"></div>
             </div>
         `;
         let _downOnOverlay = false;
         overlay.addEventListener('mousedown', e => { _downOnOverlay = (e.target === overlay); });
         overlay.addEventListener('click', e => { if (_downOnOverlay && e.target === overlay) overlay.remove(); });
         document.body.appendChild(overlay);
-        this._bulkWaTargets = withPhone;
+
+        this._renderBulkWaCurrent();
     }
 
-    async _doBulkWhatsappSend() {
-        const status = document.getElementById('bulkWaStatus');
-        const setStatus = (s) => { if (status) status.innerHTML = s; };
-        const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
+    _renderBulkWaCurrent() {
+        const el = document.getElementById('bulkWaCurrent');
+        if (!el) return;
         const targets = this._bulkWaTargets || [];
-        if (!tpl) { setStatus('⚠ הודעה ריקה'); return; }
-        if (!targets.length) { setStatus('⚠ אין נמענים'); return; }
+        const i = this._bulkWaIndex || 0;
+        const summaryEl = document.getElementById('bulkWaSummary');
+        if (summaryEl) summaryEl.textContent = `✔ נשלחו: ${this._bulkWaSentCount}  ·  ⏭ דולגו: ${this._bulkWaSkippedCount}  ·  ⏳ נותרו: ${targets.length - i}`;
 
-        // Open each chat with a small delay so the browser doesn't choke
-        let opened = 0, blocked = 0;
-        for (let i = 0; i < targets.length; i++) {
-            const l = targets[i];
-            const waPhone = this.formatPhoneForWhatsApp(l.phone);
+        if (i >= targets.length) {
+            el.innerHTML = `
+                <div style="text-align:center; padding:10px; color:#166534;">
+                    🎉 <strong>סיימת!</strong><br>
+                    נשלחו ${this._bulkWaSentCount}, דולגו ${this._bulkWaSkippedCount} מתוך ${targets.length}.
+                </div>
+                <div style="text-align:center; margin-top:10px;">
+                    <button type="button" onclick="window.UnifiedLeadManager._closeBulkWa()" style="background:#16a34a; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:600;">סגור</button>
+                </div>
+            `;
+            return;
+        }
+
+        const l = targets[i];
+        const phoneDisplay = this.formatPhoneForDisplay(l.phone);
+        el.innerHTML = `
+            <div style="font-size:13px; color:#78350f; margin-bottom:4px;">נמען ${i + 1} מתוך ${targets.length}</div>
+            <div style="font-size:18px; font-weight:700; color:#92400e;">${l.name || 'ללא שם'}</div>
+            <div style="font-size:14px; color:#78350f; margin-bottom:12px;">${phoneDisplay}</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" onclick="window.UnifiedLeadManager._bulkWaOpenCurrent()" style="background:#25D366; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:700; flex:1; min-width:180px;">📲 פתח ב-WhatsApp ושלח</button>
+                <button type="button" onclick="window.UnifiedLeadManager._bulkWaAdvance(true)" style="background:#16a34a; color:white; padding:11px 14px; border:none; border-radius:8px; font-weight:600;">✔ נשלח, לבא</button>
+                <button type="button" onclick="window.UnifiedLeadManager._bulkWaAdvance(false)" style="background:#e5e7eb; color:#1f2937; padding:11px 14px; border:none; border-radius:8px; font-weight:600;">⏭ דלג</button>
+            </div>
+            <div style="font-size:11px; color:#78350f; margin-top:8px;">
+                לחץ/י "פתח ב-WhatsApp" → ההודעה תופיע באפליקציה → שלח/י אותה שם → חזור/י לכאן ולחץ/י "נשלח, לבא".
+            </div>
+        `;
+    }
+
+    _bulkWaOpenCurrent() {
+        const l = this._bulkWaTargets[this._bulkWaIndex];
+        if (!l) return;
+        const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
+        const firstName = (l.name || '').trim().split(/\s+/)[0] || '';
+        const text = tpl.replace(/\{name\}/g, firstName);
+        const waPhone = this.formatPhoneForWhatsApp(l.phone);
+        // whatsapp:// opens local WhatsApp Desktop directly — no browser tab
+        window.location.href = `whatsapp://send?phone=${waPhone}&text=${encodeURIComponent(text)}`;
+    }
+
+    _bulkWaAdvance(sent) {
+        const l = this._bulkWaTargets[this._bulkWaIndex];
+        if (sent && l) {
+            this._bulkWaSentCount++;
+            const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
             const firstName = (l.name || '').trim().split(/\s+/)[0] || '';
             const text = tpl.replace(/\{name\}/g, firstName);
-            // Bulk needs wa.me — desktop app only shows ONE chat, so whatsapp:// can't handle N
-            // recipients (only the last would open). Browser tabs are independent.
-            const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`;
-            const win = window.open(url, '_blank');
-            if (win) opened++; else blocked++;
-            // Log as activity on the lead (non-blocking)
+            // Log the actual send as a sent WhatsApp activity
             fetch(`/leads/${l.id}/whatsapp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: '📲 הודעה קבוצתית הוכנה לשליחה:\n' + text,
-                    direction: 'sent'
-                })
+                body: JSON.stringify({ text, direction: 'sent' })
             }).catch(() => {});
-            setStatus(`⏳ ${i + 1}/${targets.length}...`);
-            await new Promise(r => setTimeout(r, 250));
+        } else if (!sent) {
+            this._bulkWaSkippedCount++;
         }
-        let msg = `✔ נפתחו ${opened} כרטיסיות`;
-        if (blocked) msg += `, <strong style="color:#dc2626;">${blocked} נחסמו ע״י הדפדפן</strong> — אפשר popups והפעל שוב`;
-        msg += '. בכל כרטיסייה לחץ "שלח" כדי לסיים.';
-        setStatus(msg);
+        this._bulkWaIndex++;
+        this._renderBulkWaCurrent();
+    }
+
+    _closeBulkWa() {
+        const o = document.getElementById('bulkWaOverlay');
+        if (o) o.remove();
     }
 
     async openGalleryShare(leadId, firstName, phone) {
