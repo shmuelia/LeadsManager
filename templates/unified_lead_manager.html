@@ -810,14 +810,10 @@
             <span style="font-weight: 600; color: #1e40af;">
                 <span id="selectedCount">0</span> <span data-i18n="ulm_leads_selected">לידים נבחרו</span>
             </span>
-            <button class="action-btn btn-reminder" onclick="window.UnifiedLeadManager.sendReminders()"
-                    style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"
-                    data-i18n-title="ulm_send_reminder_tooltip">
-                ⏰ <span data-i18n="ulm_send_reminder">שלח תזכורת</span>
-            </button>
-            <button class="action-btn btn-bulk-wa" onclick="window.UnifiedLeadManager.openBulkWhatsapp()"
-                    style="background: linear-gradient(135deg, #25D366 0%, #16a34a 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                📲 שלח WhatsApp לנבחרים
+            <button class="action-btn btn-reminder" onclick="window.UnifiedLeadManager.openBulkWhatsapp()"
+                    style="background: linear-gradient(135deg, #25D366 0%, #16a34a 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"
+                    title="שלח הודעת WhatsApp לכל הלידים שנבחרו">
+                📲 <span>שלח תזכורת ב-WhatsApp</span>
             </button>
             <button class="action-btn btn-secondary" onclick="window.UnifiedLeadManager.clearSelection()"
                     style="background: #e2e8f0; color: #1e293b; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;"
