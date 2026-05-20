@@ -812,8 +812,8 @@
             </span>
             <button class="action-btn btn-reminder" onclick="window.UnifiedLeadManager.openBulkWhatsapp()"
                     style="background: linear-gradient(135deg, #25D366 0%, #16a34a 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"
-                    title="שלח הודעת WhatsApp לכל הלידים שנבחרו">
-                📲 <span>שלח תזכורת ב-WhatsApp</span>
+                    title="שלח תזכורת ב-WhatsApp לאנשי המכירות שאליהם הוקצו הלידים">
+                📲 <span>שלח תזכורת לאיש המכירות</span>
             </button>
             <button class="action-btn btn-secondary" onclick="window.UnifiedLeadManager.clearSelection()"
                     style="background: #e2e8f0; color: #1e293b; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;"
@@ -1796,51 +1796,91 @@ class UnifiedLeadManagerClass {
         return labels[type] || type;
     }
 
-    openBulkWhatsapp() {
+    async openBulkWhatsapp() {
+        // This sends REMINDERS to the assigned users (sales reps), not to the leads themselves.
+        // Selected leads are grouped by assignee; each rep gets ONE WhatsApp with a summary
+        // of their leads in this batch.
         const selectedIds = Array.from(this.selectedLeads || []);
         const allSelected = selectedIds.map(id => this.leads.find(l => l.id === id)).filter(Boolean);
-        const withPhone = allSelected.filter(l => l.phone);
-        const withoutPhone = allSelected.length - withPhone.length;
+        const assignedLeads = allSelected.filter(l => l.assigned_to);
+        const unassigned = allSelected.length - assignedLeads.length;
         if (!allSelected.length) { alert('יש לבחור לפחות ליד אחד'); return; }
-        if (!withPhone.length) { alert('אף אחד מהנבחרים לא מכיל מספר טלפון'); return; }
+        if (!assignedLeads.length) { alert('אף אחד מהלידים שנבחרו לא מוקצה למשתמש'); return; }
+
+        // Pull users to get their phones
+        let usersByName = {};
+        try {
+            const r = await fetch('/admin/users/api', { credentials: 'include' });
+            const data = await r.json();
+            (data.users || data || []).forEach(u => { usersByName[u.username] = u; });
+        } catch (e) { /* will warn below */ }
+
+        // Group leads by assignee username
+        const groupsMap = {};
+        assignedLeads.forEach(l => {
+            (groupsMap[l.assigned_to] = groupsMap[l.assigned_to] || []).push(l);
+        });
+        const groups = Object.entries(groupsMap).map(([username, leads]) => {
+            const u = usersByName[username] || {};
+            return {
+                username,
+                full_name: u.full_name || username,
+                phone: u.phone || '',
+                leads,
+            };
+        });
+        const groupsWithPhone = groups.filter(g => g.phone);
+        const groupsWithoutPhone = groups.length - groupsWithPhone.length;
+
+        if (!groupsWithPhone.length) {
+            alert('אף אחד מהמשתמשים המוקצים לא הוגדר עם מספר טלפון. הוסף טלפון בעמוד "ניהול משתמשים".');
+            return;
+        }
 
         const existing = document.getElementById('bulkWaOverlay');
         if (existing) existing.remove();
 
         const defaultMsg =
-`שלום {name},
+`שלום {firstName},
 
-זו פנייה מ"אלחנן תרבות לחם".
+יש לך {count} לידים שדורשים עדכון סטטוס:
 
-[כאן יש לכתוב את ההודעה]
+{leadsList}
 
-תודה,
-אלחנן תרבות לחם, קיבוץ משמרות`;
+אנא היכנס/י למערכת ועדכן/י את הסטטוסים.
 
-        // Sequential state: index of current recipient, plus shared message
-        this._bulkWaTargets = withPhone;
+תודה!`;
+
+        // Sequential state: one assignee at a time
+        this._bulkWaGroups = groupsWithPhone;
         this._bulkWaIndex = 0;
         this._bulkWaSentCount = 0;
         this._bulkWaSkippedCount = 0;
+        this._bulkWaMissingPhone = groupsWithoutPhone;
+        this._bulkWaUnassigned = unassigned;
 
         const overlay = document.createElement('div');
         overlay.id = 'bulkWaOverlay';
         overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:14px;';
+        const warnings = [];
+        if (unassigned) warnings.push(`${unassigned} לידים ללא הקצאה (ידולגו)`);
+        if (groupsWithoutPhone) warnings.push(`${groupsWithoutPhone} משתמשים ללא טלפון בפרופיל (ידולגו)`);
         overlay.innerHTML = `
-            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:580px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;"
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:600px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;"
                  onkeydown="if(event.key==='Enter' && event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                    <h3 style="margin:0; color:#14532d;">📲 שליחת WhatsApp - אחד אחד</h3>
+                    <h3 style="margin:0; color:#14532d;">📲 תזכורת ב-WhatsApp לאנשי המכירות</h3>
                     <button type="button" onclick="window.UnifiedLeadManager._closeBulkWa()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
                 </div>
 
                 <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#14532d;">
-                    ${withPhone.length} נמענים בתור${withoutPhone ? ` · <span style="color:#b45309;">${withoutPhone} ללא טלפון (ידולגו)</span>` : ''}
+                    הודעה אחת לכל איש מכירות עם רשימת הלידים שלו · ${groupsWithPhone.length} משתמשים בתור
+                    ${warnings.length ? `<br><span style="color:#b45309;">⚠ ${warnings.join(' · ')}</span>` : ''}
                 </div>
 
-                <label style="display:block; font-size:13px; font-weight:600; color:#14532d; margin-bottom:4px;">תבנית הודעה (משותפת לכולם)</label>
-                <div style="font-size:11px; color:#64748b; margin-bottom:6px;">השתמש ב-<code>{name}</code> לשם הלקוח האוטומטי</div>
-                <textarea id="bulkWaMsg" rows="6" style="width:100%; padding:10px; border:1px solid #86efac; border-radius:8px; font-family:inherit; line-height:1.5;">${defaultMsg.replace(/</g, '&lt;')}</textarea>
+                <label style="display:block; font-size:13px; font-weight:600; color:#14532d; margin-bottom:4px;">תבנית התזכורת</label>
+                <div style="font-size:11px; color:#64748b; margin-bottom:6px;">משתנים: <code>{firstName}</code>, <code>{count}</code>, <code>{leadsList}</code></div>
+                <textarea id="bulkWaMsg" rows="7" style="width:100%; padding:10px; border:1px solid #86efac; border-radius:8px; font-family:inherit; line-height:1.5;">${defaultMsg.replace(/</g, '&lt;')}</textarea>
 
                 <div id="bulkWaCurrent" style="margin-top:14px; background:#fffbeb; border:2px solid #fbbf24; border-radius:10px; padding:14px;"></div>
 
@@ -1855,19 +1895,33 @@ class UnifiedLeadManagerClass {
         this._renderBulkWaCurrent();
     }
 
+    _bulkWaBuildMessageFor(group) {
+        const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
+        const firstName = (group.full_name || '').trim().split(/\s+/)[0] || group.username;
+        const leadsList = group.leads.map(l => {
+            const ph = this.formatPhoneForDisplay(l.phone || '');
+            const status = this.getStatusLabel(l.status);
+            return `• ${l.name || 'לא צוין'}${ph ? ' (' + ph + ')' : ''} — ${status}`;
+        }).join('\n');
+        return tpl
+            .replace(/\{firstName\}/g, firstName)
+            .replace(/\{count\}/g, String(group.leads.length))
+            .replace(/\{leadsList\}/g, leadsList);
+    }
+
     _renderBulkWaCurrent() {
         const el = document.getElementById('bulkWaCurrent');
         if (!el) return;
-        const targets = this._bulkWaTargets || [];
+        const groups = this._bulkWaGroups || [];
         const i = this._bulkWaIndex || 0;
         const summaryEl = document.getElementById('bulkWaSummary');
-        if (summaryEl) summaryEl.textContent = `✔ נשלחו: ${this._bulkWaSentCount}  ·  ⏭ דולגו: ${this._bulkWaSkippedCount}  ·  ⏳ נותרו: ${targets.length - i}`;
+        if (summaryEl) summaryEl.textContent = `✔ נשלחו: ${this._bulkWaSentCount}  ·  ⏭ דולגו: ${this._bulkWaSkippedCount}  ·  ⏳ נותרו: ${groups.length - i}`;
 
-        if (i >= targets.length) {
+        if (i >= groups.length) {
             el.innerHTML = `
                 <div style="text-align:center; padding:10px; color:#166534;">
                     🎉 <strong>סיימת!</strong><br>
-                    נשלחו ${this._bulkWaSentCount}, דולגו ${this._bulkWaSkippedCount} מתוך ${targets.length}.
+                    תזכורות נשלחו ל-${this._bulkWaSentCount} משתמשים, דולגו ${this._bulkWaSkippedCount} מתוך ${groups.length}.
                 </div>
                 <div style="text-align:center; margin-top:10px;">
                     <button type="button" onclick="window.UnifiedLeadManager._closeBulkWa()" style="background:#16a34a; color:white; padding:10px 22px; border:none; border-radius:8px; font-weight:600;">סגור</button>
@@ -1876,12 +1930,19 @@ class UnifiedLeadManagerClass {
             return;
         }
 
-        const l = targets[i];
-        const phoneDisplay = this.formatPhoneForDisplay(l.phone);
+        const g = groups[i];
+        const phoneDisplay = this.formatPhoneForDisplay(g.phone);
+        const previewText = this._bulkWaBuildMessageFor(g);
         el.innerHTML = `
-            <div style="font-size:13px; color:#78350f; margin-bottom:4px;">נמען ${i + 1} מתוך ${targets.length}</div>
-            <div style="font-size:18px; font-weight:700; color:#92400e;">${l.name || 'ללא שם'}</div>
-            <div style="font-size:14px; color:#78350f; margin-bottom:12px;">${phoneDisplay}</div>
+            <div style="font-size:13px; color:#78350f; margin-bottom:4px;">משתמש ${i + 1} מתוך ${groups.length}</div>
+            <div style="font-size:18px; font-weight:700; color:#92400e;">${g.full_name}</div>
+            <div style="font-size:14px; color:#78350f; margin-bottom:6px;">${phoneDisplay} · ${g.leads.length} לידים</div>
+
+            <details style="margin-bottom:10px;">
+                <summary style="cursor:pointer; font-size:12px; color:#78350f; font-weight:600;">👁 תצוגה מקדימה של ההודעה</summary>
+                <pre style="margin:6px 0 0 0; padding:8px 10px; background:white; border:1px solid #fbbf24; border-radius:6px; font-family:inherit; font-size:12px; white-space:pre-wrap; max-height:200px; overflow-y:auto;">${previewText.replace(/</g, '&lt;')}</pre>
+            </details>
+
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" onclick="window.UnifiedLeadManager._bulkWaOpenCurrent()" style="background:#25D366; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:700; flex:1; min-width:180px;">📲 פתח ב-WhatsApp ושלח</button>
                 <button type="button" onclick="window.UnifiedLeadManager._bulkWaAdvance(true)" style="background:#16a34a; color:white; padding:11px 14px; border:none; border-radius:8px; font-weight:600;">✔ נשלח, לבא</button>
@@ -1894,29 +1955,30 @@ class UnifiedLeadManagerClass {
     }
 
     _bulkWaOpenCurrent() {
-        const l = this._bulkWaTargets[this._bulkWaIndex];
-        if (!l) return;
-        const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
-        const firstName = (l.name || '').trim().split(/\s+/)[0] || '';
-        const text = tpl.replace(/\{name\}/g, firstName);
-        const waPhone = this.formatPhoneForWhatsApp(l.phone);
+        const g = this._bulkWaGroups[this._bulkWaIndex];
+        if (!g) return;
+        const text = this._bulkWaBuildMessageFor(g);
+        const waPhone = this.formatPhoneForWhatsApp(g.phone);
         // whatsapp:// opens local WhatsApp Desktop directly — no browser tab
         window.location.href = `whatsapp://send?phone=${waPhone}&text=${encodeURIComponent(text)}`;
     }
 
     _bulkWaAdvance(sent) {
-        const l = this._bulkWaTargets[this._bulkWaIndex];
-        if (sent && l) {
+        const g = this._bulkWaGroups[this._bulkWaIndex];
+        if (sent && g) {
             this._bulkWaSentCount++;
-            const tpl = (document.getElementById('bulkWaMsg').value || '').trim();
-            const firstName = (l.name || '').trim().split(/\s+/)[0] || '';
-            const text = tpl.replace(/\{name\}/g, firstName);
-            // Log the actual send as a sent WhatsApp activity
-            fetch(`/leads/${l.id}/whatsapp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, direction: 'sent' })
-            }).catch(() => {});
+            // Log a "reminder sent" activity on each of the user's leads in this batch
+            const text = this._bulkWaBuildMessageFor(g);
+            g.leads.forEach(l => {
+                fetch(`/leads/${l.id}/whatsapp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: `📲 תזכורת ל-${g.full_name} (${this.formatPhoneForDisplay(g.phone)}):\n` + text,
+                        direction: 'sent'
+                    })
+                }).catch(() => {});
+            });
         } else if (!sent) {
             this._bulkWaSkippedCount++;
         }
