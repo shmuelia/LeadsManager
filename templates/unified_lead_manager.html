@@ -815,6 +815,11 @@
                     title="שלח תזכורת ב-WhatsApp לאנשי המכירות שאליהם הוקצו הלידים">
                 📲 <span>שלח תזכורת לאיש המכירות</span>
             </button>
+            <button class="action-btn btn-bulk-status" onclick="window.UnifiedLeadManager.openBulkStatusChange()"
+                    style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"
+                    title="שנה סטטוס לכל הלידים שנבחרו">
+                🔄 <span>שנה סטטוס</span>
+            </button>
             <button class="action-btn btn-secondary" onclick="window.UnifiedLeadManager.clearSelection()"
                     style="background: #e2e8f0; color: #1e293b; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;"
                     data-i18n-title="ulm_clear_selection_tooltip">
@@ -2010,6 +2015,157 @@ class UnifiedLeadManagerClass {
     _closeBulkWa() {
         const o = document.getElementById('bulkWaOverlay');
         if (o) o.remove();
+    }
+
+    openBulkStatusChange() {
+        // Admin / campaign-manager only: change status on every selected lead at once.
+        if (this.userRole !== 'admin' && this.userRole !== 'campaign_manager') {
+            this.showToast('אין לך הרשאה לבצע שינוי סטטוס מרובה', 'error');
+            return;
+        }
+
+        // Single source of truth = the actual visible-and-checked checkboxes.
+        // (Same defensive pattern as openBulkWhatsapp — guards against stale Set.)
+        const checkedBoxes = document.querySelectorAll('.lead-checkbox:checked');
+        const ids = [];
+        checkedBoxes.forEach(cb => {
+            const id = parseInt(cb.value);
+            if (!Number.isNaN(id)) ids.push(id);
+        });
+        this.selectedLeads = new Set(ids);
+        this.updateBulkActionsPanel();
+
+        if (!ids.length) {
+            alert('יש לבחור לפחות ליד אחד');
+            return;
+        }
+
+        // Build a summary of current statuses so the admin sees what they're about to overwrite.
+        const leads = ids.map(id => this.leads.find(l => l.id === id)).filter(Boolean);
+        const byStatus = {};
+        leads.forEach(l => { byStatus[l.status] = (byStatus[l.status] || 0) + 1; });
+        const summary = Object.entries(byStatus)
+            .map(([s, n]) => `${this.getStatusLabel(s)}: ${n}`)
+            .join(' · ');
+
+        // Options list mirrors getStatusLabel — keep in sync if statuses change.
+        const statusOptions = [
+            { value: 'new',                  label: 'חדש' },
+            { value: 'contacted',            label: 'נוצר קשר' },
+            { value: 'offer_sent',           label: 'נשלחה הצעה' },
+            { value: 'qualified',            label: 'מוכשר' },
+            { value: 'interested',           label: 'מתעניין' },
+            { value: 'not_interested',       label: 'לא מתעניין' },
+            { value: 'callback',             label: 'חזרה' },
+            { value: 'to_schedule_interview',label: 'לתאם ראיון' },
+            { value: 'interview_scheduled',  label: 'נקבע ראיון' },
+            { value: 'hired',                label: 'התקבל' },
+            { value: 'rejected',             label: 'נדחה' },
+            { value: 'closed',               label: 'סגור' },
+        ];
+
+        const existing = document.getElementById('bulkStatusOverlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'bulkStatusOverlay';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:14px;';
+        overlay.innerHTML = `
+            <div style="background:white; border-radius:14px; padding:22px; width:100%; max-width:520px; box-shadow:0 20px 60px rgba(0,0,0,0.35); direction:rtl; max-height:92vh; overflow-y:auto;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <h3 style="margin:0; color:#3730a3;">🔄 שינוי סטטוס מרובה</h3>
+                    <button type="button" onclick="window.UnifiedLeadManager._closeBulkStatus()" style="background:#e5e7eb; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;">✕</button>
+                </div>
+
+                <div style="background:#eef2ff; border:1px solid #c7d2fe; padding:10px 12px; border-radius:8px; margin-bottom:14px; font-size:13px; color:#3730a3;">
+                    <div style="font-weight:700; margin-bottom:4px;">${ids.length} לידים נבחרו</div>
+                    <div style="font-size:12px; color:#4338ca;">${summary || '—'}</div>
+                </div>
+
+                <label style="display:block; font-size:13px; font-weight:600; color:#1f2937; margin-bottom:4px;">סטטוס חדש</label>
+                <select id="bulkStatusSelect" style="width:100%; padding:10px; border:1px solid #c7d2fe; border-radius:8px; font-family:inherit; font-size:14px; margin-bottom:12px;">
+                    ${statusOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
+                </select>
+
+                <label style="display:block; font-size:13px; font-weight:600; color:#1f2937; margin-bottom:4px;">הערה (חובה — תועתק לכל הלידים)</label>
+                <textarea id="bulkStatusNote" rows="3" placeholder="לדוגמה: עדכון אצווה לאחר שיחה עם איש המכירות" style="width:100%; padding:10px; border:1px solid #c7d2fe; border-radius:8px; font-family:inherit; line-height:1.5; resize:vertical;"></textarea>
+
+                <div id="bulkStatusProgress" style="margin-top:10px; font-size:12px; color:#64748b; min-height:18px;"></div>
+
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+                    <button type="button" id="bulkStatusApply" onclick="window.UnifiedLeadManager._applyBulkStatus()" style="background:#4f46e5; color:white; padding:11px 18px; border:none; border-radius:8px; font-weight:700; flex:1; min-width:180px;">✔ עדכן ${ids.length} לידים</button>
+                    <button type="button" onclick="window.UnifiedLeadManager._closeBulkStatus()" style="background:#e5e7eb; color:#1f2937; padding:11px 14px; border:none; border-radius:8px; font-weight:600;">ביטול</button>
+                </div>
+            </div>
+        `;
+        let _downOnOverlay = false;
+        overlay.addEventListener('mousedown', e => { _downOnOverlay = (e.target === overlay); });
+        overlay.addEventListener('click', e => { if (_downOnOverlay && e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+
+        // Remember the snapshot of IDs so the user can't accidentally
+        // change the underlying selection while the modal is open.
+        this._bulkStatusIds = ids.slice();
+    }
+
+    async _applyBulkStatus() {
+        const ids = this._bulkStatusIds || [];
+        const newStatus = (document.getElementById('bulkStatusSelect').value || '').trim();
+        const note = (document.getElementById('bulkStatusNote').value || '').trim();
+        const progress = document.getElementById('bulkStatusProgress');
+        const applyBtn = document.getElementById('bulkStatusApply');
+
+        if (!newStatus) { alert('יש לבחור סטטוס'); return; }
+        if (!note) { alert('הערה היא שדה חובה בעת שינוי סטטוס'); return; }
+        if (!ids.length) { this._closeBulkStatus(); return; }
+
+        // Confirm closing — same guard the server enforces, but warns up-front.
+        if (newStatus === 'closed') {
+            if (!confirm(`סגירת ${ids.length} לידים — פעולה בלתי הפיכה. להמשיך?`)) return;
+        }
+
+        applyBtn.disabled = true;
+        applyBtn.style.opacity = '0.6';
+
+        let ok = 0, fail = 0;
+        const failedIds = [];
+        for (let i = 0; i < ids.length; i++) {
+            const leadId = ids[i];
+            progress.textContent = `מעדכן ${i + 1} מתוך ${ids.length}…`;
+            try {
+                const r = await fetch(`/leads/${leadId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        status: newStatus,
+                        user_name: this.fullName || this.username || 'מנהל',
+                        note: note,
+                    }),
+                });
+                if (r.ok) { ok++; } else { fail++; failedIds.push(leadId); }
+            } catch (e) {
+                fail++; failedIds.push(leadId);
+            }
+        }
+
+        progress.textContent = `✔ עודכנו ${ok}${fail ? `  ·  ❌ נכשלו ${fail} (IDs: ${failedIds.join(', ')})` : ''}`;
+        applyBtn.disabled = false;
+        applyBtn.style.opacity = '1';
+        applyBtn.textContent = '✔ סיים וסגור';
+        applyBtn.onclick = () => { window.UnifiedLeadManager._closeBulkStatus(); };
+
+        // Refresh data + clear selection so the UI shows new statuses.
+        this.selectedLeads.clear();
+        await this.loadLeads();
+        this.updateBulkActionsPanel();
+        this.showToast(`עודכנו ${ok} מתוך ${ids.length} לידים`, fail ? 'warning' : 'success');
+    }
+
+    _closeBulkStatus() {
+        const o = document.getElementById('bulkStatusOverlay');
+        if (o) o.remove();
+        this._bulkStatusIds = null;
     }
 
     async openGalleryShare(leadId, firstName, phone) {
