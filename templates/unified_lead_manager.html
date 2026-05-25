@@ -855,6 +855,7 @@
                         <th data-i18n="ulm_campaign">קמפיין</th>
                         <th data-i18n="ulm_assigned_to_col">מוקצה ל</th>
                         <th data-i18n="ulm_date">תאריך</th>
+                        <th title="הפעולה האחרונה שבוצעה מול הלקוח (שיחה, WhatsApp, הצעת מחיר, הערה, שינוי סטטוס)">אינטראקציה אחרונה</th>
                     </tr>
                 </thead>
                 <tbody id="leadsTableBody">
@@ -1271,6 +1272,7 @@ class UnifiedLeadManagerClass {
                     <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 30)}</td>
                     <td>${lead.assigned_full_name || lead.assigned_to || 'לא מוקצה'}</td>
                     <td>${this.formatDate(lead.lead_date || lead.created_time || lead.received_at)}</td>
+                    <td>${this.renderLastInteraction(lead)}</td>
                 </tr>
             `;
         }).join('');
@@ -1311,6 +1313,7 @@ class UnifiedLeadManagerClass {
                             <div><strong>תאריך:</strong> ${this.formatDate(lead.lead_date || lead.created_time || lead.received_at)}</div>
                         </div>
                         <div style="margin-top: 8px;"><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
+                        <div style="margin-top: 8px;"><strong>אינטראקציה אחרונה:</strong> ${this.renderLastInteraction(lead)}</div>
                     </div>
                     
                     <div class="lead-card-actions">
@@ -1805,6 +1808,42 @@ class UnifiedLeadManagerClass {
             'offer_sent': '📄 הצעת מחיר'
         };
         return labels[type] || type;
+    }
+
+    // Compact summary of the latest customer-facing activity, used in the
+    // "אינטראקציה אחרונה" column. Falls back to a dim "—" when the lead has
+    // no activity beyond the initial system events (lead_received/assignment).
+    renderLastInteraction(lead) {
+        if (!lead.last_activity_type || !lead.last_activity_date) {
+            return '<span style="color:#9ca3af;">—</span>';
+        }
+        const label = this.getActivityLabel(lead.last_activity_type);
+        const when = this.formatRelativeTime(lead.last_activity_date);
+        const fullDate = this.formatDate(lead.last_activity_date);
+        const by = lead.last_activity_user ? ` · ${lead.last_activity_user}` : '';
+        return `<span title="${fullDate}${by}" style="display:inline-flex; flex-direction:column; line-height:1.25;">
+                    <span style="font-weight:600; color:#1f2937;">${label}</span>
+                    <span style="font-size:11px; color:#6b7280;">${when}</span>
+                </span>`;
+    }
+
+    // Human-friendly relative time in Hebrew (e.g. "לפני 3 שעות", "אתמול",
+    // "לפני 5 ימים"). For anything older than ~14 days falls back to the
+    // localized date so the column doesn't say "לפני 87 ימים".
+    formatRelativeTime(dateString) {
+        if (!dateString) return '';
+        const then = new Date(dateString);
+        if (isNaN(then.getTime())) return '';
+        const diffMs = Date.now() - then.getTime();
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1)  return 'הרגע';
+        if (diffMin < 60) return `לפני ${diffMin} דק׳`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24)  return `לפני ${diffHr} ${diffHr === 1 ? 'שעה' : 'שעות'}`;
+        const diffDay = Math.floor(diffHr / 24);
+        if (diffDay === 1) return 'אתמול';
+        if (diffDay < 14)  return `לפני ${diffDay} ימים`;
+        return this.formatDate(dateString);
     }
 
     async openBulkWhatsapp() {

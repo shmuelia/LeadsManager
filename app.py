@@ -1689,14 +1689,28 @@ def get_leads():
                 total_count = count_result['count']
             
             # Get paginated results with optimized query
+            # `la` = the latest customer-facing activity (excludes system events
+            # like 'lead_received' / 'assignment' which aren't really interactions
+            # with the customer).
             cur.execute("""
                 SELECT l.id, l.external_lead_id, l.name, l.email, l.phone, l.platform,
                        l.campaign_name, l.form_name, l.lead_source, l.created_time,
                        l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
                        u.full_name as assigned_full_name,
-                       COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date
+                       COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date,
+                       la.activity_type as last_activity_type,
+                       la.activity_date as last_activity_date,
+                       la.user_name      as last_activity_user
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
+                LEFT JOIN LATERAL (
+                    SELECT activity_type, activity_date, user_name
+                    FROM lead_activities
+                    WHERE lead_id = l.id
+                      AND activity_type NOT IN ('lead_received', 'assignment')
+                    ORDER BY activity_date DESC
+                    LIMIT 1
+                ) la ON true
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
                 ORDER BY COALESCE(l.created_time, l.received_at) DESC
                 LIMIT %s OFFSET %s
@@ -1724,9 +1738,20 @@ def get_leads():
                        l.campaign_name, l.form_name, l.lead_source, l.created_time,
                        l.received_at, l.status, l.assigned_to, l.priority, l.updated_at,
                        u.full_name as assigned_full_name,
-                       COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date
+                       COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date,
+                       la.activity_type as last_activity_type,
+                       la.activity_date as last_activity_date,
+                       la.user_name      as last_activity_user
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
+                LEFT JOIN LATERAL (
+                    SELECT activity_type, activity_date, user_name
+                    FROM lead_activities
+                    WHERE lead_id = l.id
+                      AND activity_type NOT IN ('lead_received', 'assignment')
+                    ORDER BY activity_date DESC
+                    LIMIT 1
+                ) la ON true
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
                 ORDER BY COALESCE(l.created_time, l.received_at) DESC
                 LIMIT %s OFFSET %s
@@ -1739,7 +1764,7 @@ def get_leads():
         for lead in leads:
             lead_dict = dict(lead)
             # Safely convert datetime objects that exist
-            for key in ['created_time', 'received_at', 'updated_at']:
+            for key in ['created_time', 'received_at', 'updated_at', 'last_activity_date']:
                 if lead_dict.get(key):
                     try:
                         if hasattr(lead_dict[key], 'isoformat'):
