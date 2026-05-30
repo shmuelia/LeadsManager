@@ -38,7 +38,10 @@
       "Bash(pandoc --track-changes=all \"G:/My Drive/Business/Nichsei/Bakery/Mishmarot/Operations/מכירות/מכירות ארועים/הצעת מחיר בסיסית חדשה.docx\" -o /tmp/offer.md)",
       "Read(//tmp/**)",
       "Bash(which wkhtmltopdf *)",
-      "Bash(powershell.exe -File deploy.ps1 \"Fix bulk WhatsApp sending leads that were not selected \\(sync from visible checkboxes; clear selection on filter change\\)\")"
+      "Bash(powershell.exe -File deploy.ps1 \"Fix bulk WhatsApp sending leads that were not selected \\(sync from visible checkboxes; clear selection on filter change\\)\")",
+      "mcp__Claude_in_Chrome__get_page_text",
+      "Bash(heroku config *)",
+      "Bash(findstr /B \"META_WA\")"
     ],
     "deny": [],
     "ask": []
