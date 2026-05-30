@@ -8,6 +8,8 @@ import pytz
 import json
 import logging
 import hashlib
+import hmac
+import requests
 from functools import wraps
 import time
 import threading
@@ -6411,6 +6413,214 @@ def optimize_database():
             'status': 'error',
             'error': str(e)
         }), 500
+
+# ============================================================================
+# Meta WhatsApp Cloud API — inbound webhook + outbound send
+# ============================================================================
+# Config vars (set in Heroku):
+#   META_WA_TOKEN        - permanent System-User access token
+#   META_WA_PHONE_ID     - phone number ID to send FROM (Graph API node)
+#   META_WA_BUSINESS_ID  - WABA id (informational)
+#   META_WA_VERIFY_TOKEN - shared secret echoed back during webhook setup
+#   META_WA_APP_SECRET   - (optional) app secret for X-Hub-Signature validation
+#   META_WA_CUSTOMER_ID  - customer scope for inbound matching (default 1)
+# ----------------------------------------------------------------------------
+
+META_WA_GRAPH_VERSION = 'v18.0'
+
+
+def _meta_wa_send_text(to_phone, body):
+    """Send a free-form WhatsApp text via Cloud API.
+    NOTE: free-form text is only delivered if the recipient messaged us within
+    the last 24h (Meta's customer-service window). Outside that window a
+    pre-approved template is required. Returns (ok: bool, response: dict)."""
+    token = os.environ.get('META_WA_TOKEN', '')
+    phone_id = os.environ.get('META_WA_PHONE_ID', '')
+    if not token or not phone_id:
+        return False, {'error': 'Meta WhatsApp not configured'}
+
+    to_norm = _normalize_il_phone(to_phone)
+    if not to_norm:
+        return False, {'error': 'invalid recipient phone'}
+
+    url = f"https://graph.facebook.com/{META_WA_GRAPH_VERSION}/{phone_id}/messages"
+    payload = {
+        'messaging_product': 'whatsapp',
+        'to': to_norm,
+        'type': 'text',
+        'text': {'preview_url': False, 'body': body},
+    }
+    try:
+        r = requests.post(
+            url,
+            headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+            json=payload,
+            timeout=15,
+        )
+        ok = r.status_code == 200
+        return ok, r.json()
+    except Exception as e:
+        logger.error(f"_meta_wa_send_text error: {e}")
+        return False, {'error': str(e)}
+
+
+def _find_lead_id_by_phone(cur, customer_id, normalized_phone):
+    """Return the most recent lead id whose phone matches the last 9 digits,
+    or None. Caller supplies an open cursor."""
+    last9 = (normalized_phone or '')[-9:]
+    if not last9:
+        return None
+    cur.execute(
+        """
+        SELECT id FROM leads
+        WHERE customer_id = %s
+          AND REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE %s
+        ORDER BY id DESC LIMIT 1
+        """,
+        (customer_id, '%' + last9),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+@app.route('/webhook/whatsapp', methods=['GET', 'POST'])
+def whatsapp_webhook():
+    """Meta WhatsApp Cloud API webhook.
+
+    GET  - verification handshake (Meta sends hub.challenge during setup)
+    POST - incoming messages + status callbacks
+    """
+    # ---- GET: verification handshake ----
+    if request.method == 'GET':
+        verify_token = os.environ.get('META_WA_VERIFY_TOKEN', '')
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        if mode == 'subscribe' and token and token == verify_token:
+            logger.info("✅ WhatsApp webhook verified")
+            return challenge or '', 200
+        logger.warning(f"❌ WhatsApp webhook verify failed (mode={mode})")
+        return 'Verification failed', 403
+
+    # ---- POST: incoming events ----
+    # Always return 200 quickly so Meta doesn't retry; do work best-effort.
+    try:
+        # Optional signature check (only if app secret configured)
+        app_secret = os.environ.get('META_WA_APP_SECRET', '')
+        if app_secret:
+            sig = request.headers.get('X-Hub-Signature-256', '')
+            expected = 'sha256=' + hmac.new(
+                app_secret.encode('utf-8'), request.get_data(), hashlib.sha256
+            ).hexdigest()
+            if not hmac.compare_digest(sig, expected):
+                logger.warning("❌ WhatsApp webhook bad signature")
+                return 'bad signature', 403
+
+        data = request.get_json(silent=True) or {}
+        logger.info(f"🟢 WhatsApp webhook POST: {json.dumps(data)[:500]}")
+
+        # Default customer scope for inbound (single-tenant for now)
+        customer_id = int(os.environ.get('META_WA_CUSTOMER_ID', '1'))
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'status': 'no_db'}), 200
+        cur = conn.cursor()
+
+        processed = 0
+        for entry in data.get('entry', []):
+            for change in entry.get('changes', []):
+                value = change.get('value', {}) or {}
+                messages = value.get('messages', []) or []
+
+                # contact display name lookup (sender's WhatsApp profile name)
+                contacts = {c.get('wa_id'): (c.get('profile') or {}).get('name')
+                            for c in (value.get('contacts') or [])}
+
+                for msg in messages:
+                    from_phone = msg.get('from', '')   # e.g. '972545932808'
+                    msg_id = msg.get('id', '')
+                    msg_type = msg.get('type', '')
+                    ts = msg.get('timestamp', '')
+
+                    # Extract text body across common message types
+                    if msg_type == 'text':
+                        text = (msg.get('text') or {}).get('body', '')
+                    elif msg_type == 'button':
+                        text = (msg.get('button') or {}).get('text', '')
+                    elif msg_type == 'interactive':
+                        inter = msg.get('interactive') or {}
+                        text = ((inter.get('button_reply') or {}).get('title')
+                                or (inter.get('list_reply') or {}).get('title') or '')
+                    else:
+                        text = f"[{msg_type}]"  # media/location/etc placeholder
+
+                    normalized = _normalize_il_phone(from_phone)
+                    lead_id = _find_lead_id_by_phone(cur, customer_id, normalized)
+                    sender_name = contacts.get(from_phone) or normalized
+
+                    if not lead_id:
+                        logger.info(f"WhatsApp inbound from {normalized} — no matching lead, skipping")
+                        continue
+
+                    # Dedup by Meta's message id
+                    msg_hash = hashlib.sha256(f"meta|{msg_id}".encode('utf-8')).hexdigest()
+                    cur.execute(
+                        """
+                        SELECT 1 FROM lead_activities
+                        WHERE lead_id = %s AND activity_type = 'whatsapp_message'
+                          AND activity_metadata->>'msg_hash' = %s
+                        LIMIT 1
+                        """,
+                        (lead_id, msg_hash),
+                    )
+                    if cur.fetchone():
+                        continue
+
+                    description = f"➡ התקבל (WhatsApp) מ-{sender_name}:\n{text}"
+                    cur.execute(
+                        """
+                        INSERT INTO lead_activities
+                        (lead_id, user_name, activity_type, description, activity_metadata)
+                        VALUES (%s, %s, %s, %s, %s::jsonb)
+                        """,
+                        (lead_id, sender_name, 'whatsapp_message', description,
+                         json.dumps({'msg_hash': msg_hash, 'source': 'meta_webhook',
+                                     'phone': normalized, 'direction': 'received',
+                                     'meta_msg_id': msg_id, 'timestamp': ts})),
+                    )
+
+                    # Auto-promote: a customer reply means contact was made.
+                    cur.execute("SELECT status FROM leads WHERE id = %s", (lead_id,))
+                    row = cur.fetchone()
+                    if row and row[0] == 'new':
+                        cur.execute(
+                            "UPDATE leads SET status = 'contacted', updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                            (lead_id,),
+                        )
+                        cur.execute(
+                            """
+                            INSERT INTO lead_activities
+                            (lead_id, user_name, activity_type, description, previous_status, new_status)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            """,
+                            (lead_id, 'מערכת', 'status_change',
+                             'סטטוס שונה מ-new ל-contacted | הערה: הלקוח הגיב ב-WhatsApp',
+                             'new', 'contacted'),
+                        )
+                    processed += 1
+
+        conn.commit()
+        cur.close(); conn.close()
+        logger.info(f"🟢 WhatsApp webhook processed {processed} message(s)")
+        return jsonify({'status': 'ok', 'processed': processed}), 200
+    except Exception as e:
+        logger.error(f"whatsapp_webhook error: {e}")
+        import traceback
+        traceback.print_exc()
+        # Still 200 so Meta doesn't hammer retries
+        return jsonify({'status': 'error', 'error': str(e)}), 200
+
 
 @app.route('/health')
 def health_check():
