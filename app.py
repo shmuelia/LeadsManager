@@ -3357,6 +3357,86 @@ def log_whatsapp_message(lead_id):
         logger.error(f"Error logging WhatsApp message: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/leads/<int:lead_id>/whatsapp/send', methods=['POST'])
+@login_required
+def send_whatsapp_message(lead_id):
+    """Send a WhatsApp message to the lead via Meta Cloud API, then log it.
+
+    Free-form text only delivers inside Meta's 24h customer-service window.
+    Outside it, Meta returns error 131047/131051 → we surface outside_window=True
+    so the UI can prompt for an approved template instead. Nothing is logged
+    unless Meta accepts the message."""
+    try:
+        data = request.get_json() or {}
+        text = (data.get('text') or '').strip()
+        if not text:
+            return jsonify({'error': 'text required'}), 400
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+
+        # Resolve the lead's phone (+ access check)
+        cur.execute("SELECT phone, name, customer_id FROM leads WHERE id = %s", (lead_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Lead not found'}), 404
+        phone, lead_name, lead_customer_id = row[0], row[1], row[2]
+
+        if session.get('role') == 'admin':
+            allowed_customer_id = session.get('selected_customer_id', lead_customer_id)
+        else:
+            allowed_customer_id = session.get('customer_id')
+        if lead_customer_id != allowed_customer_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized for this lead'}), 403
+
+        if not phone:
+            cur.close(); conn.close()
+            return jsonify({'error': 'לליד אין מספר טלפון'}), 400
+
+        # Send via Cloud API
+        ok, resp = _meta_wa_send_text(phone, text)
+        if not ok:
+            cur.close(); conn.close()
+            err = (resp or {}).get('error', {})
+            code = err.get('code') if isinstance(err, dict) else None
+            # 131047 = re-engagement (24h window passed); 131051 = unsupported type
+            outside = code in (131047, 131051, 470)
+            msg = err.get('message') if isinstance(err, dict) else str(resp)
+            logger.warning(f"WhatsApp send failed lead={lead_id} code={code}: {msg}")
+            return jsonify({'error': msg or 'שליחה נכשלה',
+                            'outside_window': outside, 'meta_code': code}), 502
+
+        # Success → log as outbound activity
+        meta_msg_id = ''
+        try:
+            meta_msg_id = (resp.get('messages') or [{}])[0].get('id', '')
+        except Exception:
+            pass
+        user_name = session.get('full_name', session.get('username', 'אנונימי'))
+        msg_hash = hashlib.sha256(f"meta|{meta_msg_id}".encode('utf-8')).hexdigest() if meta_msg_id else None
+        cur.execute(
+            """
+            INSERT INTO lead_activities
+            (lead_id, user_name, activity_type, description, activity_metadata)
+            VALUES (%s, %s, %s, %s, %s::jsonb)
+            """,
+            (lead_id, user_name, 'whatsapp_message',
+             f"⬅ נשלח (WhatsApp) ל-{lead_name or 'ליד'}:\n{text}",
+             json.dumps({'source': 'meta_api', 'direction': 'sent',
+                         'meta_msg_id': meta_msg_id, 'msg_hash': msg_hash})),
+        )
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'status': 'success', 'meta_msg_id': meta_msg_id})
+    except Exception as e:
+        logger.error(f"send_whatsapp_message error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/leads/<int:lead_id>/status', methods=['PUT'])
 @login_required
 def update_lead_status(lead_id):

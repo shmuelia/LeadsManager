@@ -1662,16 +1662,26 @@ class UnifiedLeadManagerClass {
                 <textarea id="waText_${lead.id}" rows="4" placeholder="הדבק כאן את ההודעות מ-WhatsApp..."
                           style="width: 100%; padding: 10px; border: 1px solid #86efac; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center;">
-                    <label style="font-size: 13px; color: #14532d;">כיוון:</label>
+                    <button onclick="window.UnifiedLeadManager.sendWhatsappApi(${lead.id})"
+                            title="שולח את הטקסט ישירות ללקוח דרך WhatsApp (Meta API) ומתעד אוטומטית"
+                            style="background: linear-gradient(135deg,#25D366 0%,#16a34a 100%); color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;">
+                        📤 שלח עכשיו ב-WhatsApp
+                    </button>
+                    <label style="font-size: 13px; color: #14532d;">כיוון לתיעוד:</label>
                     <select id="waDirection_${lead.id}" style="padding: 8px; border-radius: 6px; border: 1px solid #86efac;">
                         <option value="log" selected>📝 תיעוד</option>
                         <option value="sent">⬅ נשלח על ידי</option>
                         <option value="received">➡ התקבל מהליד</option>
                     </select>
                     <button onclick="window.UnifiedLeadManager.saveWhatsappLog(${lead.id})"
-                            style="background: #16a34a; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: auto;">
-                        💾 שמור התכתבות
+                            title="רישום בלבד — לא שולח, רק מתעד בהיסטוריית הליד"
+                            style="background: #e2e8f0; color: #1e293b; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: auto;">
+                        📝 רישום בלבד
                     </button>
+                    <span id="whatsappSendStatus_${lead.id}" style="font-size:12px; color:#14532d; width:100%;"></span>
+                </div>
+                <div style="font-size:11px; color:#166534; margin-top:6px;">
+                    💡 שליחה חופשית אפשרית רק עד 24 שעות מההודעה האחרונה של הלקוח. מחוץ לחלון — נדרשת תבנית מאושרת.
                 </div>
             </div>
 
