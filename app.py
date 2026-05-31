@@ -1823,10 +1823,10 @@ def get_lead(lead_id):
         
         # Get lead details
         cur.execute("""
-            SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name, 
-                   lead_source, created_time, received_at, status, assigned_to, priority, 
-                   raw_data, notes, updated_at
-            FROM leads 
+            SELECT id, external_lead_id, name, email, phone, platform, campaign_name, form_name,
+                   lead_source, created_time, received_at, status, assigned_to, priority,
+                   raw_data, notes, updated_at, customer_id
+            FROM leads
             WHERE id = %s
         """, (lead_id,))
         
@@ -1836,7 +1836,17 @@ def get_lead(lead_id):
             cur.close()
             conn.close()
             return jsonify({'error': 'Lead not found'}), 404
-        
+
+        # Lazily attach any WhatsApp messages that arrived before this lead
+        # existed (pending inbox → back-match). Covers every creation path.
+        try:
+            attached = _backmatch_pending_whatsapp(
+                cur, lead_id, lead.get('phone'), lead.get('customer_id') or 1)
+            if attached:
+                conn.commit()
+        except Exception as bm_e:
+            logger.error(f"get_lead backmatch error: {bm_e}")
+
         # Get activities for this lead
         cur.execute("""
             SELECT id, user_name, activity_type, description, call_duration, call_outcome,
@@ -6563,6 +6573,104 @@ def _find_lead_id_by_phone(cur, customer_id, normalized_phone):
     return row[0] if row else None
 
 
+def _ensure_pending_wa_table(cur):
+    """Create the pending-WhatsApp inbox table if missing. Holds inbound
+    messages from numbers that don't yet match any lead, so they can be
+    back-matched (attached) when that lead is later created/opened.
+    Idempotent — safe to call on every webhook hit."""
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pending_whatsapp_messages (
+            id            SERIAL PRIMARY KEY,
+            customer_id   INTEGER NOT NULL DEFAULT 1,
+            phone_last9   VARCHAR(9) NOT NULL,
+            phone_full    VARCHAR(20),
+            sender_name   VARCHAR(255),
+            body          TEXT,
+            meta_msg_id   VARCHAR(255),
+            msg_hash      VARCHAR(64),
+            wa_timestamp  VARCHAR(32),
+            received_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            consumed      BOOLEAN DEFAULT FALSE,
+            consumed_lead_id INTEGER
+        )
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pending_wa_phone "
+        "ON pending_whatsapp_messages (customer_id, phone_last9, consumed)"
+    )
+
+
+def _backmatch_pending_whatsapp(cur, lead_id, phone, customer_id):
+    """Attach any unconsumed pending WhatsApp messages for this phone to the
+    given lead, as whatsapp_message activities. Marks them consumed so they're
+    never attached twice. Returns the number attached.
+
+    Called lazily whenever a lead is opened (get_lead), so it covers every
+    lead-creation path (webhook, Sheets sync, manual) without editing each one."""
+    normalized = _normalize_il_phone(phone)
+    last9 = (normalized or '')[-9:]
+    if not last9:
+        return 0
+    try:
+        _ensure_pending_wa_table(cur)
+        cur.execute(
+            """
+            SELECT id, sender_name, body, meta_msg_id, msg_hash, wa_timestamp, phone_full
+            FROM pending_whatsapp_messages
+            WHERE customer_id = %s AND phone_last9 = %s AND consumed = FALSE
+            ORDER BY received_at ASC
+            """,
+            (customer_id, last9),
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return 0
+        attached = 0
+        for r in rows:
+            pid, sender_name, body, meta_msg_id, msg_hash, wa_ts, phone_full = r
+            # Skip if an identical message already exists on the lead
+            if msg_hash:
+                cur.execute(
+                    """
+                    SELECT 1 FROM lead_activities
+                    WHERE lead_id = %s AND activity_type = 'whatsapp_message'
+                      AND activity_metadata->>'msg_hash' = %s LIMIT 1
+                    """,
+                    (lead_id, msg_hash),
+                )
+                if cur.fetchone():
+                    cur.execute(
+                        "UPDATE pending_whatsapp_messages SET consumed=TRUE, consumed_lead_id=%s WHERE id=%s",
+                        (lead_id, pid),
+                    )
+                    continue
+            description = f"➡ התקבל (WhatsApp) מ-{sender_name or phone_full or normalized}:\n{body or ''}"
+            cur.execute(
+                """
+                INSERT INTO lead_activities
+                (lead_id, user_name, activity_type, description, activity_metadata)
+                VALUES (%s, %s, %s, %s, %s::jsonb)
+                """,
+                (lead_id, sender_name or normalized, 'whatsapp_message', description,
+                 json.dumps({'msg_hash': msg_hash, 'source': 'meta_webhook_backmatched',
+                             'phone': normalized, 'direction': 'received',
+                             'meta_msg_id': meta_msg_id, 'timestamp': wa_ts})),
+            )
+            cur.execute(
+                "UPDATE pending_whatsapp_messages SET consumed=TRUE, consumed_lead_id=%s WHERE id=%s",
+                (lead_id, pid),
+            )
+            attached += 1
+        if attached:
+            logger.info(f"Back-matched {attached} pending WhatsApp msg(s) to lead {lead_id}")
+        return attached
+    except Exception as e:
+        logger.error(f"_backmatch_pending_whatsapp error: {e}")
+        return 0
+
+
 @app.route('/webhook/whatsapp', methods=['GET', 'POST'])
 def whatsapp_webhook():
     """Meta WhatsApp Cloud API webhook.
@@ -6640,7 +6748,29 @@ def whatsapp_webhook():
                     sender_name = contacts.get(from_phone) or normalized
 
                     if not lead_id:
-                        logger.info(f"WhatsApp inbound from {normalized} — no matching lead, skipping")
+                        # No lead yet — stash in the pending inbox so it can be
+                        # back-matched when the lead is later created/opened.
+                        try:
+                            _ensure_pending_wa_table(cur)
+                            p_hash = hashlib.sha256(f"meta|{msg_id}".encode('utf-8')).hexdigest()
+                            cur.execute(
+                                "SELECT 1 FROM pending_whatsapp_messages WHERE msg_hash=%s LIMIT 1",
+                                (p_hash,),
+                            )
+                            if not cur.fetchone():
+                                cur.execute(
+                                    """
+                                    INSERT INTO pending_whatsapp_messages
+                                    (customer_id, phone_last9, phone_full, sender_name,
+                                     body, meta_msg_id, msg_hash, wa_timestamp)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                    """,
+                                    (customer_id, (normalized or '')[-9:], normalized,
+                                     sender_name, text, msg_id, p_hash, ts),
+                                )
+                                logger.info(f"WhatsApp inbound from {normalized} — no lead yet, stored in pending inbox")
+                        except Exception as pe:
+                            logger.error(f"pending inbox store error: {pe}")
                         continue
 
                     # Dedup by Meta's message id
