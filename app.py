@@ -6629,7 +6629,14 @@ def _backmatch_pending_whatsapp(cur, lead_id, phone, customer_id):
             return 0
         attached = 0
         for r in rows:
-            pid, sender_name, body, meta_msg_id, msg_hash, wa_ts, phone_full = r
+            # Support both plain (tuple) and RealDictCursor (dict) rows —
+            # get_lead passes a RealDictCursor, the webhook a plain cursor.
+            if isinstance(r, dict):
+                pid = r['id']; sender_name = r['sender_name']; body = r['body']
+                meta_msg_id = r['meta_msg_id']; msg_hash = r['msg_hash']
+                wa_ts = r['wa_timestamp']; phone_full = r['phone_full']
+            else:
+                pid, sender_name, body, meta_msg_id, msg_hash, wa_ts, phone_full = r
             # Skip if an identical message already exists on the lead
             if msg_hash:
                 cur.execute(
