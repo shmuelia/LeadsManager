@@ -1324,11 +1324,8 @@
                     }
                 });
 
-                previewMessage += `\n\nהאם להמשיך בסנכרון?`;
-
-                if (!confirm(previewMessage)) {
-                    return;
-                }
+                // Confirm dialog removed per request — sync proceeds directly and
+                // shows a single result popup at the end (no double prompt).
 
                 // Step 3: Execute sync
                 btn.textContent = '⏳ מסנכרן...';

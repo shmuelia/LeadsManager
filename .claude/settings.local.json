@@ -45,7 +45,8 @@
       "Bash(find \"G:\\\\My Drive\\\\Business\\\\Nichsei\\\\Bakery\\\\Mishmarot\\\\Operations\" -maxdepth 3 -type d 2>/dev/null | head -50)",
       "Bash(find \"G:\\\\My Drive\" -maxdepth 4 -iname \"*.py\" -path \"*bakery*\" 2>/dev/null | head; echo \"===HR===\"; find \"G:\\\\My Drive\" -maxdepth 5 -type d \\\\\\( -iname \"*hr*\" -o -iname \"*sales*\" -o -iname \"*pp*\" \\\\\\) 2>/dev/null | grep -i -E \"py|app|prod|hr\" | head -30)",
       "Bash(heroku config:get META_WA_TOKEN -a eadmanager-fresh-2024-dev)",
-      "Bash(powershell.exe -File deploy.ps1 \"Pending WhatsApp inbox + auto back-match to new/opened leads \\(never lose a customer message\\)\")"
+      "Bash(powershell.exe -File deploy.ps1 \"Pending WhatsApp inbox + auto back-match to new/opened leads \\(never lose a customer message\\)\")",
+      "Bash(powershell.exe -File deploy.ps1 \"Fix: sync scans all rows \\(catches mid-sheet inserts\\) + guard empty-value false dupes + remove double sync popup\")"
     ],
     "deny": [],
     "ask": []

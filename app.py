@@ -5802,13 +5802,20 @@ def sync_all_campaigns():
 
                         # Check for duplicates within the SAME campaign (normalized comparison)
                         # Allows same person to be imported to different campaigns
+                        # Guard: only treat as duplicate when the INCOMING value is
+                        # non-empty AND matches. Without the %s != '' guards, a row
+                        # with no phone would match any existing empty-phone lead
+                        # (''='') and be wrongly skipped as a duplicate.
+                        norm_phone = (phone or '').replace('-', '').replace(' ', '').replace('+', '')
+                        norm_email = (email or '').strip().lower().rstrip('.')
                         cur.execute(
                             """SELECT id FROM leads WHERE customer_id = %s AND campaign_name = %s AND (
-                                (phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
+                                (%s <> '' AND phone IS NOT NULL AND REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = %s)
                                 OR
-                                (email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
+                                (%s <> '' AND email IS NOT NULL AND LOWER(TRIM(TRAILING '.' FROM email)) = %s)
                             ) LIMIT 1""",
-                            (full_campaign['customer_id'], final_campaign_name, phone or '', email or ''))
+                            (full_campaign['customer_id'], final_campaign_name,
+                             norm_phone, norm_phone, norm_email, norm_email))
                         if cur.fetchone():
                             duplicates += 1
                             continue
