@@ -5755,10 +5755,16 @@ def sync_all_campaigns():
 
                 new_leads, duplicates, errors, current_row = 0, 0, 0, 1
 
-                # Process each row
+                # Process each row.
+                # NOTE: we intentionally do NOT skip by last_synced_row anymore.
+                # Row-number tracking missed mid-sheet inserts — a row added between
+                # existing rows has a number <= last_synced_row, so it was never
+                # re-read. We now scan every data row each run; the per-campaign
+                # duplicate check below makes this safe (existing leads are skipped,
+                # only genuinely new rows import). Cost is trivial (tens of rows).
                 for row_data in reader:
                     current_row += 1
-                    if current_row <= last_synced_row or not any(row_data.values()):
+                    if not any(row_data.values()):
                         continue
 
                     try:
