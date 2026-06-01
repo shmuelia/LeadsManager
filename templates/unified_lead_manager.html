@@ -2783,8 +2783,9 @@ class UnifiedLeadManagerClass {
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
                     ${phone ? `
                         <button onclick="window.UnifiedLeadManager.sendFirstMessageViaWhatsapp(${lead.id}, '${waPhone}')"
+                                title="פותח את WhatsApp עם ההודעה ומתעד אוטומטית בהיסטוריית הליד"
                                 style="background:#25D366; color:white; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px;">
-                            📱 פתח WhatsApp עם ההודעה
+                            📱 פתח WhatsApp ושמור
                         </button>
                     ` : '<span style="color:#6b7280;">אין מספר טלפון</span>'}
                     <button onclick="window.UnifiedLeadManager.copyFirstMessage()"
@@ -2792,8 +2793,9 @@ class UnifiedLeadManagerClass {
                         📋 העתק
                     </button>
                     <button onclick="window.UnifiedLeadManager.logFirstMessageAsSent(${lead.id})"
-                            style="background:#16a34a; color:white; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; margin-right:auto;">
-                        💾 שמור כנשלח
+                            title="תיעוד ידני — למקרה שהתיעוד האוטומטי נכשל"
+                            style="background:#e2e8f0; color:#475569; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; margin-right:auto;">
+                        💾 תעד ידנית
                     </button>
                 </div>
                 <div id="firstMessageStatus" style="margin-top:10px; font-size:13px; color:#6b7280;"></div>
@@ -2811,7 +2813,31 @@ class UnifiedLeadManagerClass {
         const url = `whatsapp://send?phone=${waPhone}&text=${encodeURIComponent(text)}`;
         window.location.href = url;  // direct protocol invocation — OS handles it
         const status = document.getElementById('firstMessageStatus');
-        if (status) status.innerHTML = '✔ WhatsApp נפתח באפליקציה. לאחר השליחה, לחץ "💾 שמור כנשלח" לתיעוד.';
+        if (status) status.innerHTML = '✔ WhatsApp נפתח באפליקציה. ההודעה מתועדת אוטומטית...';
+        // Auto-log the first message so the lead timeline has an audit trail
+        // without the rep needing to click "שמור כנשלח" separately. We log on a
+        // short delay so the protocol hand-off to WhatsApp isn't interrupted.
+        setTimeout(() => { this._autoLogFirstMessage(leadId, text); }, 600);
+    }
+
+    async _autoLogFirstMessage(leadId, text) {
+        const status = document.getElementById('firstMessageStatus');
+        const body = (text || '').trim();
+        if (!body) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/whatsapp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: body, direction: 'sent' })
+            });
+            if (!res.ok) return;
+            if (status) status.innerHTML = '✅ נשלח ותועד. אם הליד חדש — תוצע העברה ל"נוצר קשר".';
+            // Offer to promote new → contacted (same prompt the manual save uses)
+            await this.maybePromptStatusFromNew(leadId);
+        } catch (e) {
+            // Non-fatal: WhatsApp still opened; logging just didn't persist.
+            if (status) status.innerHTML = '⚠ WhatsApp נפתח אך התיעוד נכשל — לחץ "💾 שמור כנשלח" ידנית.';
+        }
     }
 
     async copyFirstMessage() {
