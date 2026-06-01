@@ -1338,7 +1338,14 @@
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    // Show single concise success message
+                    // Refresh FIRST (before the alert) so the new leads are already
+                    // visible on the list by the time the user dismisses the popup.
+                    loadCampaigns();
+                    if (window.UnifiedLeadManager) {
+                        try { await window.UnifiedLeadManager.loadLeads(); } catch (e) {}
+                    }
+
+                    // Then show the single concise success message
                     let message = `✅ סנכרון הושלם!\n\n`;
                     message += `📊 קמפיינים: ${result.total_campaigns} | `;
                     message += `🆕 לידים חדשים: ${result.total_new_leads} | `;
@@ -1349,14 +1356,6 @@
                     }
 
                     alert(message);
-
-                    // Reload campaigns grid AND leads list
-                    loadCampaigns();
-
-                    // Refresh the unified lead manager if it exists
-                    if (window.UnifiedLeadManager) {
-                        window.UnifiedLeadManager.loadLeads();
-                    }
                 } else {
                     alert('❌ שגיאה בסנכרון: ' + (result.error || 'שגיאה לא ידועה'));
                 }
