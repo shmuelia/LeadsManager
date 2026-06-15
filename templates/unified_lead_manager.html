@@ -2325,16 +2325,14 @@ class UnifiedLeadManagerClass {
 
                 ${!isMobile ? `
                     <div style="background:#eff6ff; border:1px solid #93c5fd; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#1e3a8a;">
-                        ${canShareFiles
-                          ? '💡 במחשב: ייפתח חלון שיתוף של Windows — בחר/י WhatsApp כדי לצרף את כל התמונות בבת אחת (ללא הורדות).'
-                          : '💡 במחשב: כל התמונות יורדות לתיקייה אחת וחלון WhatsApp נפתח. פתח/י את התיקייה, בחר/י הכל (Ctrl+A) וגרור/י את כולן בבת אחת לצ׳אט.'}
+                        💡 במחשב: כל התמונות יורדות לתיקייה אחת וחלון WhatsApp נפתח. פתח/י את התיקייה, בחר/י הכל (Ctrl+A) וגרור/י את כולן בבת אחת לצ׳אט.
                     </div>` : ''}
 
                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
                     <button type="button" id="gal_primaryBtn"
                             onclick="window.UnifiedLeadManager._sendPhotos()"
                             style="background:#16a34a; color:white; padding:11px 20px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
-                        ${canShareFiles ? '📲 הכן תמונות לשיתוף' : '📤 הורד ופתח WhatsApp'}
+                        ${isMobile && canShareFiles ? '📲 הכן תמונות לשיתוף' : '📤 הורד ופתח WhatsApp'}
                     </button>
                     <button type="button" onclick="window.UnifiedLeadManager._downloadSelected(${leadId})"
                             style="background:#e5e7eb; color:#1f2937; padding:11px 16px; border:none; border-radius:8px; font-weight:600; font-size:13px;">
@@ -2432,9 +2430,11 @@ class UnifiedLeadManagerClass {
     //   the OS share sheet opens with WhatsApp as an option and images attach automatically.
     _sendPhotos() {
         const ctx = this._galleryShareCtx || {};
-        // Prefer the OS share sheet whenever the browser can share files (mobile, and
-        // Windows 11 Chrome/Edge). Only fall back to grouped-folder download otherwise.
-        if (ctx.canShareFiles) {
+        // The OS share sheet is only reliable on MOBILE. On desktop, navigator.share with
+        // files frequently rejects with "Permission denied" (NotAllowedError) or has no
+        // WhatsApp share target, so desktop always uses the grouped-folder download +
+        // open WhatsApp path instead.
+        if (ctx.isMobile && ctx.canShareFiles) {
             return this._mobileSharePhotos();
         }
         return this._desktopSendPhotos();
@@ -2512,8 +2512,12 @@ class UnifiedLeadManagerClass {
                 }, 600);
             })
             .catch((e) => {
-                if (e.name === 'AbortError') setStatus('בוטל');
-                else setStatus('⚠ שגיאה: ' + (e.message || e) + ' - נסה/י "⬇ רק הורד"');
+                if (e.name === 'AbortError') { setStatus('בוטל'); return; }
+                // Share rejected (e.g. "Permission denied" / no share target) — don't dead-end,
+                // automatically fall back to the grouped-folder download + open WhatsApp.
+                setStatus('⚠ שיתוף נכשל — עובר להורדה לתיקייה...');
+                btn.dataset.stage = 'prepare';
+                this._desktopSendPhotos();
             });
     }
 
