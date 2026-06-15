@@ -1702,7 +1702,9 @@ def get_leads():
                        COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date,
                        la.activity_type as last_activity_type,
                        la.activity_date as last_activity_date,
-                       la.user_name      as last_activity_user
+                       la.user_name      as last_activity_user,
+                       wa.description    as last_wa_text,
+                       wa.activity_date  as last_wa_date
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 LEFT JOIN LATERAL (
@@ -1713,6 +1715,13 @@ def get_leads():
                     ORDER BY activity_date DESC
                     LIMIT 1
                 ) la ON true
+                LEFT JOIN LATERAL (
+                    SELECT description, activity_date
+                    FROM lead_activities
+                    WHERE lead_id = l.id AND activity_type = 'whatsapp_message'
+                    ORDER BY activity_date DESC
+                    LIMIT 1
+                ) wa ON true
                 WHERE l.customer_id = %s OR l.customer_id IS NULL
                 ORDER BY COALESCE(l.created_time, l.received_at) DESC
                 LIMIT %s OFFSET %s
@@ -1743,7 +1752,9 @@ def get_leads():
                        COALESCE(l.raw_data->>'תאריך', l.raw_data->>'date') as lead_date,
                        la.activity_type as last_activity_type,
                        la.activity_date as last_activity_date,
-                       la.user_name      as last_activity_user
+                       la.user_name      as last_activity_user,
+                       wa.description    as last_wa_text,
+                       wa.activity_date  as last_wa_date
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_to = u.username AND u.active = true
                 LEFT JOIN LATERAL (
@@ -1754,6 +1765,13 @@ def get_leads():
                     ORDER BY activity_date DESC
                     LIMIT 1
                 ) la ON true
+                LEFT JOIN LATERAL (
+                    SELECT description, activity_date
+                    FROM lead_activities
+                    WHERE lead_id = l.id AND activity_type = 'whatsapp_message'
+                    ORDER BY activity_date DESC
+                    LIMIT 1
+                ) wa ON true
                 WHERE l.assigned_to = %s AND (l.customer_id = %s OR l.customer_id IS NULL)
                 ORDER BY COALESCE(l.created_time, l.received_at) DESC
                 LIMIT %s OFFSET %s
@@ -1766,7 +1784,7 @@ def get_leads():
         for lead in leads:
             lead_dict = dict(lead)
             # Safely convert datetime objects that exist
-            for key in ['created_time', 'received_at', 'updated_at', 'last_activity_date']:
+            for key in ['created_time', 'received_at', 'updated_at', 'last_activity_date', 'last_wa_date']:
                 if lead_dict.get(key):
                     try:
                         if hasattr(lead_dict[key], 'isoformat'):

@@ -1272,7 +1272,7 @@ class UnifiedLeadManagerClass {
                     <td title="${lead.campaign_name || ''}">${(lead.campaign_name || '-').substring(0, 30)}</td>
                     <td>${lead.assigned_full_name || lead.assigned_to || 'לא מוקצה'}</td>
                     <td>${this.formatDate(lead.lead_date || lead.created_time || lead.received_at)}</td>
-                    <td>${this.renderLastInteraction(lead)}</td>
+                    <td>${this.renderLastInteraction(lead)}${this.renderWhatsappGlance(lead)}</td>
                 </tr>
             `;
         }).join('');
@@ -1314,6 +1314,7 @@ class UnifiedLeadManagerClass {
                         </div>
                         <div style="margin-top: 8px;"><strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}</div>
                         <div style="margin-top: 8px;"><strong>אינטראקציה אחרונה:</strong> ${this.renderLastInteraction(lead)}</div>
+                        ${lead.last_wa_text ? `<div style="margin-top: 8px;"><strong>וואטסאפ אחרון:</strong> ${this.renderWhatsappGlance(lead)}</div>` : ''}
                     </div>
                     
                     <div class="lead-card-actions">
@@ -1835,6 +1836,42 @@ class UnifiedLeadManagerClass {
                     <span style="font-weight:600; color:#1f2937;">${label}</span>
                     <span style="font-size:11px; color:#6b7280;">${when}</span>
                 </span>`;
+    }
+
+    // One-line glance at the most recent WhatsApp message (sent or received) so a
+    // campaign manager can read the last correspondence without opening the lead.
+    // Direction is inferred from the stored prefix (⬅ = we sent, ➡ = lead sent).
+    // Returns '' when the lead has no WhatsApp history. Hover shows the full text;
+    // click opens the lead.
+    renderWhatsappGlance(lead) {
+        const raw = lead.last_wa_text;
+        if (!raw) return '';
+        const trimmed = String(raw).trim();
+        let dirIcon = '💬';
+        if (trimmed.startsWith('⬅')) dirIcon = '⬅';
+        else if (trimmed.startsWith('➡')) dirIcon = '➡';
+        // Description is "<prefix> (WhatsApp)[...]:\n<message>" — take the body after the first newline.
+        let body = trimmed;
+        const nl = trimmed.indexOf('\n');
+        if (nl !== -1) body = trimmed.substring(nl + 1);
+        body = body.replace(/\s+/g, ' ').trim() || trimmed.replace(/\s+/g, ' ').trim();
+        const snippet = body.length > 48 ? body.substring(0, 48) + '…' : body;
+        const when = this.formatRelativeTime(lead.last_wa_date);
+        return `<div class="wa-glance" title="${this._esc(body)}"
+                     onclick="event.stopPropagation(); window.UnifiedLeadManager.viewLead(${lead.id})"
+                     style="margin-top:4px; font-size:11px; color:#15803d; display:flex; align-items:center; gap:4px; max-width:240px; cursor:pointer;">
+                    <span style="flex:0 0 auto;">💬${dirIcon}</span>
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this._esc(snippet)}</span>
+                    ${when ? `<span style="flex:0 0 auto; color:#9ca3af; white-space:nowrap;">· ${when}</span>` : ''}
+                </div>`;
+    }
+
+    // Minimal HTML escaper for injecting customer-supplied text (e.g. inbound
+    // WhatsApp messages) into innerHTML / title attributes safely.
+    _esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // Human-friendly relative time in Hebrew (e.g. "לפני 3 שעות", "אתמול",
