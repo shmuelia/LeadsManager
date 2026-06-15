@@ -2234,17 +2234,17 @@ class UnifiedLeadManagerClass {
         }
         const defaultGallery = galleries[0];
 
-        // Detect platform — navigator.share with files works reliably on mobile;
-        // on desktop browsers (Windows/macOS) it's hit-or-miss because WhatsApp may not
-        // be a registered system share target. We use download+open WhatsApp Web there.
+        // Detect platform. navigator.share with files works reliably on mobile and,
+        // on Windows 11 Chrome/Edge, opens the OS share sheet (WhatsApp attaches all
+        // images at once — zero downloads) when WhatsApp is a registered share target.
+        // We probe on every platform now; if the probe says no, we fall back to the
+        // grouped-folder download below.
         const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         let canShareFiles = false;
-        if (isMobile) {
-            try {
-                const probe = new File(['x'], 'x.jpg', { type: 'image/jpeg' });
-                canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
-            } catch (e) { canShareFiles = false; }
-        }
+        try {
+            const probe = new File(['x'], 'x.jpg', { type: 'image/jpeg' });
+            canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+        } catch (e) { canShareFiles = false; }
         // Compute WhatsApp phone (Israeli normalization) for opening the local WhatsApp app via whatsapp:// protocol
         const cleanPhone = (phone + '').replace(/[^0-9]/g, '');
         let waPhone = cleanPhone;
@@ -2288,14 +2288,16 @@ class UnifiedLeadManagerClass {
 
                 ${!isMobile ? `
                     <div style="background:#eff6ff; border:1px solid #93c5fd; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#1e3a8a;">
-                        💡 הזרימה במחשב: התמונות יורדות וחלון WhatsApp Web נפתח. גרור/י את התמונות מסרגל ההורדות (בתחתית הדפדפן) לתוך הצ׳אט.
+                        ${canShareFiles
+                          ? '💡 במחשב: ייפתח חלון שיתוף של Windows — בחר/י WhatsApp כדי לצרף את כל התמונות בבת אחת (ללא הורדות).'
+                          : '💡 במחשב: כל התמונות יורדות לתיקייה אחת וחלון WhatsApp נפתח. פתח/י את התיקייה, בחר/י הכל (Ctrl+A) וגרור/י את כולן בבת אחת לצ׳אט.'}
                     </div>` : ''}
 
                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
                     <button type="button" id="gal_primaryBtn"
                             onclick="window.UnifiedLeadManager._sendPhotos()"
                             style="background:#16a34a; color:white; padding:11px 20px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
-                        ${isMobile && canShareFiles ? '📲 הכן תמונות לשיתוף' : '📤 הורד ופתח WhatsApp'}
+                        ${canShareFiles ? '📲 הכן תמונות לשיתוף' : '📤 הורד ופתח WhatsApp'}
                     </button>
                     <button type="button" onclick="window.UnifiedLeadManager._downloadSelected(${leadId})"
                             style="background:#e5e7eb; color:#1f2937; padding:11px 16px; border:none; border-radius:8px; font-weight:600; font-size:13px;">
@@ -2393,10 +2395,12 @@ class UnifiedLeadManagerClass {
     //   the OS share sheet opens with WhatsApp as an option and images attach automatically.
     _sendPhotos() {
         const ctx = this._galleryShareCtx || {};
-        if (!ctx.isMobile) {
-            return this._desktopSendPhotos();
+        // Prefer the OS share sheet whenever the browser can share files (mobile, and
+        // Windows 11 Chrome/Edge). Only fall back to grouped-folder download otherwise.
+        if (ctx.canShareFiles) {
+            return this._mobileSharePhotos();
         }
-        return this._mobileSharePhotos();
+        return this._desktopSendPhotos();
     }
 
     async _desktopSendPhotos() {
@@ -2413,18 +2417,22 @@ class UnifiedLeadManagerClass {
             window.location.href = `whatsapp://send?phone=${ctx.waPhone}`;
         }
 
-        // 2) Download the selected images so user can drag them into the WhatsApp chat that just opened
-        setStatus(`⏳ מוריד ${cells.length} תמונות...`);
+        // 2) Download the selected images INTO ONE SUBFOLDER (Chrome/Edge honor a path in
+        //    the download attribute and create Downloads/<folder>/). This keeps the Downloads
+        //    root clean and lets the user open one folder, Ctrl+A, and drag everything in a
+        //    single drag instead of hunting loose files one by one.
+        const folder = `whatsapp-${slug}`;
+        setStatus(`⏳ מוריד ${cells.length} תמונות לתיקייה "${folder}"...`);
         for (let i = 0; i < cells.length; i++) {
             const url = cells[i].getAttribute('data-full');
             const name = cells[i].getAttribute('data-name') || `photo-${i+1}.jpg`;
             const a = document.createElement('a');
-            a.href = url; a.download = name;
+            a.href = url; a.download = `${folder}/${name}`;
             document.body.appendChild(a); a.click(); a.remove();
             await new Promise(r => setTimeout(r, 120));
         }
-        setStatus(`✔ הורדו ${cells.length} תמונות. גרור/י אותן לחלון WhatsApp שנפתח.`);
-        this._logGallerySend(this._galleryShareCtx.leadId, `📸 הורדו ${cells.length} תמונות (${slug}) ונפתח WhatsApp Web`);
+        setStatus(`✔ הורדו ${cells.length} תמונות לתיקייה "${folder}" (בתוך ההורדות). פתח/י אותה, בחר/י הכל (Ctrl+A) וגרור/י את כולן בבת אחת לצ׳אט.`);
+        this._logGallerySend(this._galleryShareCtx.leadId, `📸 הורדו ${cells.length} תמונות (${slug}) לתיקייה "${folder}" ונפתח WhatsApp`);
     }
 
     // Mobile two-step: first click pre-fetches files; second click calls navigator.share synchronously
@@ -2478,19 +2486,20 @@ class UnifiedLeadManagerClass {
         const slug = document.getElementById('gal_slug').value;
         const cells = this._selectedPhotoCells();
         if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+        const folder = `whatsapp-${slug}`;
         for (let i = 0; i < cells.length; i++) {
             const url = cells[i].getAttribute('data-full');
             const name = cells[i].getAttribute('data-name') || `photo-${i+1}.jpg`;
             const a = document.createElement('a');
             a.href = url;
-            a.download = name;
+            a.download = `${folder}/${name}`;
             document.body.appendChild(a);
             a.click();
             a.remove();
             await new Promise(r => setTimeout(r, 150));
         }
-        setStatus(`✔ הורדו ${cells.length} תמונות. גרור/י אותן ל-WhatsApp.`);
-        this._logGallerySend(leadId, `📸 הורדו ${cells.length} תמונות לשליחה ידנית (${slug})`);
+        setStatus(`✔ הורדו ${cells.length} תמונות לתיקייה "${folder}". פתח/י אותה, בחר/י הכל (Ctrl+A) וגרור/י ל-WhatsApp.`);
+        this._logGallerySend(leadId, `📸 הורדו ${cells.length} תמונות לשליחה ידנית (${slug}) לתיקייה "${folder}"`);
     }
 
     async _logGallerySend(leadId, payload) {
