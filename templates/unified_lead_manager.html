@@ -2489,13 +2489,20 @@ class UnifiedLeadManagerClass {
             const cells = this._selectedPhotoCells();
             if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
             btn.disabled = true; btn.style.background = '#94a3b8';
+            // Open the customer's WhatsApp chat FIRST so the customer becomes the active /
+            // most-recent conversation. WhatsApp's share picker lists recent chats, so the
+            // customer then appears at the top (this works even if their number isn't saved
+            // as a contact). The OS share contract has no recipient field, so this is the
+            // closest we can get to "share straight into the customer's correspondence".
+            const waPhone = (this._galleryShareCtx || {}).waPhone;
+            if (waPhone) { try { window.location.href = `whatsapp://send?phone=${waPhone}`; } catch (e) {} }
             try {
                 this._cachedShareFiles = await this._fetchSelectedAsFiles(cells, setStatus);
                 this._cachedShareSlug = slug;
                 btn.disabled = false; btn.style.background = '#dc2626';
                 btn.textContent = `📲 לחץ עכשיו לשיתוף (${this._cachedShareFiles.length})`;
                 btn.dataset.stage = 'share';
-                setStatus('✔ מוכן - לחץ שוב לפתיחת חלון שיתוף');
+                setStatus('✔ מוכן — לחץ/י שוב, ובחלון השיתוף בחר/י WhatsApp ואז את הצ׳אט של הלקוח (יופיע למעלה ברשימה).');
             } catch (e) {
                 btn.disabled = false; btn.style.background = '#16a34a';
                 setStatus('⚠ ' + e.message);
