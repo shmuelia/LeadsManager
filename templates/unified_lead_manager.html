@@ -2277,19 +2277,27 @@ class UnifiedLeadManagerClass {
         // We probe on every platform now; if the probe says no, we fall back to the
         // grouped-folder download below.
         const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        // iOS Safari is the ONLY platform that rejects navigator.share() if there's any async
+        // gap (fetch) between the click and the share() call — it needs the two-stage flow.
+        // Everywhere else (desktop Edge/Chrome, Android) transient activation survives the
+        // fetch, so we use a single click: fetch the photos, then share — no confusing
+        // "click again", and crucially NO whatsapp:// pre-open (that stole focus to WhatsApp
+        // on the first click and made users think the action was done).
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         let canShareFiles = false;
         try {
             const probe = new File(['x'], 'x.jpg', { type: 'image/jpeg' });
             canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
         } catch (e) { canShareFiles = false; }
-        // Compute WhatsApp phone (Israeli normalization) for opening the local WhatsApp app via whatsapp:// protocol
+        // Normalized Israeli phone, kept only for the download-fallback path (opens the chat).
         const cleanPhone = (phone + '').replace(/[^0-9]/g, '');
         let waPhone = cleanPhone;
         if (cleanPhone.startsWith('9720')) waPhone = '972' + cleanPhone.substring(4);
         else if (cleanPhone.startsWith('972')) waPhone = cleanPhone;
         else if (cleanPhone.startsWith('0')) waPhone = '972' + cleanPhone.substring(1);
         else if (cleanPhone) waPhone = '972' + cleanPhone;
-        this._galleryShareCtx = { leadId, waPhone, isMobile, canShareFiles };
+        this._galleryShareCtx = { leadId, waPhone, isMobile, isIOS, canShareFiles };
 
         // Thumbnails will be populated AFTER fetching the photo list from /api/galleries/<slug>/photos
         const initialThumbsPlaceholder = '<div style="grid-column:1/-1; padding:20px; text-align:center; color:#94a3b8;">⏳ טוען תמונות...</div>';
@@ -2326,7 +2334,7 @@ class UnifiedLeadManagerClass {
                 ${!isMobile ? `
                     <div style="background:#eff6ff; border:1px solid #93c5fd; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#1e3a8a;">
                         ${canShareFiles
-                          ? '💡 ודא/י ש-WhatsApp פתוח. בלחיצה ייפתח חלון שיתוף של Windows — בחר/י WhatsApp וכל התמונות יצורפו לצ׳אט אוטומטית, ללא הורדות.'
+                          ? '💡 בלחיצה ייפתח חלון שיתוף של Windows — בחר/י WhatsApp ואז את הצ׳אט של הלקוח (כבר קיים מההתכתבות), וכל התמונות יצורפו יחד. ללא הורדות.'
                           : '💡 במחשב: כל התמונות יורדות לתיקייה אחת וחלון WhatsApp נפתח. פתח/י את התיקייה, בחר/י הכל (Ctrl+A) וגרור/י את כולן בבת אחת לצ׳אט.'}
                     </div>` : ''}
 
@@ -2334,7 +2342,7 @@ class UnifiedLeadManagerClass {
                     <button type="button" id="gal_primaryBtn"
                             onclick="window.UnifiedLeadManager._sendPhotos()"
                             style="background:#16a34a; color:white; padding:11px 20px; border:none; border-radius:8px; font-weight:700; font-size:14px;">
-                        ${canShareFiles ? '📲 הכן תמונות לשיתוף' : '📤 הורד ופתח WhatsApp'}
+                        ${!canShareFiles ? '📤 הורד ופתח WhatsApp' : (isIOS ? '📲 הכן תמונות לשיתוף' : '📤 שלח תמונות ל-WhatsApp')}
                     </button>
                     <button type="button" onclick="window.UnifiedLeadManager._downloadSelected(${leadId})"
                             style="background:#e5e7eb; color:#1f2937; padding:11px 16px; border:none; border-radius:8px; font-weight:600; font-size:13px;">
@@ -2432,16 +2440,51 @@ class UnifiedLeadManagerClass {
     //   the OS share sheet opens with WhatsApp as an option and images attach automatically.
     _sendPhotos() {
         const ctx = this._galleryShareCtx || {};
-        // Preferred path everywhere the browser can share files — mobile, and Windows
-        // Edge/Chrome with the Microsoft Store WhatsApp installed: the OS share sheet
-        // attaches every selected photo to WhatsApp in one go (no downloads, no dragging).
-        // The two-stage flow guarantees share() runs on a fresh click so the browser still
-        // sees transient user activation. Only if the browser truly can't share files do we
-        // fall back to the grouped-folder download.
+        // Browser can share files → use the OS share sheet (attaches all photos to WhatsApp
+        // in one go, no downloads). iOS needs the two-stage flow (no async gap before share);
+        // every other platform uses a single click (fetch → share). If the browser can't
+        // share files at all, fall back to the grouped-folder download.
         if (ctx.canShareFiles) {
-            return this._mobileSharePhotos();
+            return ctx.isIOS ? this._mobileSharePhotos() : this._shareNow();
         }
         return this._desktopSendPhotos();
+    }
+
+    // Single-click share for desktop (Edge/Chrome) and Android: fetch the selected photos,
+    // then open the OS share sheet. Transient user activation survives the fetch on these
+    // platforms, so no "click again" step is needed. No whatsapp:// pre-open — the customer's
+    // existing chat already appears in WhatsApp's share picker.
+    async _shareNow() {
+        const status = document.getElementById('galleryStatus');
+        const setStatus = (s) => { if (status) status.textContent = s; };
+        const slug = document.getElementById('gal_slug').value;
+        const cells = this._selectedPhotoCells();
+        if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
+        const btn = document.getElementById('gal_primaryBtn');
+        const origBg = btn ? btn.style.background : '';
+        if (btn) { btn.disabled = true; btn.style.background = '#94a3b8'; }
+        let files;
+        try {
+            files = await this._fetchSelectedAsFiles(cells, setStatus);
+        } catch (e) {
+            if (btn) { btn.disabled = false; btn.style.background = origBg; }
+            setStatus('⚠ שגיאה בטעינת התמונות: ' + (e.message || e));
+            return;
+        }
+        if (btn) { btn.disabled = false; btn.style.background = origBg; }
+        if (navigator.canShare && !navigator.canShare({ files })) {
+            setStatus('⚠ הדפדפן לא מאפשר לשתף את הקבצים האלה. נסה/י "⬇ רק הורד".');
+            return;
+        }
+        try {
+            await navigator.share({ files, title: 'תמונות' });
+            setStatus(`✔ ${files.length} תמונות נשלחו לחלון השיתוף — בחר/י WhatsApp ואז את הצ׳אט של הלקוח.`);
+            this._logGallerySend(this._galleryShareCtx.leadId, `📸 שותפו ${files.length} תמונות (${slug}) ל-WhatsApp`);
+            setTimeout(() => { const o = document.getElementById('galleryShareOverlay'); if (o) o.remove(); }, 1200);
+        } catch (e) {
+            if (e.name === 'AbortError') { setStatus('בוטל — אפשר ללחוץ שוב'); return; }
+            setStatus(`⚠ השיתוף נכשל: ${e.name || ''} — ${e.message || e}. נסה/י שוב, או "⬇ רק הורד".`);
+        }
     }
 
     async _desktopSendPhotos() {
@@ -2489,13 +2532,6 @@ class UnifiedLeadManagerClass {
             const cells = this._selectedPhotoCells();
             if (!cells.length) { setStatus('⚠ לא נבחרו תמונות'); return; }
             btn.disabled = true; btn.style.background = '#94a3b8';
-            // Open the customer's WhatsApp chat FIRST so the customer becomes the active /
-            // most-recent conversation. WhatsApp's share picker lists recent chats, so the
-            // customer then appears at the top (this works even if their number isn't saved
-            // as a contact). The OS share contract has no recipient field, so this is the
-            // closest we can get to "share straight into the customer's correspondence".
-            const waPhone = (this._galleryShareCtx || {}).waPhone;
-            if (waPhone) { try { window.location.href = `whatsapp://send?phone=${waPhone}`; } catch (e) {} }
             try {
                 this._cachedShareFiles = await this._fetchSelectedAsFiles(cells, setStatus);
                 this._cachedShareSlug = slug;
