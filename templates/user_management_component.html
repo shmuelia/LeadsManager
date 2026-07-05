@@ -26,24 +26,17 @@
         </div>
         
         <form id="userForm" style="display: grid; gap: 20px;">
-            <!-- Username -->
-            <div class="form-field">
-                <label for="userUsername" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">שם משתמש:</label>
-                <input type="text" id="userUsername" name="username" required 
-                       style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
-            </div>
-            
             <!-- Full Name -->
             <div class="form-field">
                 <label for="userFullName" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">שם מלא:</label>
-                <input type="text" id="userFullName" name="full_name" required 
+                <input type="text" id="userFullName" name="full_name" required
                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: rtl; font-size: 16px;">
             </div>
-            
-            <!-- Email -->
+
+            <!-- Email (used for login) -->
             <div class="form-field">
-                <label for="userEmail" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">אימייל:</label>
-                <input type="email" id="userEmail" name="email" 
+                <label for="userEmail" style="display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50;">אימייל (משמש לכניסה למערכת):</label>
+                <input type="email" id="userEmail" name="email" required
                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; direction: ltr; font-size: 16px;">
             </div>
             
@@ -244,7 +237,6 @@ function renderUsersTable(users) {
                     <th style="padding: 15px; text-align: right;">מחלקה</th>
                     <th style="padding: 15px; text-align: right;">אימייל</th>
                     <th style="padding: 15px; text-align: right;">שם מלא</th>
-                    <th style="padding: 15px; text-align: right;">שם משתמש</th>
                     ${userRole === 'admin' ? '<th style="padding: 15px; text-align: right;">לקוח</th>' : ''}
                     <th style="padding: 15px; text-align: right;">סיסמה</th>
                 </tr>
@@ -267,7 +259,6 @@ function renderUsersTable(users) {
                         <td style="padding: 12px;">${user.department || 'לא צוין'}</td>
                         <td style="padding: 12px; direction: ltr;">${user.email || 'לא צוין'}</td>
                         <td style="padding: 12px;"><strong>${user.full_name || 'לא צוין'}</strong></td>
-                        <td style="padding: 12px;">${user.username}</td>
                         ${userRole === 'admin' ? `<td style="padding: 12px;">${user.customer_name || 'לא משויך'}</td>` : ''}
                         <td style="padding: 12px; font-family: monospace; background: #f1f5f9; font-size: 14px;">${user.plain_password || 'לא זמין'}</td>
                     </tr>
@@ -300,7 +291,6 @@ function showUserModal(userId = null) {
         document.getElementById('userModalTitle').textContent = 'ערוך משתמש';
         
         // Populate form
-        document.getElementById('userUsername').value = user.username;
         document.getElementById('userFullName').value = user.full_name || '';
         document.getElementById('userEmail').value = user.email || '';
         document.getElementById('userPhone').value = user.phone || '';
@@ -373,7 +363,6 @@ document.getElementById('userForm').addEventListener('submit', async function(e)
     e.preventDefault();
     
     const formData = {
-        username: document.getElementById('userUsername').value.trim(),
         full_name: document.getElementById('userFullName').value.trim(),
         email: document.getElementById('userEmail').value.trim(),
         phone: document.getElementById('userPhone').value.trim(),
@@ -389,8 +378,8 @@ document.getElementById('userForm').addEventListener('submit', async function(e)
     }
     
     // Validation
-    if (!formData.username || !formData.full_name) {
-        alert('שם משתמש ושם מלא הם שדות חובה');
+    if (!formData.email || !formData.full_name) {
+        alert('אימייל ושם מלא הם שדות חובה');
         return;
     }
     

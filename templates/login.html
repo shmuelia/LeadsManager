@@ -169,8 +169,8 @@
         <!-- Login Form -->
         <form method="POST">
             <div class="form-group">
-                <label for="username">שם משתמש:</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
+                <label for="email">אימייל:</label>
+                <input type="email" id="email" name="email" required autocomplete="email" style="direction: ltr; text-align: left;">
             </div>
             
             <div class="form-group">
@@ -190,8 +190,8 @@
     </div>
 
     <script>
-        // Auto-focus username field
-        document.getElementById('username').focus();
+        // Auto-focus email field
+        document.getElementById('email').focus();
         
         // Add enter key support
         document.addEventListener('keypress', function(e) {

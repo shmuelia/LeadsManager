@@ -235,7 +235,8 @@ phone = (lead_data.get('phone') or lead_data.get('Phone Number') or lead_data.ge
 ## Authentication & Testing
 
 ### Test Credentials
-- **Admin**: Username: `admin`, Password: `admin123`
+Login is by **email** (case-insensitive), not username. The `username` column still exists internally (lead assignment via `assigned_to`, session) and is auto-set to the email for new users.
+- **Admin**: Email: `admin@leadmanager.com`, Password: `admin123`
 - **Campaign Manager**: Check users table for active accounts
 - **Regular User**: Check users table for role='user' accounts
 

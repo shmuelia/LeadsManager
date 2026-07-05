@@ -145,10 +145,6 @@
             <form id="userForm">
                 <input type="hidden" id="editUserId" value="">
 
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם משתמש *</label>
-                    <input type="text" id="inputUsername" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
-                </div>
 
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">סיסמה <span id="passwordRequired">*</span></label>
@@ -161,8 +157,8 @@
                 </div>
 
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל</label>
-                    <input type="email" id="inputEmail" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל (משמש לכניסה למערכת) *</label>
+                    <input type="email" id="inputEmail" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; direction: ltr;">
                 </div>
 
                 <div style="margin-bottom: 15px;">
@@ -274,7 +270,7 @@
                             <th style="padding: 15px; text-align: right;">תפקיד</th>
                             <th style="padding: 15px; text-align: right;">מחלקה</th>
                             <th style="padding: 15px; text-align: right;">שם מלא</th>
-                            <th style="padding: 15px; text-align: right;">שם משתמש</th>
+                            <th style="padding: 15px; text-align: right;">אימייל</th>
                             <th style="padding: 15px; text-align: right;">לקוח</th>
                             <th style="padding: 15px; text-align: right;">סיסמה</th>
                         </tr>
@@ -296,7 +292,7 @@
                                 <td style="padding: 12px;">${getRoleLabel(user.role)}</td>
                                 <td style="padding: 12px;">${user.department || 'לא צוין'}</td>
                                 <td style="padding: 12px;"><strong>${user.full_name || 'לא צוין'}</strong></td>
-                                <td style="padding: 12px;">${user.username}</td>
+                                <td style="padding: 12px; direction: ltr;">${user.email || 'לא צוין'}</td>
                                 <td style="padding: 12px;">${user.customer_name || 'לא משויך'}</td>
                                 <td style="padding: 12px; font-family: monospace; background: #f1f5f9; font-size: 14px;">${user.plain_password || 'לא זמין'}</td>
                             </tr>
@@ -325,7 +321,6 @@
             document.getElementById('inputPassword').required = true;
 
             // Clear form
-            document.getElementById('inputUsername').value = '';
             document.getElementById('inputPassword').value = '';
             document.getElementById('inputFullName').value = '';
             document.getElementById('inputEmail').value = '';
@@ -386,7 +381,6 @@
                 document.getElementById('inputPassword').required = false;
 
                 // Fill form with user data
-                document.getElementById('inputUsername').value = user.username || '';
                 document.getElementById('inputPassword').value = '';
                 document.getElementById('inputFullName').value = user.full_name || '';
                 document.getElementById('inputEmail').value = user.email || '';
@@ -435,7 +429,6 @@
             const isEdit = userId !== '';
 
             const formData = {
-                username: document.getElementById('inputUsername').value.trim(),
                 full_name: document.getElementById('inputFullName').value.trim(),
                 email: document.getElementById('inputEmail').value.trim(),
                 phone: document.getElementById('inputPhone').value.trim(),
@@ -451,8 +444,8 @@
             }
 
             // Validation
-            if (!formData.username || !formData.full_name) {
-                alert('שם משתמש ושם מלא הם שדות חובה');
+            if (!formData.email || !formData.full_name) {
+                alert('אימייל ושם מלא הם שדות חובה');
                 return;
             }
 

@@ -328,26 +328,26 @@ def login():
     if request.method == 'GET':
         return render_template('login.html')
     
-    username = request.form.get('username')
+    email = request.form.get('email', '').strip()
     password = request.form.get('password')
-    
-    if not username or not password:
-        flash('שם משתמש וסיסמה נדרשים')
+
+    if not email or not password:
+        flash('אימייל וסיסמה נדרשים')
         return render_template('login.html')
-    
+
     try:
         conn = get_db_connection()
         if not conn:
             flash('שגיאה בהתחברות למסד הנתונים')
             return render_template('login.html')
-        
+
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
             SELECT u.id, u.username, u.full_name, u.role, u.active, u.customer_id, c.name as customer_name
             FROM users u
             LEFT JOIN customers c ON u.customer_id = c.id
-            WHERE u.username = %s AND u.password_hash = %s AND u.active = true
-        """, (username, hash_password(password)))
+            WHERE LOWER(TRIM(u.email)) = LOWER(%s) AND u.password_hash = %s AND u.active = true
+        """, (email, hash_password(password)))
         
         user = cur.fetchone()
         cur.close()
@@ -387,7 +387,7 @@ def login():
                 return redirect(url_for('campaign_manager_dashboard'))
             return redirect(url_for('dashboard'))
         else:
-            flash('שם משתמש או סיסמה שגויים')
+            flash('אימייל או סיסמה שגויים')
             return render_template('login.html')
             
     except Exception as e:
@@ -3993,13 +3993,17 @@ def create_user():
         
         # Use plain_password if provided, otherwise password
         password = data.get('plain_password', data.get('password'))
-        required_fields = ['username', 'full_name']
+        required_fields = ['email', 'full_name']
         if not password:
             required_fields.append('password')
-        
+
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        email = data['email'].strip()
+        # Username kept internally for lead assignment; derived from email
+        username = data.get('username') or email.lower()
         
         # Set customer_id based on user role
         if user_role == 'campaign_manager':
@@ -4018,22 +4022,26 @@ def create_user():
             
         cur = conn.cursor()
         
-        # Check if username exists
-        cur.execute("SELECT id FROM users WHERE username = %s", (data['username'],))
+        # Email is the login credential — must be unique (case-insensitive)
+        cur.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(%s)", (email,))
         if cur.fetchone():
-            return jsonify({'error': 'Username already exists'}), 400
-        
+            return jsonify({'error': 'אימייל כבר קיים במערכת'}), 400
+
+        cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if cur.fetchone():
+            return jsonify({'error': 'אימייל כבר קיים במערכת'}), 400
+
         # Create user
         cur.execute("""
             INSERT INTO users (username, password_hash, plain_password, full_name, email, phone, role, department, customer_id, active, whatsapp_notifications)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
         """, (
-            data['username'],
+            username,
             hash_password(password),
             password,  # Store plain password for admin reference
             data['full_name'],
-            data.get('email'),
+            email,
             data.get('phone'),
             target_role,
             data.get('department'),
@@ -4047,7 +4055,7 @@ def create_user():
         cur.close()
         conn.close()
         
-        logger.info(f"User created: {data['username']} by {session.get('username')}")
+        logger.info(f"User created: {email} by {session.get('username')}")
         
         return jsonify({
             'status': 'success',
@@ -4112,8 +4120,15 @@ def update_user(user_id):
             update_values.append(data['full_name'])
         
         if 'email' in data:
+            # Email is the login credential — must stay unique (case-insensitive)
+            new_email = (data['email'] or '').strip()
+            if not new_email:
+                return jsonify({'error': 'אימייל הוא שדה חובה'}), 400
+            cur.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(%s) AND id != %s", (new_email, user_id))
+            if cur.fetchone():
+                return jsonify({'error': 'אימייל כבר קיים במערכת'}), 400
             update_fields.append("email = %s")
-            update_values.append(data['email'])
+            update_values.append(new_email)
         
         if 'phone' in data:
             update_fields.append("phone = %s")
