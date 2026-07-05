@@ -149,17 +149,18 @@ function initUserManagement() {
         if (customerField) customerField.style.display = 'none';
     } else if (userRole === 'admin') {
         // Load customers for admin
-        loadCustomers();
+        loadCustomersForUserModal();
     }
 
     // Load users
     loadUsers();
 }
 
-// Load available customers
-async function loadCustomers() {
-    // Customer field may be hidden for non-admins, but load anyway if called
-    console.log('loadCustomers called');
+// Load available customers for the user modal.
+// Named uniquely: pages that include this component (campaign_manager_dashboard.html)
+// declare their own loadCustomers() which would shadow this one.
+async function loadCustomersForUserModal() {
+    console.log('loadCustomersForUserModal called');
     try {
         const response = await fetch('/admin/customers/api');
         console.log('Response status:', response.status);
@@ -276,7 +277,7 @@ function showUserModal(userId = null) {
 
     // Always load customers when modal opens (for admins)
     if (userRole === 'admin' || userRole !== 'campaign_manager') {
-        loadCustomers();
+        loadCustomersForUserModal();
     }
 
     if (userId) {

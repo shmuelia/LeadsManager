@@ -4012,8 +4012,12 @@ def create_user():
             # Force role to be 'user' for campaign managers
             target_role = 'user'
         else:
-            # Admins can specify customer_id and role
-            target_customer_id = data.get('customer_id', user_customer_id)
+            # Admins can specify customer_id and role.
+            # Fall back to the admin's selected customer when the form sends null,
+            # so a new user is never left without a customer.
+            target_customer_id = data.get('customer_id')
+            if target_customer_id is None:
+                target_customer_id = user_customer_id
             target_role = data.get('role', 'user')
         
         conn = get_db_connection()
