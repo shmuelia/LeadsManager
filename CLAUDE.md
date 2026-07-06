@@ -4,6 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # LeadsManager - Multi-Tenant Hebrew Lead Management System
 
+## In-App Help Must Stay Current
+**RULE: Whenever a change affects a user-facing flow or UI (lead popup, offers, WhatsApp logging, dashboards), update the in-app help page `templates/help.html` in the same change.** The help page is served at `/help` (login required) and is reachable via the "❓ עזרה" buttons in the desktop header, user dashboard, mobile header, and inside the lead detail popup. Keep it short, in Hebrew, and matching the actual buttons/labels on screen.
+
 ## Project Overview
 A Flask-based lead management system built for Hebrew-speaking businesses' HR departments. Features multi-tenant customer isolation, Facebook/Instagram lead collection via webhooks, role-based user management, and comprehensive lead tracking with activity logging. Includes React Native mobile companion app.
 

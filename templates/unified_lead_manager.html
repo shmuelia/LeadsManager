@@ -1479,12 +1479,30 @@ class UnifiedLeadManagerClass {
         const isFB = (lead.platform === 'fb' || lead.platform === 'ig');
         const hasExtraInfo = !!(lead.phone || lead.email || lead.external_lead_id || leadFormId || (facebookPageId && leadId) || isFB);
 
+        // Form answers worth showing at first glance (e.g. כמות אנשים, תאריך אירוע) —
+        // everything from raw_data except system/sync/identity fields already shown elsewhere
+        const highlightHiddenFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name',
+            'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name',
+            'Form Name', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
+            'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at', 'status',
+            'assigned_to', 'priority', 'notes', 'updated_at',
+            'source', 'sheet_id', 'sheet_url', 'row_number', 'campaign_name',
+            'שם מלא', 'שם', 'מייל', 'אימייל', 'דוא"ל', 'מס פלאפון', 'טלפון', 'מספר טלפון', 'תאריך',
+            'מזהה טופס לידים', 'lead_form_id', 'form_id', 'page_id', 'facebook_page_id'];
+        const formAnswers = Object.entries(rawData).filter(([key, value]) =>
+            value != null && value !== '' && value !== 'null' &&
+            typeof value !== 'object' && !highlightHiddenFields.includes(key));
+
         modalBody.innerHTML = `
             <!-- Compact main info: name + status + assign -->
             <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 18px 20px; border-radius: 12px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
                     <h2 style="margin: 0; color: #1e293b; font-size: 1.5em;">👤 ${lead.name || 'לא צוין'}</h2>
-                    <span class="status-badge status-${lead.status}" style="font-size: 1em; padding: 6px 14px;">${this.getStatusLabel(lead.status)}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="status-badge status-${lead.status}" style="font-size: 1em; padding: 6px 14px;">${this.getStatusLabel(lead.status)}</span>
+                        <a href="/help" target="_blank" rel="noopener" title="מדריך שימוש: שליחת הצעות ותיעוד WhatsApp"
+                           style="background: #0ea5e9; color: white; text-decoration: none; padding: 5px 11px; border-radius: 8px; font-size: 13px; font-weight: 600;">❓ עזרה</a>
+                    </div>
                 </div>
                 <div style="font-size: 13px; color: #475569; margin-bottom: 12px;">
                     <strong>מוקצה ל:</strong> ${lead.assigned_to || 'לא מוקצה'}
@@ -1505,30 +1523,19 @@ class UnifiedLeadManagerClass {
                 ` : ''}
             </div>
 
-            ${hasExtraInfo ? `
-            <!-- Collapsible: extra contact info / FB links / external id / date received -->
-            <details style="background: #f8fafc; padding: 8px 14px; border-radius: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1;">
-                <summary style="cursor: pointer; color: #475569; font-weight: 600; font-size: 13px; padding: 4px 0;">
-                    📋 פרטים נוספים (טלפון, אימייל, פייסבוק, תאריך קבלה)
-                </summary>
-                <div style="display: grid; gap: 8px; margin-top: 10px; font-size: 13px;">
-                    ${lead.phone ? (() => { const p = this.formatPhoneForDisplay(lead.phone); return `<div><strong>טלפון:</strong> <a href="tel:${p}" style="color: #059669;">${p}</a></div>`; })() : ''}
-                    ${lead.email ? `<div><strong>אימייל:</strong> <a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a></div>` : ''}
-                    <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.lead_date || lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
-                    ${lead.external_lead_id ? `<div><strong>מזהה חיצוני:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${lead.external_lead_id}</code></div>` : ''}
-                    ${leadFormId || (facebookPageId && leadId) || isFB ? `
-                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0;">
-                            <strong>ניהול הליד בפייסבוק:</strong>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
-                                ${leadFormId ? `<a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" target="_blank" style="color: #1877f2; text-decoration: none;">📋 טופס</a>` : ''}
-                                ${facebookPageId && leadId ? `<a href="https://business.facebook.com/latest/lead_access/leads?page_id=${facebookPageId}&lead_id=${leadId}" target="_blank" style="color: #1877f2; text-decoration: none;">🎯 ליד זה</a>` : ''}
-                                ${isFB ? `<a href="https://business.facebook.com/latest/lead_access/leads" target="_blank" style="color: #4267B2; text-decoration: none;">📊 כל הלידים</a>` : ''}
-                                ${isFB ? `<a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2; text-decoration: none;">💬 הודעות</a>` : ''}
-                            </div>
+            ${formAnswers.length ? `
+            <!-- First-glance form answers (e.g. כמות אנשים, תאריך אירוע) -->
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #10b981; padding: 14px 18px; border-radius: 12px; margin-bottom: 14px;">
+                <div style="font-weight: 700; color: #065f46; margin-bottom: 8px; font-size: 14px;">📌 פרטי הפנייה מהטופס</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px;">
+                    ${formAnswers.map(([key, value]) => `
+                        <div style="background: rgba(255,255,255,0.85); border-radius: 8px; padding: 8px 12px; border: 1px solid #a7f3d0;">
+                            <div style="font-size: 11px; color: #047857; font-weight: 600;">${key}</div>
+                            <div style="font-size: 15px; color: #1e293b; font-weight: 700; word-break: break-word;">${value}</div>
                         </div>
-                    ` : ''}
+                    `).join('')}
                 </div>
-            </details>
+            </div>
             ` : ''}
 
             <!-- Custom Fields Section (collapsed by default to match raw form responses style) -->
@@ -1548,75 +1555,6 @@ class UnifiedLeadManagerClass {
                 </details>
             ` : ''}
 
-
-            ${Object.keys(rawData).length > 0 ? `
-                <!-- Form Responses (collapsed by default to keep the popup compact) -->
-                <details style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; border: 1px solid #f59e0b;">
-                    <summary style="cursor: pointer; color: #92400e; font-weight: 600; font-size: 14px; padding: 4px 0;">
-                        ✍️ תשובות הטופס (גולמי)
-                    </summary>
-                    <div style="display: grid; gap: 8px; margin-top: 10px;">
-                        ${(() => {
-                            // Filter out system fields and show form responses
-                            const systemFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name',
-                                                'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name',
-                                                'Form Name', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
-                                                'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at', 'status', 'assigned_to', 'priority', 'notes', 'updated_at'];
-
-                            return Object.entries(rawData)
-                            .filter(([key, value]) => {
-                                return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
-                            })
-                            .map(([key, value]) => {
-                                let displayValue = value;
-                                if (typeof value === 'object') {
-                                    displayValue = JSON.stringify(value, null, 2);
-                                }
-
-                                return `
-                                    <div style="padding: 8px 10px; background: rgba(255,255,255,0.7); border-radius: 6px; border: 1px solid #fde68a; font-size: 12px;">
-                                        <span style="font-weight: 600; color: #78350f;">${key}:</span>
-                                        <span style="color: #4b5563; white-space: pre-wrap;"> ${displayValue}</span>
-                                    </div>
-                                `;
-                            }).join('');
-                        })()}
-                    </div>
-                </details>
-
-                <!-- Additional Fields -->
-                ${rawData['Partner Name'] || rawData['Retailer Item Id'] || rawData['Vehicle'] ? `
-                    <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #a855f7; box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);">
-                        <h3 style="color: #6b21a8; margin: 0 0 20px 0; font-size: 1.4em;">🔧 שדות נוספים</h3>
-                        <div style="display: grid; gap: 12px;">
-                            ${rawData['Partner Name'] ? `<div><strong>שם שותף:</strong> ${rawData['Partner Name']}</div>` : ''}
-                            ${rawData['Retailer Item Id'] ? `<div><strong>מזהה פריט קמעונאי:</strong> ${rawData['Retailer Item Id']}</div>` : ''}
-                            ${rawData['Vehicle'] ? `<div><strong>רכב:</strong> ${rawData['Vehicle']}</div>` : ''}
-                        </div>
-                    </div>
-                ` : ''}
-            ` : '<div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; color: #6b7280;">אין נתונים מהטופס</div>'}
-
-            <!-- Campaign & Source Information Button -->
-            <div style="margin-bottom: 20px;">
-                <button onclick="toggleCampaignInfo()" style="width: 100%; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; padding: 15px 20px; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 600; color: #1e293b; transition: all 0.2s ease;">
-                    🎯 מקור הליד ומיקוד <span id="campaignToggleIcon" style="float: left;">▼</span>
-                </button>
-                <div id="campaignInfo" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 0 0 12px 12px; border: 2px solid #f59e0b; border-top: none; margin-top: -2px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <div style="margin-bottom: 10px;"><strong>פלטפורמה:</strong> ${lead.platform === 'fb' ? 'Facebook' : lead.platform === 'ig' ? 'Instagram' : lead.platform || 'לא צוין'}</div>
-                            <div style="margin-bottom: 10px;"><strong>שם קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</div>
-                            <div><strong>שם הטופס:</strong> ${lead.form_name || 'לא צוין'}</div>
-                        </div>
-                        <div>
-                            <div style="margin-bottom: 10px;"><strong>מקור ליד:</strong> ${lead.lead_source || 'לא צוין'}</div>
-                            <div style="margin-bottom: 10px;"><strong>ID חיצוני:</strong> ${lead.external_lead_id || 'לא צוין'}</div>
-                            <div><strong>עדיפות:</strong> ${lead.priority || 'רגילה'}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Notes Section -->
             ${lead.notes ? `
@@ -1715,6 +1653,93 @@ class UnifiedLeadManagerClass {
                             ${activity.user_name ? `<div style="color: #6b7280; font-size: 0.85em; margin-top: 4px;">על ידי: ${activity.user_name}</div>` : ''}
                         </div>
                     `).join('') : '<div style="text-align: center; color: #6b7280; font-style: italic; padding: 40px;">אין פעילויות רשומות עדיין</div>'}
+                </div>
+            </div>
+
+            <!-- Technical / source details — moved to the bottom to keep the top of the popup focused -->
+            <div style="margin-top: 18px; border-top: 2px dashed #cbd5e1; padding-top: 14px;">
+                <div style="font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 10px;">🔎 מידע נוסף וטכני</div>
+
+                ${hasExtraInfo ? `
+                <details style="background: #f8fafc; padding: 8px 14px; border-radius: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1;">
+                    <summary style="cursor: pointer; color: #475569; font-weight: 600; font-size: 13px; padding: 4px 0;">
+                        📋 פרטים נוספים (טלפון, אימייל, פייסבוק, תאריך קבלה)
+                    </summary>
+                    <div style="display: grid; gap: 8px; margin-top: 10px; font-size: 13px;">
+                        ${lead.phone ? (() => { const p = this.formatPhoneForDisplay(lead.phone); return `<div><strong>טלפון:</strong> <a href="tel:${p}" style="color: #059669;">${p}</a></div>`; })() : ''}
+                        ${lead.email ? `<div><strong>אימייל:</strong> <a href="mailto:${lead.email}" style="color: #059669;">${lead.email}</a></div>` : ''}
+                        <div><strong>תאריך קבלה:</strong> ${this.formatDate(lead.lead_date || lead.raw_data?.תאריך || lead.raw_data?.date || lead.created_time || lead.received_at)}</div>
+                        ${lead.external_lead_id ? `<div><strong>מזהה חיצוני:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${lead.external_lead_id}</code></div>` : ''}
+                        ${leadFormId || (facebookPageId && leadId) || isFB ? `
+                            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0;">
+                                <strong>ניהול הליד בפייסבוק:</strong>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                                    ${leadFormId ? `<a href="https://business.facebook.com/latest/lead_access/leads?form_id=${leadFormId}" target="_blank" style="color: #1877f2; text-decoration: none;">📋 טופס</a>` : ''}
+                                    ${facebookPageId && leadId ? `<a href="https://business.facebook.com/latest/lead_access/leads?page_id=${facebookPageId}&lead_id=${leadId}" target="_blank" style="color: #1877f2; text-decoration: none;">🎯 ליד זה</a>` : ''}
+                                    ${isFB ? `<a href="https://business.facebook.com/latest/lead_access/leads" target="_blank" style="color: #4267B2; text-decoration: none;">📊 כל הלידים</a>` : ''}
+                                    ${isFB ? `<a href="https://business.facebook.com/latest/inbox" target="_blank" style="color: #4267B2; text-decoration: none;">💬 הודעות</a>` : ''}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </details>
+                ` : ''}
+
+                ${Object.keys(rawData).length > 0 ? `
+                <!-- Raw form responses (collapsed) -->
+                <details style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; border: 1px solid #f59e0b;">
+                    <summary style="cursor: pointer; color: #92400e; font-weight: 600; font-size: 14px; padding: 4px 0;">
+                        ✍️ תשובות הטופס (גולמי)
+                    </summary>
+                    <div style="display: grid; gap: 8px; margin-top: 10px;">
+                        ${(() => {
+                            // Filter out system fields and show form responses
+                            const systemFields = ['Ad Id', 'Ad Name', 'Adset Id', 'Adset Name', 'Campaign Id', 'Campaign Name',
+                                                'Created Time', 'Form Id', 'Lead Id', 'Platform', 'Page Id', 'Page Name',
+                                                'Form Name', 'Custom Disclaimer Responses', 'Partner Name', 'Retailer Item Id', 'Vehicle',
+                                                'id', 'name', 'email', 'phone', 'platform', 'created_time', 'received_at', 'status', 'assigned_to', 'priority', 'notes', 'updated_at'];
+
+                            return Object.entries(rawData)
+                            .filter(([key, value]) => {
+                                return value != null && value !== '' && value !== 'null' && !systemFields.includes(key);
+                            })
+                            .map(([key, value]) => {
+                                let displayValue = value;
+                                if (typeof value === 'object') {
+                                    displayValue = JSON.stringify(value, null, 2);
+                                }
+
+                                return `
+                                    <div style="padding: 8px 10px; background: rgba(255,255,255,0.7); border-radius: 6px; border: 1px solid #fde68a; font-size: 12px;">
+                                        <span style="font-weight: 600; color: #78350f;">${key}:</span>
+                                        <span style="color: #4b5563; white-space: pre-wrap;"> ${displayValue}</span>
+                                    </div>
+                                `;
+                            }).join('');
+                        })()}
+                    </div>
+                </details>
+                ` : ''}
+
+                <!-- Campaign & Source Information -->
+                <div style="margin-bottom: 14px;">
+                    <button onclick="toggleCampaignInfo()" style="width: 100%; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; padding: 12px 18px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600; color: #1e293b; transition: all 0.2s ease;">
+                        🎯 מקור הליד ומיקוד <span id="campaignToggleIcon" style="float: left;">▼</span>
+                    </button>
+                    <div id="campaignInfo" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 0 0 12px 12px; border: 2px solid #f59e0b; border-top: none; margin-top: -2px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <div style="margin-bottom: 10px;"><strong>פלטפורמה:</strong> ${lead.platform === 'fb' ? 'Facebook' : lead.platform === 'ig' ? 'Instagram' : lead.platform || 'לא צוין'}</div>
+                                <div style="margin-bottom: 10px;"><strong>שם קמפיין:</strong> ${lead.campaign_name || 'לא צוין'}</div>
+                                <div><strong>שם הטופס:</strong> ${lead.form_name || 'לא צוין'}</div>
+                            </div>
+                            <div>
+                                <div style="margin-bottom: 10px;"><strong>מקור ליד:</strong> ${lead.lead_source || 'לא צוין'}</div>
+                                <div style="margin-bottom: 10px;"><strong>ID חיצוני:</strong> ${lead.external_lead_id || 'לא צוין'}</div>
+                                <div><strong>עדיפות:</strong> ${lead.priority || 'רגילה'}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
