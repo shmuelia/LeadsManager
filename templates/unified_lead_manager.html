@@ -909,7 +909,8 @@ class UnifiedLeadManagerClass {
         
         // Setup role-based features
         if (this.userRole === 'admin') {
-            document.getElementById('customerSelectorDiv').style.display = 'flex';
+            const customerSelectorDiv = document.getElementById('customerSelectorDiv');
+            if (customerSelectorDiv) customerSelectorDiv.style.display = 'flex';
             await this.loadCustomers();
         }
         
@@ -935,23 +936,26 @@ class UnifiedLeadManagerClass {
             this.customers = customers;
             
             const selector = document.getElementById('customerSelector');
-            selector.innerHTML = '<option value="">כל הלקוחות</option>';
-            customers.forEach(customer => {
-                if (customer.active) {
-                    const option = document.createElement('option');
-                    option.value = customer.id;
-                    option.textContent = customer.name;
-                    selector.appendChild(option);
-                }
-            });
-            
+            if (selector) {
+                selector.innerHTML = '<option value="">כל הלקוחות</option>';
+                customers.forEach(customer => {
+                    if (customer.active) {
+                        const option = document.createElement('option');
+                        option.value = customer.id;
+                        option.textContent = customer.name;
+                        selector.appendChild(option);
+                    }
+                });
+            }
+
             // Set current customer
             this.currentCustomer = '{{ session.get("selected_customer_id") }}' || null;
             if (this.currentCustomer) {
-                selector.value = this.currentCustomer;
+                if (selector) selector.value = this.currentCustomer;
                 const customer = customers.find(c => c.id == this.currentCustomer);
                 if (customer) {
-                    document.getElementById('customerName').textContent = `- ${customer.name}`;
+                    const customerNameEl = document.getElementById('customerName');
+                    if (customerNameEl) customerNameEl.textContent = `- ${customer.name}`;
                 }
             }
         } catch (error) {
@@ -1066,19 +1070,22 @@ class UnifiedLeadManagerClass {
         document.querySelectorAll('.filter-chip').forEach(chip => {
             chip.classList.remove('active');
         });
-        document.querySelector(`[data-filter="${type}"]`).classList.add('active');
-        
+        const activeChip = document.querySelector(`[data-filter="${type}"]`);
+        if (activeChip) activeChip.classList.add('active');
+
         // Update status filter dropdown to match
         const statusFilter = document.getElementById('statusFilter');
-        if (type === 'all') {
-            statusFilter.value = '';
-        } else if (type === 'unassigned') {
-            statusFilter.value = '';
-            // We'll handle unassigned filtering separately
-        } else if (type === 'open') {
-            statusFilter.value = 'not_closed';
-        } else {
-            statusFilter.value = type;
+        if (statusFilter) {
+            if (type === 'all') {
+                statusFilter.value = '';
+            } else if (type === 'unassigned') {
+                statusFilter.value = '';
+                // We'll handle unassigned filtering separately
+            } else if (type === 'open') {
+                statusFilter.value = 'not_closed';
+            } else {
+                statusFilter.value = type;
+            }
         }
         
         // Apply the filter
