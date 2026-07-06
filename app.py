@@ -267,6 +267,26 @@ def init_database():
         except Exception as e:
             logger.error(f"Error creating gallery tables: {e}")
 
+        # Lead documents (offer PDFs etc.) — stored as bytea in Postgres (Heroku's filesystem is ephemeral).
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS lead_documents (
+                    id SERIAL PRIMARY KEY,
+                    lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+                    activity_id INTEGER,
+                    filename VARCHAR(255) NOT NULL,
+                    content_type VARCHAR(100) DEFAULT 'application/pdf',
+                    data BYTEA NOT NULL,
+                    file_size INTEGER,
+                    uploaded_by VARCHAR(200),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_lead_documents_lead ON lead_documents(lead_id);")
+            logger.info("Lead documents table created successfully")
+        except Exception as e:
+            logger.error(f"Error creating lead_documents table: {e}")
+
 
         # Insert default admin user if not exists
         cur.execute("""
@@ -3287,6 +3307,159 @@ def save_offer_edit(lead_id, activity_id):
         return jsonify({'status': 'success'})
     except Exception as e:
         logger.error(f"save_offer_edit error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============== LEAD DOCUMENTS (offer PDFs stored in DB) ==============
+
+MAX_LEAD_DOCUMENT_BYTES = 10 * 1024 * 1024  # 10MB per file
+
+
+def _get_scoped_lead(cur, lead_id):
+    """Fetch the lead's customer_id and enforce the session's customer scope.
+    Returns (row, error_response) — exactly one is None."""
+    cur.execute("SELECT customer_id FROM leads WHERE id = %s", (lead_id,))
+    row = cur.fetchone()
+    if not row:
+        return None, (jsonify({'error': 'Lead not found'}), 404)
+    scope_id = _scoped_customer_id()
+    if scope_id is not None and row[0] != scope_id:
+        return None, (jsonify({'error': 'Unauthorized'}), 403)
+    return row, None
+
+
+@app.route('/leads/<int:lead_id>/documents', methods=['POST'])
+@login_required
+def upload_lead_document(lead_id):
+    """Store a document (e.g. the offer PDF as sent to the customer) in the DB."""
+    try:
+        f = request.files.get('file')
+        if not f:
+            return jsonify({'error': 'לא צורף קובץ'}), 400
+        data = f.read()
+        if not data:
+            return jsonify({'error': 'הקובץ ריק'}), 400
+        if len(data) > MAX_LEAD_DOCUMENT_BYTES:
+            return jsonify({'error': 'הקובץ גדול מדי (מקסימום 10MB)'}), 400
+
+        filename = (request.form.get('filename') or f.filename or 'document.pdf').strip()[:255]
+        content_type = f.mimetype or 'application/pdf'
+        activity_id = request.form.get('activity_id', type=int)
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+        _, err = _get_scoped_lead(cur, lead_id)
+        if err:
+            cur.close(); conn.close()
+            return err
+
+        cur.execute("""
+            INSERT INTO lead_documents (lead_id, activity_id, filename, content_type, data, file_size, uploaded_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (lead_id, activity_id, filename, content_type, psycopg2.Binary(data), len(data),
+              session.get('full_name') or session.get('username')))
+        doc_id = cur.fetchone()[0]
+
+        # Log in the activity history so the stored PDF is visible in the timeline
+        cur.execute("""
+            INSERT INTO lead_activities (lead_id, user_name, activity_type, description, activity_metadata)
+            VALUES (%s, %s, 'note_added', %s, %s::jsonb)
+        """, (lead_id, session.get('full_name') or session.get('username'),
+              f'📎 נשמר PDF במערכת: {filename}', json.dumps({'document_id': doc_id})))
+
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'status': 'success', 'document_id': doc_id,
+                        'download_url': f'/leads/{lead_id}/documents/{doc_id}'})
+    except Exception as e:
+        logger.error(f"upload_lead_document error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/leads/<int:lead_id>/documents', methods=['GET'])
+@login_required
+def list_lead_documents(lead_id):
+    """List stored documents for a lead (metadata only, no file bytes)."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+        _, err = _get_scoped_lead(cur, lead_id)
+        if err:
+            cur.close(); conn.close()
+            return err
+        cur.execute("""
+            SELECT id, filename, content_type, file_size, uploaded_by, created_at, activity_id
+            FROM lead_documents WHERE lead_id = %s ORDER BY created_at DESC
+        """, (lead_id,))
+        docs = [{
+            'id': r[0], 'filename': r[1], 'content_type': r[2], 'file_size': r[3],
+            'uploaded_by': r[4], 'created_at': r[5].isoformat() if r[5] else None,
+            'activity_id': r[6], 'url': f'/leads/{lead_id}/documents/{r[0]}',
+        } for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return jsonify({'documents': docs})
+    except Exception as e:
+        logger.error(f"list_lead_documents error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/leads/<int:lead_id>/documents/<int:doc_id>', methods=['GET'])
+@login_required
+def serve_lead_document(lead_id, doc_id):
+    """Serve a stored document. Opens inline (browser PDF viewer); ?download=1 forces download."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return ('Database not available', 500)
+        cur = conn.cursor()
+        _, err = _get_scoped_lead(cur, lead_id)
+        if err:
+            cur.close(); conn.close()
+            return ('Unauthorized', 403)
+        cur.execute("SELECT filename, content_type, data FROM lead_documents WHERE id = %s AND lead_id = %s",
+                    (doc_id, lead_id))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return ('Not found', 404)
+        from urllib.parse import quote
+        disposition = 'attachment' if request.args.get('download') else 'inline'
+        resp = Response(bytes(row[2]), mimetype=row[1] or 'application/pdf')
+        # RFC 5987 encoding — filenames are Hebrew
+        resp.headers['Content-Disposition'] = f"{disposition}; filename*=UTF-8''{quote(row[0])}"
+        return resp
+    except Exception as e:
+        logger.error(f"serve_lead_document error: {e}")
+        return ('Error', 500)
+
+
+@app.route('/leads/<int:lead_id>/documents/<int:doc_id>', methods=['DELETE'])
+@campaign_manager_required
+def delete_lead_document(lead_id, doc_id):
+    """Delete a stored document. Admin + campaign_manager only, customer-scoped."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+        _, err = _get_scoped_lead(cur, lead_id)
+        if err:
+            cur.close(); conn.close()
+            return err
+        cur.execute("DELETE FROM lead_documents WHERE id = %s AND lead_id = %s", (doc_id, lead_id))
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close(); conn.close()
+        if not deleted:
+            return jsonify({'error': 'Document not found'}), 404
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f"delete_lead_document error: {e}")
         return jsonify({'error': str(e)}), 500
 
 

@@ -1646,6 +1646,7 @@ class UnifiedLeadManagerClass {
                         style="background: #d97706; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                     ➕ הצעה חדשה
                 </button>
+                <div id="leadDocs_${lead.id}" style="margin-top: 12px;"></div>
             </div>
 
             <!-- WhatsApp Correspondence -->
@@ -1734,6 +1735,58 @@ class UnifiedLeadManagerClass {
         // Load users for assignment dropdown if campaign manager or admin
         if (this.userRole === 'campaign_manager' || this.userRole === 'admin') {
             this.loadUsersForAssignment(lead.id);
+        }
+
+        // Load stored documents (offer PDFs saved in the system)
+        this.loadLeadDocuments(lead.id);
+    }
+
+    async loadLeadDocuments(leadId) {
+        const container = document.getElementById(`leadDocs_${leadId}`);
+        if (!container) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/documents`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const docs = data.documents || [];
+            if (docs.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            const canDelete = this.userRole === 'admin' || this.userRole === 'campaign_manager';
+            container.innerHTML = `
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 6px;">📎 קבצים שמורים במערכת:</div>
+                ${docs.map(d => `
+                    <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                        <a href="${d.url}" target="_blank" rel="noopener" style="color: #92400e; font-weight: 600; text-decoration: none; flex: 1; min-width: 150px;">
+                            📄 ${d.filename}
+                        </a>
+                        <span style="font-size: 11px; color: #78350f;">
+                            ${d.created_at ? this.formatDate(d.created_at) : ''}${d.uploaded_by ? ' · ' + d.uploaded_by : ''}${d.file_size ? ' · ' + Math.round(d.file_size / 1024) + 'KB' : ''}
+                        </span>
+                        <a href="${d.url}?download=1" title="הורד קובץ" style="text-decoration: none; font-size: 14px;">⬇️</a>
+                        ${canDelete ? `
+                            <button onclick="window.UnifiedLeadManager.deleteLeadDocument(${leadId}, ${d.id})"
+                                    style="background: #fecaca; color: #991b1b; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px;"
+                                    title="מחק קובץ">🗑</button>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            `;
+        } catch (e) {
+            console.error('Error loading lead documents:', e);
+        }
+    }
+
+    async deleteLeadDocument(leadId, docId) {
+        if (!confirm('למחוק את הקובץ מהמערכת?')) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/documents/${docId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'שגיאה');
+            this.loadLeadDocuments(leadId);
+        } catch (e) {
+            alert('שגיאה במחיקת הקובץ: ' + e.message);
         }
     }
 

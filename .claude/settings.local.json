@@ -49,7 +49,8 @@
       "Bash(powershell.exe -File deploy.ps1 \"Fix: sync scans all rows \\(catches mid-sheet inserts\\) + guard empty-value false dupes + remove double sync popup\")",
       "mcp__Claude_in_Chrome__list_connected_browsers",
       "mcp__claude-in-chrome__javascript_tool",
-      "mcp__claude-in-chrome__tabs_context_mcp"
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "PowerShell(Set-Location \"G:\\\\My Drive\\\\Business\\\\Nichsei\\\\Bakery\\\\Mishmarot\\\\Operations\\\\PythonProjects\\\\LeadsManager\"; python -m py_compile app.py && powershell.exe -File deploy.ps1 \"Store offer PDFs in the system: lead_documents table \\(bytea in Postgres\\), upload/list/serve/delete endpoints, save-PDF button on offer page \\(html2pdf client-side\\), saved files listed in lead popup\")"
     ],
     "deny": [],
     "ask": []
