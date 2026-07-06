@@ -1663,6 +1663,12 @@ def mobile_dashboard():
     """Enhanced mobile-first dashboard with modern UX"""
     return render_template('dashboard_mobile_enhanced.html')
 
+@app.route('/help')
+@login_required
+def help_page():
+    """In-app user guide (Hebrew): sending offers, logging WhatsApp correspondence."""
+    return render_template('help.html')
+
 @app.route('/leads')
 @login_required
 def get_leads():
