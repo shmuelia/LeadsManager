@@ -1829,8 +1829,8 @@ class UnifiedLeadManagerClass {
             // Clear existing options except the first one
             select.innerHTML = '<option value="">בחר משתמש...</option>';
 
-            // Add users to dropdown
-            users.forEach(user => {
+            // Add users to dropdown — inactive users cannot receive leads
+            users.filter(user => user.active).forEach(user => {
                 const option = document.createElement('option');
                 option.value = user.username;
                 option.textContent = `${user.full_name} (${user.username})`;
@@ -3232,7 +3232,7 @@ class UnifiedLeadManagerClass {
                         <select id="assignUserSelect" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px;">
                             <option value="">בחר משתמש...</option>
                             <option value="">ביטול הקצאה (לא מוקצה)</option>
-                            ${users.map(user => `
+                            ${users.filter(user => user.active).map(user => `
                                 <option value="${user.username}" ${lead.assigned_to === user.username ? 'selected' : ''}>
                                     ${user.full_name} (${user.username})
                                 </option>
