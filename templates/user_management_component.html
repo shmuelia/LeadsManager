@@ -302,7 +302,11 @@ function showUserModal(userId = null) {
         document.getElementById('userWhatsappNotifications').checked = user.whatsapp_notifications !== false; // Default true
         
         if (userRole === 'admin') {
-            document.getElementById('userCustomer').value = user.customer_id || '';
+            // Set the customer only after the async options load finishes,
+            // otherwise the value silently fails to stick (options not there yet)
+            loadCustomersForUserModal().then(() => {
+                document.getElementById('userCustomer').value = user.customer_id || '';
+            });
         }
         
         // Show current password

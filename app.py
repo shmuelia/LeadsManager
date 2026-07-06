@@ -4456,7 +4456,9 @@ def update_user(user_id):
                 update_fields.append("role = %s")
                 update_values.append(data['role'])
             
-            if 'customer_id' in data:
+            if 'customer_id' in data and data['customer_id'] is not None:
+                # null means "not chosen" (e.g. dropdown race) — never wipe an
+                # existing customer assignment because of it
                 update_fields.append("customer_id = %s")
                 update_values.append(data['customer_id'])
         
