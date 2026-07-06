@@ -175,45 +175,15 @@
 <script>
 let originalHtml = null;
 
-// /leads/<lead_id>/offer/<activity_id>
-const OFFER_PATH_PARTS = window.location.pathname.split('/');
-const OFFER_LEAD_ID = OFFER_PATH_PARTS[2];
-const OFFER_ACTIVITY_ID = OFFER_PATH_PARTS[4];
-const OFFER_PDF_FILENAME = {{ ('הצעת מחיר - ' ~ data.customer_name ~ ' - ' ~ data.proposal_date ~ '.pdf') | tojson }};
-
-function ensureHtml2Pdf() {
-    if (window.html2pdf) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('טעינת ספריית ה-PDF נכשלה — בדוק חיבור לאינטרנט'));
-        document.head.appendChild(s);
-    });
-}
-
 async function savePdfToSystem() {
     const btn = document.getElementById('savePdfBtn');
     const orig = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ מכין PDF...';
+    btn.textContent = '⏳ מייצר PDF במערכת...';
     try {
-        await ensureHtml2Pdf();
-        const blob = await html2pdf().set({
-            margin: 10,
-            image: { type: 'jpeg', quality: 0.92 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'] }
-        }).from(document.getElementById('offerContent')).outputPdf('blob');
-
-        btn.textContent = '⏳ שומר במערכת...';
-        const fd = new FormData();
-        fd.append('file', blob, 'offer.pdf');
-        fd.append('filename', OFFER_PDF_FILENAME);
-        fd.append('activity_id', OFFER_ACTIVITY_ID);
-        const res = await fetch(`/leads/${OFFER_LEAD_ID}/documents`, {
-            method: 'POST', body: fd, credentials: 'include'
+        // PDF is rendered server-side (WeasyPrint) — proper Hebrew/RTL, selectable text
+        const res = await fetch(window.location.pathname + '/save-pdf', {
+            method: 'POST', credentials: 'include'
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'שגיאה בשמירה');

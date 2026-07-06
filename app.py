@@ -3438,6 +3438,74 @@ def serve_lead_document(lead_id, doc_id):
         return ('Error', 500)
 
 
+@app.route('/leads/<int:lead_id>/offer/<int:activity_id>/save-pdf', methods=['POST'])
+@login_required
+def save_offer_pdf(lead_id, activity_id):
+    """Render the offer to a real PDF on the server (WeasyPrint — proper RTL text,
+    selectable, small file) and store it in lead_documents. Replaces the old
+    client-side html2canvas capture which clipped/mangled Hebrew text."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """
+            SELECT a.activity_metadata, l.customer_id
+            FROM lead_activities a
+            JOIN leads l ON l.id = a.lead_id
+            WHERE a.id = %s AND a.lead_id = %s AND a.activity_type = 'offer_sent'
+            """,
+            (activity_id, lead_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Offer not found'}), 404
+
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and row['customer_id'] != scope_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        data = row['activity_metadata'] or {}
+        subtotal, vat_pct, vat_amount, total_with_vat = _offer_compute_totals(data)
+        html = render_template(
+            'offer.html',
+            data=data,
+            subtotal=f'{subtotal:,}',
+            vat_pct=vat_pct,
+            vat_amount=f'{vat_amount:,}',
+            total_with_vat=f'{total_with_vat:,}',
+        )
+
+        # WeasyPrint uses print media, so the .no-print toolbar is excluded automatically
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html, base_url=request.url_root).write_pdf()
+
+        filename = f"הצעת מחיר - {data.get('customer_name', 'לקוח')} - {data.get('proposal_date', '')}.pdf".strip()[:255]
+        user_name = session.get('full_name') or session.get('username')
+
+        cur2 = conn.cursor()
+        cur2.execute("""
+            INSERT INTO lead_documents (lead_id, activity_id, filename, content_type, data, file_size, uploaded_by)
+            VALUES (%s, %s, %s, 'application/pdf', %s, %s, %s)
+            RETURNING id
+        """, (lead_id, activity_id, filename, psycopg2.Binary(pdf_bytes), len(pdf_bytes), user_name))
+        doc_id = cur2.fetchone()[0]
+        cur2.execute("""
+            INSERT INTO lead_activities (lead_id, user_name, activity_type, description, activity_metadata)
+            VALUES (%s, %s, 'note_added', %s, %s::jsonb)
+        """, (lead_id, user_name, f'📎 נשמר PDF במערכת: {filename}', json.dumps({'document_id': doc_id})))
+        conn.commit()
+        cur2.close(); cur.close(); conn.close()
+        return jsonify({'status': 'success', 'document_id': doc_id,
+                        'download_url': f'/leads/{lead_id}/documents/{doc_id}'})
+    except Exception as e:
+        logger.error(f"save_offer_pdf error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/leads/<int:lead_id>/documents/<int:doc_id>', methods=['DELETE'])
 @campaign_manager_required
 def delete_lead_document(lead_id, doc_id):
@@ -3460,6 +3528,73 @@ def delete_lead_document(lead_id, doc_id):
         return jsonify({'status': 'success'})
     except Exception as e:
         logger.error(f"delete_lead_document error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/leads/<int:lead_id>/documents/<int:doc_id>/send-whatsapp', methods=['POST'])
+@login_required
+def send_lead_document_whatsapp(lead_id, doc_id):
+    """Send a stored document (offer PDF) to the lead via WhatsApp Cloud API.
+    Subject to Meta's 24h customer-service window — outside it we surface
+    outside_window=True so the UI can explain."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+        cur = conn.cursor()
+        cur.execute("SELECT phone, name, customer_id FROM leads WHERE id = %s", (lead_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Lead not found'}), 404
+        phone, lead_name, lead_customer_id = row
+        scope_id = _scoped_customer_id()
+        if scope_id is not None and lead_customer_id != scope_id:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Unauthorized'}), 403
+        if not phone:
+            cur.close(); conn.close()
+            return jsonify({'error': 'לליד אין מספר טלפון'}), 400
+
+        cur.execute("SELECT filename, content_type, data FROM lead_documents WHERE id = %s AND lead_id = %s",
+                    (doc_id, lead_id))
+        doc = cur.fetchone()
+        if not doc:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Document not found'}), 404
+        filename, content_type, file_bytes = doc[0], doc[1] or 'application/pdf', bytes(doc[2])
+
+        ok, resp = _meta_wa_send_document(phone, file_bytes, filename,
+                                          caption='מצורפת הצעת המחיר 🍞 אלחנן תרבות לחם',
+                                          content_type=content_type)
+        if not ok:
+            cur.close(); conn.close()
+            err = (resp or {}).get('error', {})
+            code = err.get('code') if isinstance(err, dict) else None
+            outside = code in (131047, 131051, 470)
+            msg = err.get('message') if isinstance(err, dict) else str(resp)
+            logger.warning(f"WhatsApp document send failed lead={lead_id} doc={doc_id} code={code}: {msg}")
+            return jsonify({'error': msg or 'שליחה נכשלה',
+                            'outside_window': outside, 'meta_code': code}), 502
+
+        meta_msg_id = ''
+        try:
+            meta_msg_id = (resp.get('messages') or [{}])[0].get('id', '')
+        except Exception:
+            pass
+        user_name = session.get('full_name', session.get('username', 'אנונימי'))
+        cur.execute("""
+            INSERT INTO lead_activities (lead_id, user_name, activity_type, description, activity_metadata)
+            VALUES (%s, %s, 'whatsapp_message', %s, %s::jsonb)
+        """, (lead_id, user_name,
+              f"⬅ נשלח PDF ב-WhatsApp ל-{lead_name or 'ליד'}: {filename}",
+              json.dumps({'source': 'meta_api', 'direction': 'sent', 'document_id': doc_id,
+                          'meta_msg_id': meta_msg_id})))
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f"send_lead_document_whatsapp error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -6774,6 +6909,52 @@ def _meta_wa_send_text(to_phone, body):
         return ok, r.json()
     except Exception as e:
         logger.error(f"_meta_wa_send_text error: {e}")
+        return False, {'error': str(e)}
+
+
+def _meta_wa_send_document(to_phone, file_bytes, filename, caption=None, content_type='application/pdf'):
+    """Send a document via WhatsApp Cloud API: upload the bytes to Meta's media
+    endpoint, then send a 'document' message referencing the media id.
+    Same 24h customer-service window rules as free-form text apply.
+    Returns (ok: bool, response: dict)."""
+    token = os.environ.get('META_WA_TOKEN', '')
+    phone_id = os.environ.get('META_WA_PHONE_ID', '')
+    if not token or not phone_id:
+        return False, {'error': 'Meta WhatsApp not configured'}
+
+    to_norm = _normalize_il_phone(to_phone)
+    if not to_norm:
+        return False, {'error': 'invalid recipient phone'}
+
+    from io import BytesIO
+    try:
+        # 1) upload media
+        up = requests.post(
+            f"https://graph.facebook.com/{META_WA_GRAPH_VERSION}/{phone_id}/media",
+            headers={'Authorization': f'Bearer {token}'},
+            data={'messaging_product': 'whatsapp'},
+            files={'file': (filename, BytesIO(file_bytes), content_type)},
+            timeout=30,
+        )
+        if up.status_code != 200:
+            return False, up.json()
+        media_id = up.json().get('id')
+        if not media_id:
+            return False, {'error': 'media upload returned no id'}
+
+        # 2) send document message
+        document = {'id': media_id, 'filename': filename}
+        if caption:
+            document['caption'] = caption
+        r = requests.post(
+            f"https://graph.facebook.com/{META_WA_GRAPH_VERSION}/{phone_id}/messages",
+            headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+            json={'messaging_product': 'whatsapp', 'to': to_norm, 'type': 'document', 'document': document},
+            timeout=30,
+        )
+        return r.status_code == 200, r.json()
+    except Exception as e:
+        logger.error(f"_meta_wa_send_document error: {e}")
         return False, {'error': str(e)}
 
 

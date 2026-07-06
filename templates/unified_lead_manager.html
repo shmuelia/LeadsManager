@@ -1765,6 +1765,9 @@ class UnifiedLeadManagerClass {
                             ${d.created_at ? this.formatDate(d.created_at) : ''}${d.uploaded_by ? ' · ' + d.uploaded_by : ''}${d.file_size ? ' · ' + Math.round(d.file_size / 1024) + 'KB' : ''}
                         </span>
                         <a href="${d.url}?download=1" title="הורד קובץ" style="text-decoration: none; font-size: 14px;">⬇️</a>
+                        <button onclick="window.UnifiedLeadManager.sendLeadDocumentWhatsapp(${leadId}, ${d.id})"
+                                style="background: #25D366; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;"
+                                title="שלח את הקובץ ללקוח ב-WhatsApp">📤 שלח ללקוח</button>
                         ${canDelete ? `
                             <button onclick="window.UnifiedLeadManager.deleteLeadDocument(${leadId}, ${d.id})"
                                     style="background: #fecaca; color: #991b1b; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px;"
@@ -1775,6 +1778,25 @@ class UnifiedLeadManagerClass {
             `;
         } catch (e) {
             console.error('Error loading lead documents:', e);
+        }
+    }
+
+    async sendLeadDocumentWhatsapp(leadId, docId) {
+        if (!confirm('לשלוח את הקובץ ללקוח ב-WhatsApp?')) return;
+        try {
+            const res = await fetch(`/leads/${leadId}/documents/${docId}/send-whatsapp`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+                if (data.outside_window) {
+                    alert('לא ניתן לשלוח — עברו יותר מ-24 שעות מההודעה האחרונה של הלקוח.\nשלח לו קודם הודעה רגילה (או בקש שיכתוב לך), ואז נסה שוב.');
+                } else {
+                    alert('שגיאה בשליחה: ' + (data.error || 'שגיאה לא ידועה'));
+                }
+                return;
+            }
+            alert('✔ הקובץ נשלח ללקוח ב-WhatsApp');
+        } catch (e) {
+            alert('שגיאה בשליחה: ' + e.message);
         }
     }
 

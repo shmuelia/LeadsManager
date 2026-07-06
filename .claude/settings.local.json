@@ -50,7 +50,9 @@
       "mcp__Claude_in_Chrome__list_connected_browsers",
       "mcp__claude-in-chrome__javascript_tool",
       "mcp__claude-in-chrome__tabs_context_mcp",
-      "PowerShell(Set-Location \"G:\\\\My Drive\\\\Business\\\\Nichsei\\\\Bakery\\\\Mishmarot\\\\Operations\\\\PythonProjects\\\\LeadsManager\"; python -m py_compile app.py && powershell.exe -File deploy.ps1 \"Store offer PDFs in the system: lead_documents table \\(bytea in Postgres\\), upload/list/serve/delete endpoints, save-PDF button on offer page \\(html2pdf client-side\\), saved files listed in lead popup\")"
+      "PowerShell(Set-Location \"G:\\\\My Drive\\\\Business\\\\Nichsei\\\\Bakery\\\\Mishmarot\\\\Operations\\\\PythonProjects\\\\LeadsManager\"; python -m py_compile app.py && powershell.exe -File deploy.ps1 \"Store offer PDFs in the system: lead_documents table \\(bytea in Postgres\\), upload/list/serve/delete endpoints, save-PDF button on offer page \\(html2pdf client-side\\), saved files listed in lead popup\")",
+      "PowerShell(heroku run --app eadmanager-fresh-2024-dev \"pip install -q weasyprint 2>&1 | tail -1; python -c 'import weasyprint; print\\(\\\\\"WEASYPRINT OK\\\\\", weasyprint.__version__\\)'; fc-list 2>/dev/null | head -20; echo FONTS_END\")",
+      "PowerShell(heroku run --app eadmanager-fresh-2024-dev 'pip install -q weasyprint 2>&1 | tail -1; python -c \"import weasyprint\" && echo WP_IMPORT_OK || echo WP_IMPORT_FAIL; fc-list 2>/dev/null | head -30; echo FONTS_END')"
     ],
     "deny": [],
     "ask": []
