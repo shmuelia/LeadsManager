@@ -55,7 +55,8 @@
       "PowerShell(heroku run --app eadmanager-fresh-2024-dev 'pip install -q weasyprint 2>&1 | tail -1; python -c \"import weasyprint\" && echo WP_IMPORT_OK || echo WP_IMPORT_FAIL; fc-list 2>/dev/null | head -30; echo FONTS_END')",
       "mcp__claude-in-chrome__navigate",
       "mcp__claude-in-chrome__computer",
-      "mcp__claude-in-chrome__tabs_close_mcp"
+      "mcp__claude-in-chrome__tabs_close_mcp",
+      "mcp__claude-in-chrome__read_console_messages"
     ],
     "deny": [],
     "ask": []

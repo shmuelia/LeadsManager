@@ -3848,6 +3848,63 @@ def update_lead_status(lead_id):
         logger.error(f"Error updating status: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/leads/<int:lead_id>/phone', methods=['PUT'])
+@login_required
+def update_lead_phone(lead_id):
+    """Fix a lead's phone number (e.g. customer typo) so WhatsApp/calls reach them.
+    Admins and campaign managers only; campaign managers limited to their customer."""
+    try:
+        user_role = session.get('role')
+        if user_role not in ['admin', 'campaign_manager']:
+            return jsonify({'error': 'רק מנהל או מנהל קמפיין יכולים לעדכן מספר טלפון'}), 403
+
+        data = request.get_json() or {}
+        new_phone = (data.get('phone') or '').strip()
+
+        # Keep only digits and a leading + so "052-606 2754" is accepted as typed
+        cleaned = new_phone.replace('-', '').replace(' ', '')
+        digits = cleaned[1:] if cleaned.startswith('+') else cleaned
+        if not digits.isdigit() or not (9 <= len(digits) <= 15):
+            return jsonify({'error': 'מספר טלפון לא תקין — נדרשות 9 עד 15 ספרות'}), 400
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database not available'}), 500
+
+        cur = conn.cursor()
+        if user_role == 'campaign_manager':
+            cur.execute("SELECT phone FROM leads WHERE id = %s AND customer_id = %s",
+                        (lead_id, session.get('customer_id')))
+        else:
+            cur.execute("SELECT phone FROM leads WHERE id = %s", (lead_id,))
+        result = cur.fetchone()
+        if not result:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Lead not found'}), 404
+
+        old_phone = result[0] or 'ריק'
+
+        cur.execute("UPDATE leads SET phone = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (cleaned, lead_id))
+
+        user_name = session.get('full_name') or session.get('username') or 'אנונימי'
+        cur.execute("""
+            INSERT INTO lead_activities (lead_id, user_name, activity_type, description)
+            VALUES (%s, %s, %s, %s)
+        """, (lead_id, user_name, 'phone_updated',
+              f'מספר טלפון עודכן מ-{old_phone} ל-{cleaned}'))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'status': 'success', 'message': 'מספר הטלפון עודכן בהצלחה', 'phone': cleaned})
+
+    except Exception as e:
+        logger.error(f"Error updating lead phone: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin')
 @admin_required
 def admin_dashboard():

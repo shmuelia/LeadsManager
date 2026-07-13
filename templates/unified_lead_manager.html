@@ -1597,14 +1597,34 @@ class UnifiedLeadManagerClass {
             <!-- WhatsApp Correspondence -->
             <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                 <h3 style="margin-bottom: 15px; color: #14532d;">💬 WhatsApp</h3>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
                     ${lead.phone ? `
                         <a href="whatsapp://send?phone=${this.formatPhoneForWhatsApp(lead.phone)}"
                            style="background: #25D366; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
                             📱 פתח WhatsApp
                         </a>
+                        <span style="color:#14532d; font-weight:600; direction:ltr;">${this.formatPhoneForDisplay(lead.phone)}</span>
                     ` : '<span style="color:#6b7280;">אין מספר טלפון לליד</span>'}
+                    ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
+                        <button onclick="window.UnifiedLeadManager.togglePhoneEdit(${lead.id})"
+                                title="תיקון מספר טלפון שהוזן שגוי — כדי שההתכתבות והשיחות יעבדו"
+                                style="background:#e2e8f0; color:#1e293b; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600;">
+                            ✏️ ${lead.phone ? 'תקן מספר' : 'הוסף מספר'}
+                        </button>
+                    ` : ''}
                 </div>
+                ${this.userRole === 'campaign_manager' || this.userRole === 'admin' ? `
+                    <div id="phoneEditRow_${lead.id}" style="display:none; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; background:rgba(255,255,255,0.7); border:1px solid #86efac; border-radius:8px; padding:10px;">
+                        <input type="tel" id="phoneEditInput_${lead.id}" value="${this.formatPhoneForDisplay(lead.phone) || ''}"
+                               placeholder="0501234567" dir="ltr"
+                               style="flex:1; min-width:160px; padding:8px 10px; border:2px solid #10b981; border-radius:8px; font-size:15px;">
+                        <button onclick="window.UnifiedLeadManager.saveLeadPhone(${lead.id})"
+                                style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:700;">💾 שמור</button>
+                        <button onclick="document.getElementById('phoneEditRow_${lead.id}').style.display='none'"
+                                style="background:#f1f5f9; color:#475569; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;">ביטול</button>
+                        <span id="phoneEditStatus_${lead.id}" style="font-size:12px; color:#991b1b; width:100%;"></span>
+                    </div>
+                ` : ''}
                 <label style="display: block; font-weight: 600; color: #14532d; margin-bottom: 6px;">הדבק / הקלד התכתבות</label>
                 <textarea id="waText_${lead.id}" rows="4" placeholder="הדבק כאן את ההודעות מ-WhatsApp..."
                           style="width: 100%; padding: 10px; border: 1px solid #86efac; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
@@ -1923,9 +1943,49 @@ class UnifiedLeadManagerClass {
             'call': 'שיחה',
             'note_added': 'הערה',
             'whatsapp_message': '💬 WhatsApp',
-            'offer_sent': '📄 הצעת מחיר'
+            'offer_sent': '📄 הצעת מחיר',
+            'phone_updated': '📞 עדכון טלפון'
         };
         return labels[type] || type;
+    }
+
+    togglePhoneEdit(leadId) {
+        const row = document.getElementById(`phoneEditRow_${leadId}`);
+        if (!row) return;
+        const opening = row.style.display === 'none';
+        row.style.display = opening ? 'flex' : 'none';
+        if (opening) document.getElementById(`phoneEditInput_${leadId}`)?.focus();
+    }
+
+    async saveLeadPhone(leadId) {
+        const input = document.getElementById(`phoneEditInput_${leadId}`);
+        const status = document.getElementById(`phoneEditStatus_${leadId}`);
+        const phone = (input?.value || '').trim();
+        if (!phone) {
+            if (status) status.textContent = 'נא להזין מספר טלפון';
+            return;
+        }
+        try {
+            const response = await fetch(`/leads/${leadId}/phone`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                if (status) status.textContent = data.error || 'שגיאה בעדכון המספר';
+                return;
+            }
+            // Keep the local list in sync, then re-open the popup with the fixed number
+            const localLead = this.leads.find(l => l.id === leadId);
+            if (localLead) localLead.phone = data.phone;
+            this.applyFilters();
+            this.showToast('מספר הטלפון עודכן בהצלחה', 'success');
+            this.viewLead(leadId);
+        } catch (error) {
+            console.error('Error updating lead phone:', error);
+            if (status) status.textContent = 'שגיאה בעדכון המספר';
+        }
     }
 
     // Compact summary of the latest customer-facing activity, used in the
