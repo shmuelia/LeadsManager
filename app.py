@@ -4051,6 +4051,41 @@ def admin_reports():
     """Reports dashboard (rejected/closed leads reasons, etc.) — admin + campaign manager."""
     return render_template('admin_reports.html', version=APP_VERSION, build_time=BUILD_TIME)
 
+# Canonical grouping for the rejections report ("פילוח לפי סיבה"): free-text close
+# reasons like "יקר להם" / "יקר לה" / "לא בתקציב" all count as one line. First
+# matching category wins; a reason matching nothing stays as its own line.
+CLOSE_REASON_CATEGORIES = [
+    ('💰 יקר / לא בתקציב', ['יקר', 'תקציב', 'מחיר', 'עלות', 'כסף']),
+    ('📵 אין מענה / לא חוזר', ['אין מענה', 'לא עונה', 'לא ענה', 'לא ענתה', 'לא זמין',
+                               'לא חזר', 'לא הגיב', 'לא משיב', 'אין תשובה', 'תא קולי',
+                               'מנותק', 'לא ניתן להשיג', 'הפסיק לענות', 'לא השיב']),
+    ('🙅 לא מעוניין', ['לא מעוניין', 'לא מעונין', 'לא רוצה', 'התחרט', 'ויתר', 'לא צריך']),
+    ('🏪 סגר במקום אחר', ['מקום אחר', 'ספק אחר', 'מישהו אחר', 'סגר עם', 'סגרו עם',
+                          'התקדם עם', 'התקדמו עם', 'קייטרינג אחר', 'הצעה אחרת']),
+    ('📅 בעיית תאריך / זמינות', ['תאריך', 'תפוס', 'זמינות', 'עמוס']),
+    ('🚫 האירוע בוטל / נדחה', ['בוטל', 'ביטל', 'נדחה', 'מבטל']),
+    ('🔁 ליד כפול', ['כפול', 'כפילות', 'duplicate']),
+    ('⚠️ לא רלוונטי / טעות', ['לא רלוונטי', 'טעות', 'בטעות', 'ספאם', 'spam']),
+]
+
+# Final letters fold to their regular form so 'מעוניין' also hits 'מעוניינת'
+_HEB_FINAL_MAP = str.maketrans('ןםץףך', 'נמצפכ')
+
+def match_close_reason_category(reason_text):
+    """Return the canonical category label for a free-text close reason, or None.
+    Keywords match at word start, tolerating common Hebrew prefix letters
+    (ה/ב/ל/מ/ו/ש/כ) so 'בתקציב' and 'המחיר' hit 'תקציב' and 'מחיר', while
+    'בעיקר' does NOT hit 'יקר' (the ע breaks the word start)."""
+    low = (reason_text or '').lower().translate(_HEB_FINAL_MAP)
+    if not low:
+        return None
+    for label, keywords in CLOSE_REASON_CATEGORIES:
+        for kw in keywords:
+            kw = kw.translate(_HEB_FINAL_MAP)
+            if re.search(r'(?<![א-תa-z0-9])[ובלמשהכ]{0,2}' + re.escape(kw), low):
+                return label
+    return None
+
 @app.route('/admin/reports/closed-leads')
 @campaign_manager_required
 def admin_reports_closed_leads():
@@ -4180,13 +4215,21 @@ def admin_reports_closed_leads():
                 d['closed_at'] = d['closed_at'].isoformat()
             results.append(d)
 
-        # Aggregate by reason for a quick summary
+        # Aggregate by reason for a quick summary — similar free-text reasons are
+        # folded into one canonical category line, keeping original phrasings as variants
         from collections import Counter
-        counter = Counter(r['reason'] or '(ללא הערה)' for r in results)
-        summary = [
-            {'reason': reason, 'count': count}
-            for reason, count in counter.most_common()
-        ]
+        groups = {}
+        for r in results:
+            reason = r['reason'] or '(ללא הערה)'
+            label = match_close_reason_category(reason) or reason
+            groups.setdefault(label, Counter())[reason] += 1
+        summary = []
+        for label, variants in groups.items():
+            entry = {'reason': label, 'count': sum(variants.values())}
+            if len(variants) > 1 or label not in variants:
+                entry['variants'] = [{'text': t, 'count': c} for t, c in variants.most_common()]
+            summary.append(entry)
+        summary.sort(key=lambda s: -s['count'])
 
         return jsonify({
             'rows': results,
