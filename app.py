@@ -5898,8 +5898,8 @@ def create_lead_manual():
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         # Check for duplicates with normalized comparison
-        phone = data.get('phone', '').strip().replace('-', '').replace(' ', '').replace('+', '')
-        email = data.get('email', '').strip().lower().rstrip('.')
+        phone = (data.get('phone') or '').strip().replace('-', '').replace(' ', '').replace('+', '')
+        email = (data.get('email') or '').strip().lower().rstrip('.')
 
         if phone or email:
             cur.execute(

@@ -56,7 +56,18 @@
       "mcp__claude-in-chrome__navigate",
       "mcp__claude-in-chrome__computer",
       "mcp__claude-in-chrome__tabs_close_mcp",
-      "mcp__claude-in-chrome__read_console_messages"
+      "mcp__claude-in-chrome__read_console_messages",
+      "Bash(python -c ' *)",
+      "Bash(python -m py_compile hr_app.py)",
+      "Bash(DATABASE_URL='postgres://u15q935sjeth55:pbe05e5c8ae574f7376903dec1f8ba707f2a8fe234a7f00b7cbd10c5343022ba0@cer3tutrbi7n1t.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d94rj0673dt47i' python setup_database.py)",
+      "Bash(DATABASE_URL=postgres://u15q935sjeth55:pbe05e5c8ae574f7376903dec1f8ba707f2a8fe234a7f00b7cbd10c5343022ba0@cer3tutrbi7n1t.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d94rj0673dt47i python -c ' *)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(heroku logs *)",
+      "Bash(heroku info *)",
+      "Bash(heroku addons *)",
+      "Bash(curl -s -o /dev/null -w \"login page: %{time_total}s\\\\n\" https://simplescheduler-prod-5400910247f3.herokuapp.com/login)",
+      "Bash(python -c \"import requests; print\\('requests ok'\\)\")",
+      "Bash(python \"C:\\\\Users\\\\amika.AMIKAMDESKTOP\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\G--My-Drive-Business-Nichsei-Bakery-Mishmarot-Operations-PythonProjects-LeadsManager\\\\ba76977a-c9c4-435a-b2e9-9d2569db6622\\\\scratchpad\\\\qa_suite.py\")"
     ],
     "deny": [],
     "ask": []
